@@ -1,3 +1,15 @@
+"""
+This module contains the `MGFSpectrumReader` class for reading MS/MS
+spectra in MGF format.
+
+Note:
+This code was adapted from the `falcon` repository for mgf io:
+https://github.com/bittremieux/falcon
+
+The original structure and approach were used as a reference, with modifications
+to fit the specific needs of this project.
+"""
+
 from typing import Dict, IO, Iterable, Union
 
 import pyteomics.mgf
@@ -10,6 +22,7 @@ class MGFSpectrumReader(SpectrumReader):
     """
     MGF spectrum reader class to handle MGF files for reading and writing MS/MS spectra.
     """
+    extension: str = '.mgf'
 
     @classmethod
     def get_spectra(cls, source: Union[IO, str]) -> Iterable[sus.MsmsSpectrum]:

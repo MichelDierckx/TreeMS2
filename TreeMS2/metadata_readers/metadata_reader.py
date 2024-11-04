@@ -8,6 +8,7 @@ class MetaDataReader(ABC):
     """
     Abstract base class for metadata readers.
     """
+    extension = None
 
     @abstractmethod
     def get_metadata(self, source: Union[IO, str]) -> SampleGroupMapping:

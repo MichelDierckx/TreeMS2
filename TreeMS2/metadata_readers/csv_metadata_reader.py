@@ -10,6 +10,7 @@ class CsvMetaDataReader(MetaDataReader):
     """
     Metadata reader class to handle csv files for reading metadata for sample files.
     """
+    extension: str = '.csv'
 
     @classmethod
     def get_metadata(cls, source: Union[IO, str]) -> SampleGroupMapping:
