@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, IO
+from typing import Union, IO, List
 
 from .sample_group_mapping import SampleGroupMapping
 
@@ -8,7 +8,7 @@ class MetaDataReader(ABC):
     """
     Abstract base class for metadata readers.
     """
-    extension = None
+    VALID_EXTENSIONS: List[str] = []
 
     @abstractmethod
     def get_metadata(self, source: Union[IO, str]) -> SampleGroupMapping:

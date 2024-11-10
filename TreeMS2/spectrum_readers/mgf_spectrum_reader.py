@@ -22,7 +22,7 @@ class MGFSpectrumReader(SpectrumReader):
     """
     MGF spectrum reader class to handle MGF files for reading and writing MS/MS spectra.
     """
-    extension: str = '.mgf'
+    VALID_EXTENSIONS = ['.mgf']
 
     @classmethod
     def get_spectra(cls, source: Union[IO, str]) -> Iterable[sus.MsmsSpectrum]:

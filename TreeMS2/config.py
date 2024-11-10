@@ -9,20 +9,25 @@ The original structure and approach were used as a reference, with modifications
 to fit the specific needs of this project.
 """
 
+import os
 from typing import Optional, Any
 
 import configargparse
 
+from metadata_readers.metadata_reader_manager import MetadataReaderManager
+from spectrum_readers.spectrum_reader_manager import SpectrumReaderManager
+
 
 class Config:
     """
-    Command-line and file-based configuration handler. Makes use of the singleton pattern.
-
-    Configuration settings can be specified in a config.ini file (by default in
-    the working directory), or as command-line arguments.
+    Command-line and file-based configuration handler. Ensures only one instance (singleton pattern).
     """
 
     _instance = None  # To ensure only one instance (singleton)
+
+    # declare the names for the different parameters once
+    _SAMPLE_TO_GROUP_FILE = "sample_to_group_file"
+    _MS2_DIR = "ms2_dir"
 
     def __new__(cls) -> "Config":
         """
@@ -35,9 +40,10 @@ class Config:
     def __init__(self) -> None:
         """
         Initialize the configuration parser and provide default values.
+        Ensures the configuration is only initialized once.
         """
         if hasattr(self, "_initialized") and self._initialized:
-            return  # Prevent re-initialization in singleton
+            return  # Prevent re-initializing the singleton instance
 
         self._parser = configargparse.ArgParser(
             description="TreeMS2: An efficient tool for phylogenetic analysis of MS/MS spectra using ANN indexing.",
@@ -46,10 +52,9 @@ class Config:
             formatter_class=configargparse.ArgumentDefaultsHelpFormatter,
         )
 
-        # Add argument definitions
-        self._define_arguments()
+        self._define_arguments()  # Add argument definitions
         self._namespace = None
-        self._initialized = True  # Mark as initialized to avoid re-running init
+        self._initialized = True  # Mark the configuration as initialized
 
     def _define_arguments(self) -> None:
         """
@@ -57,18 +62,30 @@ class Config:
         """
         # IO arguments
         self._parser.add_argument(
-            "--sample_to_group_file",
+            f"--{self._SAMPLE_TO_GROUP_FILE}",
             required=True,
             help=(
                 "File containing a mapping from sample filename to group.\n"
-                "Supported formats:\n"
+                "Supported formats("
+                f"{', '.join(MetadataReaderManager.get_all_valid_extensions())}):\n"
                 "  - .csv: Must contain 'sample_file' and 'group' columns.\n"
             ),
+            type=str,
+            action='store',  # This action means the value will be stored in the `self._namespace`
+            dest=f"{self._SAMPLE_TO_GROUP_FILE}",
+            # The key under which the value will be stored in the parsed arguments
+            metavar="<path>",  # The placeholder text shown in the help for this argument
         )
         self._parser.add_argument(
-            "--ms2_dir",
+            f"--{self._MS2_DIR}",
             required=True,
-            help="Directory containing MS/MS files (supported formats: .mgf)",
+            help=(
+                f"Directory containing MS/MS files (supported formats: {', '.join(SpectrumReaderManager.get_all_valid_extensions())})."
+            ),
+            type=str,
+            action='store',  # This action means the value will be stored in the `self._namespace`
+            dest=f"{self._MS2_DIR}",  # The key under which the value will be stored in the parsed arguments
+            metavar="<path>",  # The placeholder text shown in the help for this argument
         )
 
     def parse(self, args_str: Optional[str] = None) -> None:
@@ -81,39 +98,71 @@ class Config:
             If None, arguments are taken from sys.argv; otherwise, a string of arguments.
             Arguments not specified on the command line are taken from the config file.
         """
-        self._namespace = vars(self._parser.parse_args(args_str))
+        if self._namespace is not None:
+            return  # Skip parsing if already parsed
 
-    def get(self, option: str, default: Any = None) -> Any:
+        # Parse the arguments
+        self._namespace = vars(self._parser.parse_args(args_str))
+        self._validate_path(self._namespace.get(f"{self._MS2_DIR}"))
+        self._validate_path(self._namespace.get(f"{self._SAMPLE_TO_GROUP_FILE}"))
+
+    def _validate_choice(self, param: str, valid_options: list) -> None:
         """
-        Safely get a configuration option with a default value.
+        Validate that the value of a configuration parameter is in the list of valid options.
+        """
+        value = self.get(param)
+        if value not in valid_options:
+            raise ValueError(f"Invalid value '{value}' for '{param}'. Valid options are: {', '.join(valid_options)}")
+
+    @staticmethod
+    def _validate_path(path: str, required_extensions: Optional[list] = None) -> None:
+        """
+        Validate that a file path exists and optionally check if it has one of the required extensions.
+        """
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Path '{path}' does not exist.")
+        if required_extensions:
+            if not any(path.endswith(ext) for ext in required_extensions):
+                valid_extensions = ', '.join(required_extensions)
+                raise ValueError(f"Path '{path}' must end with one of the following extensions: {valid_extensions}")
+
+    def __getattr__(self, option: str) -> Any:
+        """
+        Retrieve configuration options as attributes.
+
+        Raises a KeyError with a helpful message if the option does not exist.
+        """
+        if self._namespace is None:
+            raise RuntimeError("The configuration has not been initialized. Call `parse()` first.")
+        if option not in self._namespace:
+            raise KeyError(f"The configuration option '{option}' does not exist.")
+        return self._namespace[option]
+
+    def __getitem__(self, item: str) -> Any:
+        """
+        Allow dictionary-like access to configuration options.
+        """
+        return self.__getattr__(item)
+
+    def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
+        """
+        Retrieve configuration options with a default value if the option does not exist.
 
         Parameters
         ----------
         option : str
             The configuration option to retrieve.
-        default : Any
-            The default value to return if the option is not found.
+        default : Optional[Any]
+            The default value to return if the option does not exist.
 
         Returns
         -------
-        Any
-            The option value or the default if the option is not set.
+        Optional[Any]
+            The value of the configuration option or the default value.
         """
         if self._namespace is None:
-            raise RuntimeError("Configuration has not been parsed. Call `parse()` first.")
+            raise RuntimeError("The configuration has not been initialized. Call `parse()` first.")
         return self._namespace.get(option, default)
-
-    def __getattr__(self, option: str) -> Any:
-        """
-        Allows accessing configuration options as attributes.
-        """
-        return self.get(option)
-
-    def __getitem__(self, option: str) -> Any:
-        """
-        Allows accessing configuration options via dictionary-like syntax.
-        """
-        return self.get(option)
 
 
 # Instantiate a shared configuration object for global access. Only one can exist.

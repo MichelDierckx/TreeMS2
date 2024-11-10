@@ -1,6 +1,6 @@
 import csv
 import os
-from typing import Union, IO
+from typing import Union, IO, List
 
 from .metadata_reader import MetaDataReader
 from .sample_group_mapping import SampleGroupMapping
@@ -10,7 +10,7 @@ class CsvMetaDataReader(MetaDataReader):
     """
     Metadata reader class to handle csv files for reading metadata for sample files.
     """
-    extension: str = '.csv'
+    VALID_EXTENSIONS: List[str] = ['.csv']
 
     @classmethod
     def get_metadata(cls, source: Union[IO, str]) -> SampleGroupMapping:

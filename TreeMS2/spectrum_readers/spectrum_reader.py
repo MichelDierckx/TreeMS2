@@ -8,7 +8,7 @@ class SpectrumReader(ABC):
     """
     Abstract base class for spectrum readers.
     """
-    extension = None
+    VALID_EXTENSIONS = []  # Placeholder for subclasses
 
     @abstractmethod
     def get_spectra(self, source: Union[IO, str]) -> Iterable[sus.MsmsSpectrum]:
