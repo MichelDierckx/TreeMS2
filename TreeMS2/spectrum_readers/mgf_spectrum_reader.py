@@ -58,10 +58,16 @@ class MGFSpectrumReader(SpectrumReader):
         precursor_charge = int(spectrum_dict["params"]["charge"][0]) if "charge" in spectrum_dict["params"] else None
 
         return sus.MsmsSpectrum(
+            # A unique identifier or title for the spectrum (often representing the filename or a descriptor of the experiment).
             identifier,
+            # The mass-to-charge ratio (m/z) of the precursor ion (the peptide ion before fragmentation).
             precursor_mz,
+            # The charge state of the precursor ion (usually represented as a positive integer).
             precursor_charge,
+            # Peak data (column 1) : The m/z values, which represent the mass-to-charge ratio of the detected ions (peptide fragments).
             mz_array,
+            # Peak data (column 2) The intensity values, which represent the relative abundance or intensity of the corresponding ion.
             intensity_array,
+            # the retention time of the precursor ion in the chromatographic separation step before mass spectrometry analysis
             retention_time,
         )
