@@ -1,0 +1,2 @@
+ConfigArgParse~=1.7
+pyteomics~=4.7.5
