@@ -26,8 +26,8 @@ class Config:
     _instance = None  # To ensure only one instance (singleton)
 
     # declare the names for the different parameters once
-    _SAMPLE_TO_GROUP_FILE = "sample_to_group_file"
-    _MS2_DIR = "ms2_dir"
+    SAMPLE_TO_GROUP_FILE = "sample_to_group_file"
+    MS2_DIR = "ms2_dir"
 
     def __new__(cls) -> "Config":
         """
@@ -62,7 +62,7 @@ class Config:
         """
         # IO arguments
         self._parser.add_argument(
-            f"--{self._SAMPLE_TO_GROUP_FILE}",
+            f"--{self.SAMPLE_TO_GROUP_FILE}",
             required=True,
             help=(
                 "File containing a mapping from sample filename to group.\n"
@@ -72,19 +72,19 @@ class Config:
             ),
             type=str,
             action='store',  # This action means the value will be stored in the `self._namespace`
-            dest=f"{self._SAMPLE_TO_GROUP_FILE}",
+            dest=f"{self.SAMPLE_TO_GROUP_FILE}",
             # The key under which the value will be stored in the parsed arguments
             metavar="<path>",  # The placeholder text shown in the help for this argument
         )
         self._parser.add_argument(
-            f"--{self._MS2_DIR}",
+            f"--{self.MS2_DIR}",
             required=True,
             help=(
                 f"Directory containing MS/MS files (supported formats: {', '.join(SpectrumReaderManager.get_all_valid_extensions())})."
             ),
             type=str,
             action='store',  # This action means the value will be stored in the `self._namespace`
-            dest=f"{self._MS2_DIR}",  # The key under which the value will be stored in the parsed arguments
+            dest=f"{self.MS2_DIR}",  # The key under which the value will be stored in the parsed arguments
             metavar="<path>",  # The placeholder text shown in the help for this argument
         )
 
@@ -103,8 +103,8 @@ class Config:
 
         # Parse the arguments
         self._namespace = vars(self._parser.parse_args(args_str))
-        self._validate_path(self._namespace.get(f"{self._MS2_DIR}"))
-        self._validate_path(self._namespace.get(f"{self._SAMPLE_TO_GROUP_FILE}"))
+        self._validate_path(self._namespace.get(f"{self.MS2_DIR}"))
+        self._validate_path(self._namespace.get(f"{self.SAMPLE_TO_GROUP_FILE}"))
 
     def _validate_choice(self, param: str, valid_options: list) -> None:
         """
