@@ -1,8 +1,7 @@
 import unittest
 
-from TreeMS2.spectrum_readers.mgf_spectrum_reader import MGFSpectrumReader
-# Import the necessary classes from the TreeMS2.spectrum_readers package
-from TreeMS2.spectrum_readers.spectrum_reader_manager import SpectrumReaderManager
+from TreeMS2.peak_file_readers.mgf_reader import MGFReader
+from TreeMS2.peak_file_readers.peak_file_reader_manager import PeakFileReaderManager
 
 
 class TestUniqueExtensions(unittest.TestCase):
@@ -15,7 +14,7 @@ class TestUniqueExtensions(unittest.TestCase):
         all_extensions = []
 
         # Iterate over all registered readers and collect their extensions
-        for reader_cls in SpectrumReaderManager._reader_types:
+        for reader_cls in PeakFileReaderManager._reader_types:
             all_extensions.extend(reader_cls.VALID_EXTENSIONS)
 
         # Use a set to check for duplicates
@@ -30,11 +29,11 @@ class TestUniqueExtensions(unittest.TestCase):
         Test that SpectrumReaderManager properly registers the reader for a file extension.
         """
         # Set up the manager
-        manager = SpectrumReaderManager()
+        manager = PeakFileReaderManager()
 
         # Register a reader for a known extension
         reader = manager.get_reader(".mgf")
-        self.assertIsInstance(reader, MGFSpectrumReader)
+        self.assertIsInstance(reader, MGFReader)
 
         # Check that requesting a non-registered extension raises an error
         with self.assertRaises(ValueError):

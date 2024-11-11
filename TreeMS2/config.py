@@ -15,7 +15,7 @@ from typing import Optional, Any
 import configargparse
 
 from metadata_readers.metadata_reader_manager import MetadataReaderManager
-from spectrum_readers.spectrum_reader_manager import SpectrumReaderManager
+from peak_file_readers.peak_file_reader_manager import PeakFileReaderManager
 
 
 class Config:
@@ -80,7 +80,7 @@ class Config:
             f"--{self.MS2_DIR}",
             required=True,
             help=(
-                f"Directory containing MS/MS files (supported formats: {', '.join(SpectrumReaderManager.get_all_valid_extensions())})."
+                f"Directory containing MS/MS files (supported formats: {', '.join(PeakFileReaderManager.get_all_valid_extensions())})."
             ),
             type=str,
             action='store',  # This action means the value will be stored in the `self._namespace`

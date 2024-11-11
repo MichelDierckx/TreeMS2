@@ -15,10 +15,10 @@ from typing import Dict, IO, Iterable, Union
 import pyteomics.mgf
 import spectrum_utils.spectrum as sus
 
-from .spectrum_reader import SpectrumReader
+from .peak_file_reader import PeakFileReader
 
 
-class MGFSpectrumReader(SpectrumReader):
+class MGFReader(PeakFileReader):
     """
     MGF spectrum reader class to handle MGF files for reading and writing MS/MS spectra.
     """

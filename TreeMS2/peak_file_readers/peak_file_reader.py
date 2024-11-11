@@ -4,7 +4,7 @@ from typing import IO, Union, Iterable
 import spectrum_utils.spectrum as sus
 
 
-class SpectrumReader(ABC):
+class PeakFileReader(ABC):
     """
     Abstract base class for spectrum readers.
     """

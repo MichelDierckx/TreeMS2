@@ -1,14 +1,14 @@
 from typing import Type, List, Dict, Tuple
 
-from .mgf_spectrum_reader import MGFSpectrumReader
-from .spectrum_reader import SpectrumReader
+from .mgf_reader import MGFReader
+from .peak_file_reader import PeakFileReader
 
 
-class SpectrumReaderManager:
-    _reader_types: List[Type[SpectrumReader]] = [MGFSpectrumReader]  # List of all file type subclasses
+class PeakFileReaderManager:
+    _reader_types: List[Type[PeakFileReader]] = [MGFReader]  # List of all file type subclasses
 
     def __init__(self):
-        self._readers: Dict[Tuple[str], SpectrumReader] = {}  # Use tuple of extensions as dictionary key
+        self._readers: Dict[Tuple[str], PeakFileReader] = {}  # Use tuple of extensions as dictionary key
 
     def _register_reader_for_extension(self, file_extension: str) -> None:
         """
@@ -30,7 +30,7 @@ class SpectrumReaderManager:
 
         raise ValueError(f"No spectrum reader supports the file extension '{file_extension}'")
 
-    def get_reader(self, file_extension: str) -> SpectrumReader:
+    def get_reader(self, file_extension: str) -> PeakFileReader:
         """
         Retrieve the reader for a specific file extension, registering it if necessary.
         """
