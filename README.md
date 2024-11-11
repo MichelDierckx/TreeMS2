@@ -19,7 +19,7 @@ pip install -r requirements.txt
 To request an overview of the available parameters:
 
 ```bash
-python3 -m TreeMS2.tree_ms2 --help
+python3 -m TreeMS2 --help
 ```
 
 ### Running the program
@@ -27,7 +27,7 @@ python3 -m TreeMS2.tree_ms2 --help
 Run the program by either providing a config.ini file or by providing the required arguments:
 
 ```bash
-python3 -m TreeMS2.tree_ms2 -c /path/to/config.ini
+python3 -m TreeMS2 -c config.ini
 ```
 
 ### Running tests
