@@ -218,7 +218,6 @@ class Config:
 
     def _log_parameters(self) -> None:
         """Log all chosen parameters."""
-        self.logger.debug("Configuration parameters:")
         for key, value in self._namespace.items():
             self.logger.debug(f"  {key}: {value}")
 
