@@ -3,27 +3,27 @@ import os
 from typing import Union, IO, List
 
 from .metadata_reader import MetaDataReader
-from .sample_group_mapping import SampleGroupMapping
+from .peak_file_group_mapping import PeakFileGroupMapping
 
 
 class CsvMetaDataReader(MetaDataReader):
     """
-    Metadata reader class to handle csv files for reading metadata for sample files.
+    Metadata reader class to handle csv files for reading metadata for peak files.
     """
-    VALID_EXTENSIONS: List[str] = ['.csv']
+    VALID_EXTENSIONS: List[str] = ['.csv', '.tsv']
 
     @classmethod
-    def get_metadata(cls, source: Union[IO, str]) -> SampleGroupMapping:
+    def get_metadata(cls, source: Union[IO, str]) -> PeakFileGroupMapping:
         """
-        Reads metadata for samples from a csv file.
+        Reads metadata for peak files from a csv file.
         :param source: Union[IO, str], the source (file name or file object) to read the metadata from.
-        :return: SampleGroupMapping, a mapping that maps samples to groups.
+        :return: PeakFileGroupMapping, a mapping that maps peak files to groups.
         :raises:
-        ValueError: CSV file does not contain 'sample_file' and/or 'group' columns.
+        ValueError: CSV file does not contain 'PeakFile' and/or 'Group' columns.
         FileNotFoundError: CSV file does not exist.
         """
         # Used to store mapping that associates sample files with group names/ids
-        sample_group_mapping = SampleGroupMapping()
+        peak_file_group_mapping = PeakFileGroupMapping()
 
         # Open the CSV file if not passed as object
         if isinstance(source, str):
@@ -36,21 +36,30 @@ class CsvMetaDataReader(MetaDataReader):
             close_file = False
 
         try:
-            reader = csv.DictReader(file)
+            # Check the file extension and set delimiter accordingly
+            file_extension = os.path.splitext(file.name if isinstance(file, str) else source.name)[1].lower()
+            if file_extension == '.csv':
+                delimiter = ','  # Comma for CSV
+            elif file_extension == '.tsv':
+                delimiter = '\t'  # Tab for TSV
+            else:
+                raise ValueError(f"Unsupported file extension: {file_extension}. Only '.csv' and '.tsv' are supported.")
 
-            # columns sample_file and group should be present
-            if 'sample_file' not in reader.fieldnames or 'group' not in reader.fieldnames:
-                raise ValueError("CSV file must contain 'sample_file' and 'group' columns.")
+            reader = csv.DictReader(file, delimiter=delimiter)
+
+            # columns PeakFile and Group should be present
+            if 'PeakFile' not in reader.fieldnames or 'Group' not in reader.fieldnames:
+                raise ValueError("CSV file must contain 'PeakFile' and 'Group' columns.")
 
             # loop over entries
             for row in reader:
-                sample_file = row['sample_file']
-                group_name = row['group']
-                sample_group_mapping.add(sample_file, group_name)  # add sample file to mapping
+                peak_file = row['PeakFile']
+                group_name = row['Group']
+                peak_file_group_mapping.add(peak_file, group_name)  # add PeakFile file to mapping
 
         finally:
             # if we had to open a file, close it
             if close_file:
                 file.close()
 
-        return sample_group_mapping
+        return peak_file_group_mapping
