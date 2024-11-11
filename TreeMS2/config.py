@@ -29,6 +29,7 @@ class Config:
     # declare the names for the different parameters once
     SAMPLE_TO_GROUP_FILE = "sample_to_group_file"
     MS2_DIR = "ms2_dir"
+    WORK_DIR = "work_dir"
     FRAGMENT_TOL = "fragment_tol"
     MIN_PEAKS = "min_peaks"
     MIN_MZ_RANGE = "min_mz_range"
@@ -118,6 +119,17 @@ class Config:
             type=str,
             action='store',
             dest=f"{self.MS2_DIR}",
+            metavar="<path>",
+        )
+        self._parser.add_argument(
+            f"--{self.WORK_DIR}",
+            required=True,
+            help=(
+                "Working directory (used to save lance datasets)"
+            ),
+            type=str,
+            action='store',
+            dest=f"{self.WORK_DIR}",
             metavar="<path>",
         )
 
@@ -211,6 +223,7 @@ class Config:
         self._namespace = vars(self._parser.parse_args(args_str))
         self._validate_path(self._namespace.get(f"{self.MS2_DIR}"))
         self._validate_path(self._namespace.get(f"{self.SAMPLE_TO_GROUP_FILE}"))
+        self._validate_path(self._namespace.get(f"{self.WORK_DIR}"))
         self._log_parameters()
 
     def _validate_choice(self, param: str, valid_options: list) -> None:
