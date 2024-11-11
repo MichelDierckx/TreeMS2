@@ -114,6 +114,12 @@ class Config:
 
         # spectra preprocessing arguments
         self._parser.add_argument(
+            "--fragment_tol",
+            type=float,
+            default=0.05,
+            help="Fragment mass tolerance in m/z (default: %(default)s m/z).",
+        )
+        self._parser.add_argument(
             "--min_peaks",
             default=5,
             type=int,
