@@ -91,7 +91,7 @@ def process_spectrum(
         min_intensity: Optional[float] = None,
         max_peaks_used: Optional[int] = None,
         scaling: Optional[str] = None,
-) -> Optional[str, Union[str, int, float, np.ndarray]]:
+) -> Optional[Dict[str, Union[str, int, float, np.ndarray]]]:
     """
     Process a cluster.
 

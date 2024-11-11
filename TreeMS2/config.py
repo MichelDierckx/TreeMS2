@@ -9,13 +9,14 @@ The original structure and approach were used as a reference, with modifications
 to fit the specific needs of this project.
 """
 
+import logging
 import os
 from typing import Optional, Any
 
 import configargparse
 
-from metadata_readers.metadata_reader_manager import MetadataReaderManager
-from peak_file_readers.peak_file_reader_manager import PeakFileReaderManager
+from .metadata_readers.metadata_reader_manager import MetadataReaderManager
+from .peak_file_readers.peak_file_reader_manager import PeakFileReaderManager
 
 
 class Config:
@@ -42,8 +43,8 @@ class Config:
         Initialize the configuration parser and provide default values.
         Ensures the configuration is only initialized once.
         """
-        if hasattr(self, "_initialized") and self._initialized:
-            return  # Prevent re-initializing the singleton instance
+        if self.__dict__.get("_initialized", False):
+            return  # An instance already exists, so return
 
         self._parser = configargparse.ArgParser(
             description="TreeMS2: An efficient tool for phylogenetic analysis of MS/MS spectra using ANN indexing.",
@@ -52,9 +53,32 @@ class Config:
             formatter_class=configargparse.ArgumentDefaultsHelpFormatter,
         )
 
+        self.logger = logging.getLogger("config")  # Naming the logger as "config"
+        self._setup_logger()
         self._define_arguments()  # Add argument definitions
         self._namespace = None
         self._initialized = True  # Mark the configuration as initialized
+
+    def _setup_logger(self):
+        """
+        Set up the logger specifically for the configuration module.
+        """
+        # Set the logger level (it can be adjusted based on your needs)
+        self.logger.setLevel(logging.DEBUG)
+
+        # Create a console handler (optional, can log to file too)
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+
+        # Create a formatter and apply it to the handler
+        formatter = logging.Formatter(
+            "{asctime} {levelname} [{name}] {message}",
+            style="{"
+        )
+        console_handler.setFormatter(formatter)
+
+        # Add the handler to the logger
+        self.logger.addHandler(console_handler)
 
     def _define_arguments(self) -> None:
         """
@@ -88,6 +112,65 @@ class Config:
             metavar="<path>",  # The placeholder text shown in the help for this argument
         )
 
+        # spectra preprocessing arguments
+        self._parser.add_argument(
+            "--min_peaks",
+            default=5,
+            type=int,
+            help="Discard spectra with fewer than this number of peaks "
+                 "(default: %(default)s).",
+        )
+        self._parser.add_argument(
+            "--min_mz_range",
+            default=250.0,
+            type=float,
+            help="Discard spectra with a smaller mass range "
+                 "(default: %(default)s m/z).",
+        )
+        self._parser.add_argument(
+            "--min_mz",
+            default=101.0,
+            type=float,
+            help="Minimum peak m/z value (inclusive, "
+                 "default: %(default)s m/z).",
+        )
+        self._parser.add_argument(
+            "--max_mz",
+            default=1500.0,
+            type=float,
+            help="Maximum peak m/z value (inclusive, "
+                 "default: %(default)s m/z).",
+        )
+        self._parser.add_argument(
+            "--remove_precursor_tol",
+            default=1.5,
+            type=float,
+            help="Window around the precursor mass to remove peaks "
+                 "(default: %(default)s m/z).",
+        )
+        self._parser.add_argument(
+            "--min_intensity",
+            default=0.01,
+            type=float,
+            help="Remove peaks with a lower intensity relative to the base "
+                 "intensity (default: %(default)s).",
+        )
+        self._parser.add_argument(
+            "--max_peaks_used",
+            default=50,
+            type=int,
+            help="Only use the specified most intense peaks in the spectra "
+                 "(default: %(default)s).",
+        )
+        self._parser.add_argument(
+            "--scaling",
+            default="off",
+            type=str,
+            choices=["off", "root", "log", "rank"],
+            help="Peak scaling method used to reduce the influence of very "
+                 "intense peaks (default: %(default)s).",
+        )
+
     def parse(self, args_str: Optional[str] = None) -> None:
         """
         Parse the configuration settings.
@@ -105,6 +188,7 @@ class Config:
         self._namespace = vars(self._parser.parse_args(args_str))
         self._validate_path(self._namespace.get(f"{self.MS2_DIR}"))
         self._validate_path(self._namespace.get(f"{self.SAMPLE_TO_GROUP_FILE}"))
+        self._log_parameters()
 
     def _validate_choice(self, param: str, valid_options: list) -> None:
         """
@@ -126,7 +210,13 @@ class Config:
                 valid_extensions = ', '.join(required_extensions)
                 raise ValueError(f"Path '{path}' must end with one of the following extensions: {valid_extensions}")
 
-    def __getattr__(self, option: str) -> Any:
+    def _log_parameters(self) -> None:
+        """Log all chosen parameters."""
+        self.logger.debug("Configuration parameters:")
+        for key, value in self._namespace.items():
+            self.logger.debug(f"  {key}: {value}")
+
+    def __getattr__(self, option):
         """
         Retrieve configuration options as attributes.
 
@@ -138,27 +228,15 @@ class Config:
             raise KeyError(f"The configuration option '{option}' does not exist.")
         return self._namespace[option]
 
-    def __getitem__(self, item: str) -> Any:
-        """
-        Allow dictionary-like access to configuration options.
-        """
+    def __getitem__(self, item):
         return self.__getattr__(item)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """
         Retrieve configuration options with a default value if the option does not exist.
-
-        Parameters
-        ----------
-        option : str
-            The configuration option to retrieve.
-        default : Optional[Any]
-            The default value to return if the option does not exist.
-
-        Returns
-        -------
-        Optional[Any]
-            The value of the configuration option or the default value.
+        :param option: str, the configuration option to retrieve.
+        :param default: Optional[str], the default value to return if the option does not exist. Defaults to None.
+        :return: Optional[str], The value of the configuration option or the default value.
         """
         if self._namespace is None:
             raise RuntimeError("The configuration has not been initialized. Call `parse()` first.")
