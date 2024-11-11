@@ -29,6 +29,15 @@ class Config:
     # declare the names for the different parameters once
     SAMPLE_TO_GROUP_FILE = "sample_to_group_file"
     MS2_DIR = "ms2_dir"
+    FRAGMENT_TOL = "fragment_tol"
+    MIN_PEAKS = "min_peaks"
+    MIN_MZ_RANGE = "min_mz_range"
+    MIN_MZ = "min_mz"
+    MAX_MZ = "max_mz"
+    REMOVE_PRECURSOR_TOL = "remove_precursor_tol"
+    MIN_INTENSITY = "min_intensity"
+    MAX_PEAKS_USED = "max_peaks_used"
+    SCALING = "scaling"
 
     def __new__(cls) -> "Config":
         """
@@ -112,69 +121,78 @@ class Config:
             metavar="<path>",  # The placeholder text shown in the help for this argument
         )
 
-        # spectra preprocessing arguments
+        # Spectra preprocessing arguments using static variables
         self._parser.add_argument(
-            "--fragment_tol",
+            f"--{self.FRAGMENT_TOL}",
             type=float,
             default=0.05,
             help="Fragment mass tolerance in m/z (default: %(default)s m/z).",
+            dest=self.FRAGMENT_TOL,  # Use static variable here
         )
         self._parser.add_argument(
-            "--min_peaks",
+            f"--{self.MIN_PEAKS}",
             default=5,
             type=int,
             help="Discard spectra with fewer than this number of peaks "
                  "(default: %(default)s).",
+            dest=self.MIN_PEAKS,  # Use static variable here
         )
         self._parser.add_argument(
-            "--min_mz_range",
+            f"--{self.MIN_MZ_RANGE}",
             default=250.0,
             type=float,
             help="Discard spectra with a smaller mass range "
                  "(default: %(default)s m/z).",
+            dest=self.MIN_MZ_RANGE,  # Use static variable here
         )
         self._parser.add_argument(
-            "--min_mz",
+            f"--{self.MIN_MZ}",
             default=101.0,
             type=float,
             help="Minimum peak m/z value (inclusive, "
                  "default: %(default)s m/z).",
+            dest=self.MIN_MZ,  # Use static variable here
         )
         self._parser.add_argument(
-            "--max_mz",
+            f"--{self.MAX_MZ}",
             default=1500.0,
             type=float,
             help="Maximum peak m/z value (inclusive, "
                  "default: %(default)s m/z).",
+            dest=self.MAX_MZ,  # Use static variable here
         )
         self._parser.add_argument(
-            "--remove_precursor_tol",
+            f"--{self.REMOVE_PRECURSOR_TOL}",
             default=1.5,
             type=float,
             help="Window around the precursor mass to remove peaks "
                  "(default: %(default)s m/z).",
+            dest=self.REMOVE_PRECURSOR_TOL,  # Use static variable here
         )
         self._parser.add_argument(
-            "--min_intensity",
+            f"--{self.MIN_INTENSITY}",
             default=0.01,
             type=float,
             help="Remove peaks with a lower intensity relative to the base "
                  "intensity (default: %(default)s).",
+            dest=self.MIN_INTENSITY,  # Use static variable here
         )
         self._parser.add_argument(
-            "--max_peaks_used",
+            f"--{self.MAX_PEAKS_USED}",
             default=50,
             type=int,
             help="Only use the specified most intense peaks in the spectra "
                  "(default: %(default)s).",
+            dest=self.MAX_PEAKS_USED,  # Use static variable here
         )
         self._parser.add_argument(
-            "--scaling",
+            f"--{self.SCALING}",
             default="off",
             type=str,
             choices=["off", "root", "log", "rank"],
             help="Peak scaling method used to reduce the influence of very "
                  "intense peaks (default: %(default)s).",
+            dest=self.SCALING,  # Use static variable here
         )
 
     def parse(self, args_str: Optional[str] = None) -> None:
