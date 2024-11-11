@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Union, IO, List
+from typing import List
 
 from .peak_file_group_mapping import PeakFileGroupMapping
 
@@ -11,11 +11,11 @@ class MetaDataReader(ABC):
     VALID_EXTENSIONS: List[str] = []
 
     @abstractmethod
-    def get_metadata(self, source: Union[IO, str]) -> PeakFileGroupMapping:
+    def get_metadata(self, source: str) -> PeakFileGroupMapping:
         """
         Abstract method to get metadata for samples from a file.
 
-        :param source: Union[IO, str], the source (file name or file object) to read the metadata from.
+        :param source: str, the path to the file to read the metadata from.
         :return: SampleGroupMapping, a mapping that maps samples to groups.
         :raises:
         ValueError: The file does not contain data that allows for a mapping from sample files to groups.

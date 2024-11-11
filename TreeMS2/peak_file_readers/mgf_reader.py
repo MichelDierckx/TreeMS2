@@ -55,7 +55,9 @@ class MGFReader(PeakFileReader):
         retention_time = float(spectrum_dict["params"].get("rtinseconds", -1))
         precursor_mz = float(spectrum_dict["params"]["pepmass"][0])
 
-        precursor_charge = int(spectrum_dict["params"]["charge"][0]) if "charge" in spectrum_dict["params"] else None
+        # TODO: Check if this implementation is correct compared to previous one!
+        # precursor_charge = int(spectrum_dict["params"]["charge"][0]) if "charge" in spectrum_dict["params"] else None
+        precursor_charge = int(spectrum_dict["params"]["charge"][0]) if "charge" in spectrum_dict["params"] else 0
 
         return sus.MsmsSpectrum(
             # A unique identifier or title for the spectrum (often representing the filename or a descriptor of the experiment).

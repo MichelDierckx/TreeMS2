@@ -1,4 +1,3 @@
-import collections
 import functools
 import logging
 import multiprocessing
@@ -96,17 +95,17 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
     metadata_file_extension = os.path.splitext(config[Config.SAMPLE_TO_GROUP_FILE])[1]
     metadata_reader_manager = MetadataReaderManager()
     metadata_reader = metadata_reader_manager.get_reader(metadata_file_extension)
-    peak_file_group_mapping = metadata_reader.get_metadata(Config.SAMPLE_TO_GROUP_FILE)
+    peak_file_group_mapping = metadata_reader.get_metadata(config[Config.SAMPLE_TO_GROUP_FILE])
     logger.info(
         f"Found {peak_file_group_mapping.nr_groups} groups and {peak_file_group_mapping.nr_files} peak files in '{config[Config.SAMPLE_TO_GROUP_FILE]}'.")
 
     # Use multiple worker processes to read the peak files.
-    max_file_workers = min(len(peak_file_group_mapping.nr_files), multiprocessing.cpu_count())
+    max_file_workers = min(peak_file_group_mapping.nr_files, multiprocessing.cpu_count())
 
     max_spectra_in_memory = 1_000_000
     spectra_queue = queue.Queue(maxsize=max_spectra_in_memory)
     # Start the lance writers.
-    lance_locks = collections.defaultdict(multiprocessing.Lock)
+    lance_lock = multiprocessing.Lock()
     schema = pa.schema(
         [
             pa.field("identifier", pa.string()),
@@ -115,20 +114,20 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
             pa.field("mz", pa.list_(pa.float32())),
             pa.field("intensity", pa.list_(pa.float32())),
             pa.field("retention_time", pa.float32()),
-            pa.field("filename", pa.string()),
-            pa.field("group_id", pa.uint16()),  # group id should be in range [0, 65535]
+            pa.field("filename", pa.string())
+            # pa.field("group_id", pa.uint16()),  # group id should be in range [0, 65535]
         ]
     )
     lance_writers = multiprocessing.pool.ThreadPool(
         max_file_workers,
         _write_spectra_lance,
-        (spectra_queue, lance_locks, schema),
+        (spectra_queue, lance_lock, schema),
     )
     # Read the peak files and put their spectra in the queue for consumption
     # by the lance writers.
     low_quality_counter = 0
     for file_spectra, lqc in joblib.Parallel(n_jobs=max_file_workers)(
-            joblib.delayed(_read_spectra)(file, process_spectrum)
+            joblib.delayed(_read_spectra)(config.ms2_dir, file, process_spectrum)
             for file in peak_file_group_mapping.sample_to_group_id.keys()
     ):
         low_quality_counter += lqc
@@ -149,7 +148,7 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
     except ValueError:
         logger.error(f"Failed to create lance dataset %d")
     logger.info(
-        "Read %d spectra from %d peak files", n_spectra, len(peak_file_group_mapping.nr_files)
+        "Read %d spectra from %d peak files", n_spectra, peak_file_group_mapping.nr_files
     )
     logger.info("Skipped %d low-quality spectra", low_quality_counter)
 
@@ -157,6 +156,7 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
 
 
 def _read_spectra(
+        ms2_dir: str,
         filename: str,
         process_spectrum: Callable,
 ) -> Tuple[List[Dict[str, Union[str, float, int, np.ndarray]]], int]:
@@ -178,13 +178,13 @@ def _read_spectra(
     """
     low_quality_counter = 0
     spectra = []
-    filename = os.path.abspath(filename)
     file_extension = os.path.splitext(filename)[1]
+    file_path = os.path.join(ms2_dir, filename)
 
     peak_file_reader_manager = PeakFileReaderManager()
     peak_file_reader = peak_file_reader_manager.get_reader(file_extension)
 
-    for spec in peak_file_reader.get_spectra(filename):
+    for spec in peak_file_reader.get_spectra(file_path):
         spec.filename = filename
         spec = process_spectrum(spec)
         if spec is None:
