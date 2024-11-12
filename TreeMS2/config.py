@@ -39,6 +39,7 @@ class Config:
     MIN_INTENSITY = "min_intensity"
     MAX_PEAKS_USED = "max_peaks_used"
     SCALING = "scaling"
+
     LOW_DIM = "low_dim"
 
     def __new__(cls) -> "Config":
@@ -231,10 +232,10 @@ class Config:
 
         # Parse the arguments
         self._namespace = vars(self._parser.parse_args(args_str))
-        self._validate_path(self._namespace.get(f"{self.MS2_DIR}"))
-        self._validate_path(self._namespace.get(f"{self.SAMPLE_TO_GROUP_FILE}"))
-        self._validate_path(self._namespace.get(f"{self.WORK_DIR}"))
-        self._validate_positive_int(self._namespace.get(f"{self.WORK_DIR}"), True)
+        self._validate_path(self.MS2_DIR)
+        self._validate_path(self.SAMPLE_TO_GROUP_FILE)
+        self._validate_path(self.WORK_DIR)
+        self._validate_positive_int(self.LOW_DIM, True)
         self._log_parameters()
 
     def _validate_choice(self, param: str, valid_options: list) -> None:
