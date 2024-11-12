@@ -25,13 +25,14 @@ MsmsSpectrumNb = collections.namedtuple(
     "MsmsSpectrumNb",
     [
         "filename",
+        "group_id",
         "identifier",
         "precursor_mz",
         "precursor_charge",
         "retention_time",
         "mz",
         "intensity",
-        "group_id"
+        "vector"
     ],
 )
 
@@ -326,11 +327,13 @@ def df_row_to_spec(row: pd.Series) -> MsmsSpectrumNb:
     """
     spectrum = MsmsSpectrumNb(
         row["filename"],
+        row["group_id"],
         row["identifier"],
         row["precursor_mz"],
         row["precursor_charge"],
         row["retention_time"],
         row["mz"],
         row["intensity"],
+        row["vector"]
     )
     return spectrum

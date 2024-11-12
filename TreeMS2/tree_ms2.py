@@ -10,6 +10,7 @@ import joblib
 import lance
 import numpy as np
 import pyarrow as pa
+from sklearn.random_projection import SparseRandomProjection
 
 from .cluster import spectrum
 from .config import config, Config
@@ -23,7 +24,7 @@ def main(args: Union[str, List[str]] = None) -> int:
     config.parse(args)  # Parse arguments from config file or command-line
 
     # compute the dimensionality to which the spectra get reduced
-    _, min_mz, max_mz = spectrum.get_dim(
+    vec_len, min_mz, max_mz = spectrum.get_dim(
         config.min_mz, config.max_mz, config.fragment_tol
     )
 
@@ -39,7 +40,22 @@ def main(args: Union[str, List[str]] = None) -> int:
         scaling=None if config.scaling == "off" else config.scaling,
     )
 
-    dataset_path = _prepare_spectra(process_spectrum)
+    transformation = (
+        SparseRandomProjection(config.low_dim, random_state=0)
+        .fit(np.zeros((1, vec_len)))
+        .components_.astype(np.float32)
+        .T
+    )
+    vectorize = functools.partial(
+        spectrum.to_vector,
+        transformation=transformation,
+        min_mz=min_mz,
+        bin_size=config.fragment_tol,
+        dim=vec_len,
+        norm=True,
+    )
+
+    dataset_path = _prepare_spectra(process_spectrum, vectorize)
 
     return 0
 
@@ -76,7 +92,7 @@ def configure_logging():
     logging.getLogger("numexpr").setLevel(logging.WARNING)
 
 
-def _prepare_spectra(process_spectrum: Callable) -> str:
+def _prepare_spectra(process_spectrum: Callable, vectorize: Callable) -> str:
     """
     Read the spectra from the input peak files and partition to intermediate
     files split and sorted by precursor m/z.
@@ -116,12 +132,13 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
             pa.field("retention_time", pa.float32()),
             pa.field("filename", pa.string()),
             pa.field("group_id", pa.uint16()),  # group id should be in range [0, 65535]
+            pa.field("vector", pa.list_(pa.float32())),
         ]
     )
     lance_writers = multiprocessing.pool.ThreadPool(
         max_file_workers,
         _write_spectra_lance,
-        (spectra_queue, lance_lock, schema),
+        (spectra_queue, lance_lock, schema, vectorize),
     )
     # Read the peak files and put their spectra in the queue for consumption
     # by the lance writers.
@@ -200,6 +217,7 @@ def _write_spectra_lance(
         spectra_queue: queue.Queue,
         lance_lock: multiprocessing.synchronize.Lock,
         schema: pa.Schema,
+        vectorize: Callable
 ) -> None:
     """
     Read spectra from a queue and write to a lance dataset.
@@ -224,6 +242,7 @@ def _write_spectra_lance(
                 lance_lock,
                 schema,
                 config.work_dir,
+                vectorize
             )
             spec_to_write.clear()
             return
@@ -234,6 +253,7 @@ def _write_spectra_lance(
                 lance_lock,
                 schema,
                 config.work_dir,
+                vectorize
             )
             spec_to_write.clear()
 
@@ -243,6 +263,7 @@ def _write_to_dataset(
         lock: multiprocessing.synchronize.Lock,
         schema: pa.Schema,
         work_dir: str,
+        vectorize: Callable
 ) -> int:
     """
     Write a list of spectra to a lance dataset.
@@ -262,6 +283,11 @@ def _write_to_dataset(
     int
         The number of spectra written to the dataset.
     """
+    # Vectorize the spectra and add them to the dictionary.
+    vectors = vectorize(spec_to_write)
+    for i, vector in enumerate(vectors):
+        spec_to_write[i]["vector"] = vector
+
     # Write the spectra to the dataset.
     new_rows = pa.Table.from_pylist(spec_to_write, schema)
     path = os.path.join(work_dir, "spectra", f"spectra.lance")
