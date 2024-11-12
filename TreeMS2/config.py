@@ -91,6 +91,7 @@ class Config:
 
         # Add the handler to the logger
         self.logger.addHandler(console_handler)
+        self.logger.propagate = False
 
     def _define_arguments(self) -> None:
         """

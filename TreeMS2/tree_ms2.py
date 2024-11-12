@@ -30,6 +30,7 @@ logger = logging.getLogger("TreeMS2")
 
 
 def main(args: Union[str, List[str]] = None) -> int:
+    configure_logging()
     config.parse(args)  # Parse arguments from config file or command-line
 
     # compute the dimensionality to which the spectra get reduced
