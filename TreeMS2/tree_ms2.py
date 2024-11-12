@@ -1,3 +1,12 @@
+"""
+Note:
+This code was adapted from the `falcon` repository (falcon/falcon.py):
+https://github.com/bittremieux/falcon
+
+The original structure and approach were used as a reference, with modifications
+to fit the specific needs of this project.
+"""
+
 import functools
 import logging
 import multiprocessing
