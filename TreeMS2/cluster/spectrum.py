@@ -31,6 +31,7 @@ MsmsSpectrumNb = collections.namedtuple(
         "retention_time",
         "mz",
         "intensity",
+        "group_id"
     ],
 )
 
@@ -178,6 +179,7 @@ def process_spectrum(
         "intensity": intensity,
         "retention_time": spectrum.retention_time,
         "filename": spectrum.filename,
+        "group_id": spectrum.group_id
     }
 
 

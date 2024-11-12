@@ -114,8 +114,8 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
             pa.field("mz", pa.list_(pa.float32())),
             pa.field("intensity", pa.list_(pa.float32())),
             pa.field("retention_time", pa.float32()),
-            pa.field("filename", pa.string())
-            # pa.field("group_id", pa.uint16()),  # group id should be in range [0, 65535]
+            pa.field("filename", pa.string()),
+            pa.field("group_id", pa.uint16()),  # group id should be in range [0, 65535]
         ]
     )
     lance_writers = multiprocessing.pool.ThreadPool(
@@ -127,8 +127,8 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
     # by the lance writers.
     low_quality_counter = 0
     for file_spectra, lqc in joblib.Parallel(n_jobs=max_file_workers)(
-            joblib.delayed(_read_spectra)(config.ms2_dir, file, process_spectrum)
-            for file in peak_file_group_mapping.sample_to_group_id.keys()
+            joblib.delayed(_read_spectra)(config.ms2_dir, file, group_id, process_spectrum)
+            for file, group_id in peak_file_group_mapping.sample_to_group_id.items()
     ):
         low_quality_counter += lqc
         for spec in file_spectra:
@@ -158,6 +158,7 @@ def _prepare_spectra(process_spectrum: Callable) -> str:
 def _read_spectra(
         ms2_dir: str,
         filename: str,
+        group_id: int,
         process_spectrum: Callable,
 ) -> Tuple[List[Dict[str, Union[str, float, int, np.ndarray]]], int]:
     """
@@ -186,6 +187,7 @@ def _read_spectra(
 
     for spec in peak_file_reader.get_spectra(file_path):
         spec.filename = filename
+        spec.group_id = group_id
         spec = process_spectrum(spec)
         if spec is None:
             low_quality_counter += 1
