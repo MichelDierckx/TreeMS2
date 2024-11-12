@@ -35,3 +35,18 @@ python3 -m TreeMS2 -c config.ini
 ```bash
 python3 -m unittest discover -s tests
 ```
+
+## How does it work?
+
+1. Data linking ms/ms peak files to certain groups or species is extracted.
+2. The spectra in the ms/ms peak files are processed and filtered:
+    1. Restrict the m/z range to a minimum and maximum m/z.
+    2. Remove peak(s) around the precursor m/z value.
+    3. Remove peaks below a percentage of the base peak intensity.
+    4. Retain only the top most intense peaks.
+    5. Scale and normalize peak intensities.
+    6. Discard spectrum if low quality (not enough peaks covering a wide enough mass
+       range)
+    7. Peak data is converted to lower dimensionality binned sparse vectors.
+    8. Write spectrum data together with group and file information to Lance dataset.
+        
