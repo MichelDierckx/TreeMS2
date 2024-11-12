@@ -39,6 +39,7 @@ class Config:
     MIN_INTENSITY = "min_intensity"
     MAX_PEAKS_USED = "max_peaks_used"
     SCALING = "scaling"
+    LOW_DIM = "low_dim"
 
     def __new__(cls) -> "Config":
         """
@@ -206,6 +207,15 @@ class Config:
             dest=self.SCALING,
         )
 
+        # Vectorization
+        self._parser.add_argument(
+            f"--{self.LOW_DIM}",
+            default=400,
+            type=int,
+            help="Low-dimensional vector length (default: %(default)s).",
+            dest=self.LOW_DIM,
+        )
+
     def parse(self, args_str: Optional[str] = None) -> None:
         """
         Parse the configuration settings.
@@ -224,6 +234,7 @@ class Config:
         self._validate_path(self._namespace.get(f"{self.MS2_DIR}"))
         self._validate_path(self._namespace.get(f"{self.SAMPLE_TO_GROUP_FILE}"))
         self._validate_path(self._namespace.get(f"{self.WORK_DIR}"))
+        self._validate_positive_int(self._namespace.get(f"{self.WORK_DIR}"), True)
         self._log_parameters()
 
     def _validate_choice(self, param: str, valid_options: list) -> None:
@@ -232,19 +243,27 @@ class Config:
         """
         value = self.get(param)
         if value not in valid_options:
-            raise ValueError(f"Invalid value '{value}' for '{param}'. Valid options are: {', '.join(valid_options)}")
+            raise ValueError(f"--{param}: Invalid value '{value}'. Valid options are: {', '.join(valid_options)}")
 
-    @staticmethod
-    def _validate_path(path: str, required_extensions: Optional[list] = None) -> None:
+    def _validate_path(self, param: str, required_extensions: Optional[list] = None) -> None:
         """
         Validate that a file path exists and optionally check if it has one of the required extensions.
         """
+        path = self.get(param)
         if not os.path.exists(path):
-            raise FileNotFoundError(f"Path '{path}' does not exist.")
+            raise FileNotFoundError(f"--{param}: Path '{path}' does not exist.")
         if required_extensions:
             if not any(path.endswith(ext) for ext in required_extensions):
                 valid_extensions = ', '.join(required_extensions)
-                raise ValueError(f"Path '{path}' must end with one of the following extensions: {valid_extensions}")
+                raise ValueError(
+                    f"--{param}: Path '{path}' does not end with one of the following extensions: {valid_extensions}")
+
+    def _validate_positive_int(self, param: str, strict: bool = False) -> None:
+        value = self.get(param)
+        int_value = int(value)
+        if (strict and int_value <= 0) or (not strict and int_value < 0):
+            comparison = "greater than 0" if strict else "0 or greater"
+            raise ValueError(f"--{param}: {value} is not a positive integer ({comparison}).")
 
     def _log_parameters(self) -> None:
         """Log all chosen parameters."""
