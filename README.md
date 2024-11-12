@@ -36,7 +36,7 @@ python3 -m TreeMS2 -c config.ini
 python3 -m unittest discover -s tests
 ```
 
-## How does it work?
+## Currently implemented steps
 
 1. Data linking ms/ms peak files to certain groups or species is extracted.
 2. The spectra in the ms/ms peak files are processed and filtered:
