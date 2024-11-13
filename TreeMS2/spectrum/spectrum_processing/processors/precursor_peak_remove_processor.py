@@ -1,9 +1,10 @@
 from typing import Optional
 
+from ..spectrum_processor import SpectrumProcessor
 from ...spectrum import Spectrum
 
 
-class PrecursorPeakRemoverProcessor:
+class PrecursorPeakRemoverProcessor(SpectrumProcessor):
     def __init__(self, remove_precursor_tolerance: Optional[float]):
         self.remove_precursor_tolerance = remove_precursor_tolerance
 

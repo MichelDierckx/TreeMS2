@@ -1,9 +1,10 @@
 from typing import Optional
 
+from ..spectrum_processor import SpectrumProcessor
 from ...spectrum import Spectrum
 
 
-class SpectrumValidatorProcessor:
+class SpectrumValidatorProcessor(SpectrumProcessor):
     def __init__(self, min_peaks: int, min_mz_range: float):
         self.min_peaks = min_peaks
         self.min_mz_range = min_mz_range

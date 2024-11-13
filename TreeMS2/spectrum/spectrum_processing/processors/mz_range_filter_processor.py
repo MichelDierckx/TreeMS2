@@ -1,9 +1,10 @@
 from typing import Optional
 
+from ..spectrum_processor import SpectrumProcessor
 from ...spectrum import Spectrum
 
 
-class MZRangeFilterProcessor:
+class MZRangeFilterProcessor(SpectrumProcessor):
     def __init__(self, mz_min: Optional[float], mz_max: Optional[float]):
         self.mz_min = mz_min
         self.mz_max = mz_max
