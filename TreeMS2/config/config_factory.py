@@ -54,9 +54,8 @@ class ConfigFactory:
 
         # Parse the arguments
         self._namespace = vars(self._parser.parse_args(args_str))
-        self._validate_path("ms2_dir")
-        self._validate_path("sample_to_group")
-        self._validate_path("work_dir")
+        self._validate_file_path("sample_to_group")
+        self._validate_directory_path("work_dir")
         self._validate_positive_int("low_dim", True)
         self._log_parameters()
 
@@ -99,17 +98,6 @@ class ConfigFactory:
             type=str,
             action='store',
             dest="sample_to_group_file",
-            metavar="<path>",
-        )
-        self._parser.add_argument(
-            "--ms2_dir",
-            required=True,
-            help=(
-                f"Directory containing MS/MS files (supported formats: .mgf)."
-            ),
-            type=str,
-            action='store',
-            dest="ms2_dir",
             metavar="<path>",
         )
         self._parser.add_argument(
@@ -212,18 +200,56 @@ class ConfigFactory:
         if value not in valid_options:
             raise ValueError(f"--{param}: Invalid value '{value}'. Valid options are: {', '.join(valid_options)}")
 
-    def _validate_path(self, param: str, required_extensions: Optional[list] = None) -> None:
+    def _validate_directory_path(self, param: str, required_extensions: Optional[list] = None) -> None:
         """
-        Validate that a file path exists and optionally check if it has one of the required extensions.
+        Validate that a directory path exists and optionally check if it has one of the required extensions.
+
+        Parameters:
+        ----------
+        param : str
+            The name of the parameter to validate.
+
+        required_extensions : Optional[list], optional
+            A list of file extensions to validate against. If provided, checks that at least one file
+            in the directory matches one of the extensions.
         """
         path = self.get(param)
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"--{param}: Path '{path}' does not exist.")
+        if not os.path.isdir(path):  # Check if path is a valid directory
+            raise NotADirectoryError(f"--{param}: Path '{path}' is not a valid directory.")
+
+        if required_extensions:
+            # Check if any file in the directory matches the required extensions
+            files_with_valid_extension = [
+                file for file in os.listdir(path) if any(file.endswith(ext) for ext in required_extensions)
+            ]
+            if not files_with_valid_extension:
+                valid_extensions = ', '.join(required_extensions)
+                raise ValueError(
+                    f"--{param}: No files with extensions {valid_extensions} found in the directory '{path}'."
+                )
+
+    def _validate_file_path(self, param: str, required_extensions: Optional[list] = None) -> None:
+        """
+        Validate that a file path exists and optionally check if it has one of the required extensions.
+
+        Parameters:
+        ----------
+        param : str
+            The name of the parameter to validate.
+
+        required_extensions : Optional[list], optional
+            A list of valid extensions to check the file against. If provided, ensures that the file ends with one of them.
+        """
+        path = self.get(param)
+        if not os.path.isfile(path):  # Check if the path is a valid file
+            raise FileNotFoundError(f"--{param}: Path '{path}' is not a valid file.")
+
         if required_extensions:
             if not any(path.endswith(ext) for ext in required_extensions):
                 valid_extensions = ', '.join(required_extensions)
                 raise ValueError(
-                    f"--{param}: Path '{path}' does not end with one of the following extensions: {valid_extensions}")
+                    f"--{param}: Path '{path}' does not end with one of the following extensions: {valid_extensions}"
+                )
 
     def _validate_positive_int(self, param: str, strict: bool = False) -> None:
         value = self.get(param)
