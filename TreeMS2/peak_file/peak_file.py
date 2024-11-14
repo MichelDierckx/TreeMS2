@@ -3,6 +3,8 @@ from typing import Iterable
 
 import spectrum_utils.spectrum as sus
 
+from ..spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
+
 
 class PeakFile(ABC):
     def __init__(self, file_path: str):
@@ -10,8 +12,12 @@ class PeakFile(ABC):
         self._id = None
         self._group_id = None
 
+        self.total_spectra = 0
+        self.failed_parsed = 0
+        self.failed_processed = 0
+
     @abstractmethod
-    def get_spectra(self) -> Iterable[sus.MsmsSpectrum]:
+    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[sus.MsmsSpectrum]:
         """
         Abstract method to read spectra from the file.
         Each subclass must implement this method.

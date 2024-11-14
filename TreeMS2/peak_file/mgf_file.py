@@ -5,6 +5,7 @@ import spectrum_utils.spectrum as sus
 
 from .peak_file import PeakFile
 from ..spectrum.group_spectrum import GroupSpectrum
+from ..spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 
 class MgfFile(PeakFile):
@@ -12,22 +13,31 @@ class MgfFile(PeakFile):
         # Call the parent class constructor
         super().__init__(file_path)
 
-    def get_spectra(self) -> Iterable[GroupSpectrum]:
+    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[GroupSpectrum]:
         with pyteomics.mgf.MGF(self.file_path) as f_in:
             for spectrum_i, spectrum_dict in enumerate(f_in):
+                self.total_spectra += 1  # Increment the total spectra counter
                 try:
                     # Parse the spectrum into an MsmsSpectrum instance
                     msms_spectrum = MgfFile._parse_spectrum(spectrum_dict)
-
-                    # Create a Spectrum instance and assign the correct file_id and group_id
-                    spectrum = GroupSpectrum(msms_spectrum)
-                    spectrum.set_id(spectrum_i)  # Assign the spectrum index as the spectrum id
-                    spectrum.set_file_id(self._id)  # Set the file_id for this spectrum
-                    spectrum.set_group_id(self._group_id)  # Set the group_id for this spectrum
-
-                    yield spectrum  # Yield the spectrum instance with the correct data
                 except (ValueError, KeyError):
-                    pass
+                    # If parsing fails, increment failed parsing counter and skip this spectrum
+                    self.failed_parsed += 1
+                    continue
+
+                # Process the spectrum and skip if it returns None
+                processed_spectrum = processing_pipeline.process(msms_spectrum)
+                if processed_spectrum is None:
+                    self.failed_processed += 1  # Increment failed processing counter
+                    continue
+
+                # Create a Spectrum instance and assign the correct file_id and group_id
+                spectrum = GroupSpectrum(processed_spectrum)
+                spectrum.set_id(spectrum_i)  # Assign the spectrum index as the spectrum id
+                spectrum.set_file_id(self._id)  # Set the file_id for this spectrum
+                spectrum.set_group_id(self._group_id)  # Set the group_id for this spectrum
+
+                yield spectrum  # Yield the spectrum instance with the correct data
 
     @staticmethod
     def _parse_spectrum(spectrum_dict: Dict) -> sus.MsmsSpectrum:
