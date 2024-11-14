@@ -1,5 +1,5 @@
 import math
-from typing import Tuple
+from typing import Tuple, List, Optional
 
 import numba as nb
 import spectrum_utils.spectrum as sus
@@ -10,17 +10,20 @@ from .processors.mz_range_filter_processor import MZRangeFilterProcessor
 from .processors.precursor_peak_remove_processor import PrecursorPeakRemoverProcessor
 from .processors.spectrum_normalizer_processor import SpectrumNormalizerProcessor
 from .processors.spectrum_validator import SpectrumValidator
+from .spectrum_processor import SpectrumProcessor
 from ...config.spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
 
 
 # Processing pipeline that applies each processor in sequence
 class SpectrumProcessingPipeline:
-    def __init__(self, processors: list):
+    def __init__(self, processors: List[SpectrumProcessor]):
         self.processors = processors
 
-    def process(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
+    def process(self, spectrum: sus.MsmsSpectrum) -> Optional[sus.MsmsSpectrum]:
         for processor in self.processors:  # Iterate over the list of processors
-            spectrum = processor.change(spectrum)  # Apply each processor
+            spectrum = processor.process(spectrum)  # Apply each processor
+            if spectrum is None:
+                return None  # spectrum got invalidated
         return spectrum
 
 
