@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ...spectrum import Spectrum
+from ...group_spectrum import GroupSpectrum
 
 
 class MZRangeFilterProcessor:
@@ -8,5 +8,5 @@ class MZRangeFilterProcessor:
         self.mz_min = mz_min
         self.mz_max = mz_max
 
-    def process(self, spectrum: Spectrum) -> Spectrum:
+    def process(self, spectrum: GroupSpectrum) -> GroupSpectrum:
         return spectrum.set_mz_range(self.mz_min, self.mz_max)

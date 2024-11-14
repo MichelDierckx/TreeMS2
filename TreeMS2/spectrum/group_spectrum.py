@@ -1,7 +1,7 @@
 import spectrum_utils.spectrum as sus
 
 
-class Spectrum:
+class GroupSpectrum:
     def __init__(self, spectrum: sus.MsmsSpectrum):
         self.spectrum = spectrum
         self._id = None

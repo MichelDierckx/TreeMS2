@@ -2,8 +2,8 @@ import math
 from typing import Tuple
 
 import numba as nb
+import spectrum_utils.spectrum as sus
 
-from ..spectrum import Spectrum
 from ...config.spectrum_processing_config import SpectrumProcessingConfig
 
 
@@ -12,9 +12,9 @@ class SpectrumProcessingPipeline:
     def __init__(self, processors: list):
         self.processors = processors
 
-    def process(self, spectrum: Spectrum) -> Spectrum:
+    def process(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         for processor in self.processors:  # Iterate over the list of processors
-            spectrum = processor.process(spectrum)  # Apply each processor
+            spectrum = processor.change(spectrum)  # Apply each processor
         return spectrum
 
 

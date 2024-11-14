@@ -4,7 +4,7 @@ import pyteomics.mgf
 import spectrum_utils.spectrum as sus
 
 from .peak_file import PeakFile
-from ..spectrum.spectrum import Spectrum
+from ..spectrum.group_spectrum import GroupSpectrum
 
 
 class MgfFile(PeakFile):
@@ -12,7 +12,7 @@ class MgfFile(PeakFile):
         # Call the parent class constructor
         super().__init__(file_path)
 
-    def get_spectra(self) -> Iterable[Spectrum]:
+    def get_spectra(self) -> Iterable[GroupSpectrum]:
         with pyteomics.mgf.MGF(self.file_path) as f_in:
             for spectrum_i, spectrum_dict in enumerate(f_in):
                 try:
@@ -20,7 +20,7 @@ class MgfFile(PeakFile):
                     msms_spectrum = MgfFile._parse_spectrum(spectrum_dict)
 
                     # Create a Spectrum instance and assign the correct file_id and group_id
-                    spectrum = Spectrum(msms_spectrum)
+                    spectrum = GroupSpectrum(msms_spectrum)
                     spectrum.set_id(spectrum_i)  # Assign the spectrum index as the spectrum id
                     spectrum.set_file_id(self._id)  # Set the file_id for this spectrum
                     spectrum.set_group_id(self._group_id)  # Set the group_id for this spectrum
