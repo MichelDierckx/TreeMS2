@@ -6,6 +6,7 @@ from typing import Optional, Any
 import configargparse
 
 from .groups_config import GroupsConfig
+from .output_config import OutputConfig
 from .spectrum_processing_config import SpectrumProcessingConfig
 
 
@@ -22,11 +23,14 @@ class ConfigFactory:
         self._define_arguments()
         self._namespace = None
 
-    def create_peak_file_config(self) -> GroupsConfig:
+    def create_groups_config(self) -> GroupsConfig:
         return GroupsConfig.from_parser(self.parser)
 
     def create_spectrum_processing_config(self) -> SpectrumProcessingConfig:
         return SpectrumProcessingConfig.from_parser(self.parser)
+
+    def create_output_config(self) -> OutputConfig:
+        return OutputConfig.from_parser(self.parser)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """

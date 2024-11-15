@@ -27,3 +27,6 @@ class Group:
     def add(self, peak_file: PeakFile):
         peak_file.set_id(len(self._peak_files))
         self._peak_files.append(peak_file)
+
+    def get_peak_file(self, peak_file_id):
+        return self._peak_files[peak_file_id]

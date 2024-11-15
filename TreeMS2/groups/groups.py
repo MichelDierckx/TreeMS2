@@ -20,6 +20,15 @@ class Groups:
     def get_size(self) -> int:
         return len(self._groups)
 
+    def get_nr_files(self) -> int:
+        nr_files = 0
+        for group in self._groups:
+            nr_files += group.get_size()
+        return nr_files
+
+    def get_group(self, group_id: int) -> Group:
+        return self._groups[group_id]
+
     @classmethod
     def from_file(cls, file_path: str):
         path = Path(file_path)

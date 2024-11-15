@@ -1,3 +1,5 @@
+from typing import Dict
+
 import spectrum_utils.spectrum as sus
 
 
@@ -25,3 +27,16 @@ class GroupSpectrum:
 
     def get_group_id(self):
         return self._group_id
+
+    def to_dict(self) -> Dict:
+        return {
+            "id": self._id,
+            "file_id": self._file_id,
+            "group_id": self._group_id,
+            "identifier": self.spectrum.identifier,
+            "precursor_mz": self.spectrum.precursor_mz,
+            "precursor_charge": self.spectrum.precursor_charge,
+            "mz": self.spectrum.mz,
+            "intensity": self.spectrum.intensity,
+            "retention_time": self.spectrum.retention_time,
+        }
