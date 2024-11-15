@@ -1,5 +1,4 @@
 # TreeMS2/config/config_factory.py
-import logging
 import os
 from typing import Optional, Any
 
@@ -8,6 +7,10 @@ import configargparse
 from .groups_config import GroupsConfig
 from .output_config import OutputConfig
 from .spectrum_processing_config import SpectrumProcessingConfig
+from ..logger_config import get_logger
+
+# Create a logger for this module
+logger = get_logger(__name__)
 
 
 class ConfigFactory:
@@ -18,8 +21,6 @@ class ConfigFactory:
             args_for_setting_config_path=["-c", "--config"],
             formatter_class=configargparse.ArgumentDefaultsHelpFormatter,
         )
-        self.logger = logging.getLogger("config")  # Naming the logger as "config"
-        self._setup_logger()
         self._define_arguments()
         self._namespace = None
 
@@ -62,28 +63,6 @@ class ConfigFactory:
         self._validate_directory_path("work_dir")
         self._validate_positive_int("low_dim", True)
         self._log_parameters()
-
-    def _setup_logger(self):
-        """
-        Set up the logger specifically for the configuration module.
-        """
-        # Set the logger level (it can be adjusted based on your needs)
-        self.logger.setLevel(logging.DEBUG)
-
-        # Create a console handler (optional, can log to file too)
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-
-        # Create a formatter and apply it to the handler
-        formatter = logging.Formatter(
-            "{asctime} {levelname} [{name}] {message}",
-            style="{"
-        )
-        console_handler.setFormatter(formatter)
-
-        # Add the handler to the logger
-        self.logger.addHandler(console_handler)
-        self.logger.propagate = False
 
     def _define_arguments(self) -> None:
         """
@@ -265,7 +244,7 @@ class ConfigFactory:
     def _log_parameters(self) -> None:
         """Log all chosen parameters."""
         for key, value in self._namespace.items():
-            self.logger.debug(f"  {key}: {value}")
+            logger.debug(f"  {key}: {value}")
 
     def __getattr__(self, option):
         """

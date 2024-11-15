@@ -15,3 +15,6 @@ class MZRangeFilterProcessor(SpectrumProcessor):
     def change(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         spectrum = spectrum.set_mz_range(self.mz_min, self.mz_max)
         return spectrum
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(mz_min={self.mz_min}, mz_max={self.mz_max}, validator={self.validator})"

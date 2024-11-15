@@ -11,16 +11,21 @@ from TreeMS2.lance.lance_dataset_manager import LanceDatasetManager
 from TreeMS2.peak_file.peak_file import PeakFile
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
 from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline, ProcessingPipelineFactory
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class TreeMS2:
     def __init__(self, config_factory: ConfigFactory):
         self.config_factory = config_factory
         self.max_spectra_in_memory = 1_000_000
+        logger.debug(f"max_spectra_in_memory = {self.max_spectra_in_memory}")
         self.lance_dataset_manager = self._create_lance_dataset_manager()
 
     def run(self):
         groups = self._read_group_data()
+        self._process_spectra(groups)
 
     def _create_lance_dataset_manager(self) -> LanceDatasetManager:
         output_config = self.config_factory.create_output_config()
@@ -34,7 +39,7 @@ class TreeMS2:
         groups = Groups.from_file(groups_config.sample_to_group_file)  # read information from file
         return groups
 
-    def _read_and_process_spectra(self, groups: Groups):
+    def _process_spectra(self, groups: Groups):
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue: queue.Queue[Optional[GroupSpectrum]] = queue.Queue(maxsize=self.max_spectra_in_memory)
@@ -49,6 +54,7 @@ class TreeMS2:
 
         low_quality_counter = 0
         failed_to_parse_counter = 0
+        total_spectra_counter = 0
 
         # Flatten all files across all groups
         all_files = [
@@ -57,10 +63,14 @@ class TreeMS2:
             for file in group.get_peak_files()
         ]
 
+        logger.info(
+            f"Processing spectra from {len(all_files)} files..."
+        )
+
         for file_spectra, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id in joblib.Parallel(
                 n_jobs=max_file_workers)(
-                joblib.delayed(TreeMS2._read_spectra)(file, processing_pipeline)
-                for file in all_files
+            joblib.delayed(TreeMS2._read_spectra)(file, processing_pipeline)
+            for file in all_files
         ):
             groups.get_group(file_group_id).get_peak_file(file_id).failed_parsed = file_failed_parsed
             groups.get_group(file_group_id).get_peak_file(file_id).failed_processed = file_failed_processed
@@ -68,6 +78,8 @@ class TreeMS2:
 
             low_quality_counter += file_failed_processed
             failed_to_parse_counter += file_failed_parsed
+            total_spectra_counter += file_total_spectra
+
             for spec in file_spectra:
                 spectra_queue.put(spec)
         # Add sentinels to indicate stopping.
@@ -76,6 +88,13 @@ class TreeMS2:
 
         lance_writers.close()
         lance_writers.join()
+
+        logger.info(
+            f"Processed {total_spectra_counter} spectra from {len(all_files)} files:\n"
+            f"  - {low_quality_counter} spectra were filtered out as low quality.\n"
+            f"  - {failed_to_parse_counter} spectra could not be parsed.\n"
+            f"  - {total_spectra_counter - low_quality_counter - failed_to_parse_counter} spectra were successfully written to the dataset."
+        )
 
     @staticmethod
     def _read_spectra(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline):

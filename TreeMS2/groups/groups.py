@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import List
 
 from .group import Group
+from ..logger_config import get_logger
 from ..peak_file.peak_file_factory import PeakFileFactory
+
+logger = get_logger(__name__)
 
 
 class Groups:
@@ -40,10 +43,11 @@ class Groups:
         match file_extension:
             case ".csv" | "tsv":
                 groups = cls._read_groups_from_file(path)
-                return groups
             case _:
                 raise ValueError(
                     f"Unsupported file type: {file_extension}. Supported types: {', '.join(valid_extensions)}")
+        logger.info(f"Found {groups.get_size()} groups and {groups.get_nr_files()} files in '{file_path}'")
+        return groups
 
     @staticmethod
     def _read_groups_from_file(path: Path) -> "Groups":

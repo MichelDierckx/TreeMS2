@@ -12,6 +12,9 @@ from .processors.spectrum_normalizer_processor import SpectrumNormalizerProcesso
 from .processors.spectrum_validator import SpectrumValidator
 from .spectrum_processor import SpectrumProcessor
 from ...config.spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
+from ...logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # Processing pipeline that applies each processor in sequence
@@ -25,6 +28,11 @@ class SpectrumProcessingPipeline:
             if spectrum is None:
                 return None  # spectrum got invalidated
         return spectrum
+
+    def __repr__(self) -> str:
+        """Provide a textual representation of the pipeline and its processors."""
+        processors_repr = "\n  ".join([repr(processor) for processor in self.processors])
+        return f"SpectrumProcessingPipeline with processors:\n  {processors_repr}"
 
 
 # Pipeline Factory that creates the processing pipeline based on configuration
@@ -54,7 +62,10 @@ class ProcessingPipelineFactory:
 
         processors.append(SpectrumNormalizerProcessor())
 
-        return SpectrumProcessingPipeline(processors)
+        pipeline = SpectrumProcessingPipeline(processors=processors)
+        logger.info(f"Created processing pipeline:\n{pipeline}")
+
+        return pipeline
 
 
 @nb.njit("Tuple((u4, f4, f4))(f4, f4, f4)", cache=True)

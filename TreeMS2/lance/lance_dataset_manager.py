@@ -6,6 +6,10 @@ import lance
 import pyarrow as pa
 
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
+from ..logger_config import get_logger
+
+# Create a logger for this module
+logger = get_logger(__name__)
 
 
 class LanceDatasetManager:
@@ -65,4 +69,5 @@ class LanceDatasetManager:
             mode="overwrite",
             data_storage_version="stable",
         )
+        logger.info(f"Creating dataset at '{lance_path}'.")
         return dataset

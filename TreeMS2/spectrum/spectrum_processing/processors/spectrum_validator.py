@@ -11,6 +11,9 @@ class SpectrumValidator:
     def validate(self, spectrum: sus.MsmsSpectrum) -> bool:
         return _check_spectrum_valid(spectrum.mz, self.min_peaks, self.min_mz_range)
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(min_peaks={self.min_peaks}, min_mz_range={self.min_mz_range})"
+
 
 @nb.njit(cache=True)
 def _check_spectrum_valid(

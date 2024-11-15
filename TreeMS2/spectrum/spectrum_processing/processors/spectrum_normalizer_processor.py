@@ -24,6 +24,9 @@ class SpectrumNormalizerProcessor(SpectrumProcessor):
         )
         return new_spectrum
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}()"
+
 
 @nb.njit(cache=True)
 def _norm_intensity(spectrum_intensity: np.ndarray) -> np.ndarray:

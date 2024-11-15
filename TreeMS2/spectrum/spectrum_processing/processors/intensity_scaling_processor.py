@@ -15,3 +15,6 @@ class IntensityScalingProcessor(SpectrumProcessor):
 
     def change(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         return spectrum.scale_intensity(self.scaling.value, max_rank=self.max_rank)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(scaling={self.scaling}, max_rank={self.max_rank})"

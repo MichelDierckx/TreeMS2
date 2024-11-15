@@ -25,3 +25,6 @@ class PrecursorPeakRemoverProcessor(SpectrumProcessor):
         if self.remove_precursor_tolerance is not None:
             spectrum = spectrum.remove_precursor_peak(self.remove_precursor_tolerance, "Da", 0)
         return spectrum
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(remove_precursor_tolerance={self.remove_precursor_tolerance}, validator={self.validator})"
