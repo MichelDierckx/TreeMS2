@@ -13,6 +13,11 @@ class SpectrumBinner:
     """
 
     def __init__(self, min_mz: float, max_mz: float, bin_size: float):
+        if bin_size <= 0:
+            raise ValueError("bin_size must be greater than 0.")
+        if min_mz >= max_mz:
+            raise ValueError("min_mz must be less than max_mz.")
+
         self.bin_size = bin_size
         self.dim, self.min_mz, self.max_mz = _get_dim(min_mz, max_mz, bin_size)
 

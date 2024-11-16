@@ -15,6 +15,11 @@ class SpectrumVectorizer:
     def __init__(self, binner: SpectrumBinner, reducer: DimensionalityReducer, norm: bool = True):
         self.binner = binner
         self.reducer = reducer
+        if self.binner.dim != self.reducer.low_dim:
+            raise ValueError(
+                f"Dimensionality mismatch: Binner dimensionality ({self.binner.dim}) "
+                f"does not match reducer input dimensionality ({self.reducer.low_dim})."
+            )
         self.norm = norm
 
     def vectorize(self, spectra: List[sus.MsmsSpectrum]) -> np.ndarray:

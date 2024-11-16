@@ -5,14 +5,13 @@ import lance
 import pyarrow as pa
 
 from ..logger_config import get_logger
-from ..spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
 
 # Create a logger for this module
 logger = get_logger(__name__)
 
 
 class LanceDatasetManager:
-    def __init__(self, dataset_path: str, vectorizer: SpectrumVectorizer):
+    def __init__(self, dataset_path: str):
         self.dataset_path = dataset_path
         self.schema = pa.schema(
             [
@@ -28,7 +27,6 @@ class LanceDatasetManager:
                 pa.field("vector", pa.list_(pa.float32())),
             ]
         )
-        self.vectorizer = vectorizer
         self.dataset: Optional[lance.LanceDataset] = None
         self.lock = multiprocessing.Lock()
 

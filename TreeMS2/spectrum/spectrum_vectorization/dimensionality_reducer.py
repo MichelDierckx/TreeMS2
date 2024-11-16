@@ -11,6 +11,10 @@ class DimensionalityReducer:
     """
 
     def __init__(self, low_dim: int, high_dim: int):
+        if low_dim > high_dim:
+            raise ValueError(
+                f"low_dim ({low_dim}) cannot be greater than high_dim ({high_dim})."
+            )
         self.low_dim = low_dim
         self.high_dim = high_dim
         self.transformation = self._create_transformation()
@@ -27,8 +31,18 @@ class DimensionalityReducer:
         """
         Apply dimensionality reduction and normalization to the input vectors.
         """
+        if vectors.shape[1] != self.high_dim:
+            raise ValueError(
+                f"Input vectors have {vectors.shape[1]} dimensions, but the reducer expects {self.high_dim} dimensions."
+            )
+
+        if vectors.shape[0] == 0:
+            raise ValueError("Input vectors must contain at least one row.")
+
         dense_vectors = (vectors @ self.transformation).toarray()
         if normalize:
+            if dense_vectors.shape[0] > 0 and np.allclose(np.linalg.norm(dense_vectors, axis=1), 0):
+                raise ValueError("Input vectors must not be zero-vectors for normalization.")
             # Normalize for cosine similarity
             faiss.normalize_L2(dense_vectors)
         return dense_vectors
