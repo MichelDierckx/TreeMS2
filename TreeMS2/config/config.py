@@ -14,7 +14,7 @@ from ..logger_config import get_logger
 logger = get_logger(__name__)
 
 
-class ConfigFactory:
+class Config:
     def __init__(self):
         self._parser = configargparse.ArgParser(
             description="TreeMS2: An efficient tool for phylogenetic analysis of MS/MS spectra using ANN indexing.",

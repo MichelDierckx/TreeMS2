@@ -5,7 +5,7 @@ from typing import Optional
 
 import joblib
 
-from TreeMS2.config.config_factory import ConfigFactory
+from TreeMS2.config.config import Config
 from TreeMS2.groups.groups import Groups
 from TreeMS2.lance.lance_dataset_manager import LanceDatasetManager
 from TreeMS2.peak_file.peak_file import PeakFile
@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 
 class TreeMS2:
-    def __init__(self, config_factory: ConfigFactory):
+    def __init__(self, config_factory: Config):
         # Initialize configuration, set memory limits, and set up required components.
         self.config_factory = config_factory
         self.max_spectra_in_memory = 1_000_000
