@@ -9,6 +9,7 @@ class GroupSpectrum:
         self._id = None
         self._file_id = None
         self._group_id = None
+        self.vector = None
 
     def set_id(self, spectrum_id: int):
         self._id = spectrum_id
@@ -39,4 +40,5 @@ class GroupSpectrum:
             "mz": self.spectrum.mz,
             "intensity": self.spectrum.intensity,
             "retention_time": self.spectrum.retention_time,
+            "vector": self.vector,
         }

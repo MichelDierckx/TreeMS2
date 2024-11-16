@@ -11,11 +11,8 @@ class ScalingMethod(Enum):
 class SpectrumProcessingConfig:
     def __init__(
             self,
-            fragment_tol: float = 0.05,
             min_peaks: int = 5,
             min_mz_range: float = 250.0,
-            min_mz: float = 101.0,
-            max_mz: float = 1500.0,
             remove_precursor_tol: float = 1.5,
             min_intensity: float = 0.01,
             max_peaks_used: int = 50,
@@ -57,11 +54,8 @@ class SpectrumProcessingConfig:
         low_dim : int
             Target dimensionality for vectorization, representing the length of low-dimensional spectra vectors (default: 400).
         """
-        self.fragment_tol = fragment_tol
         self.min_peaks = min_peaks
         self.min_mz_range = min_mz_range
-        self.min_mz = min_mz
-        self.max_mz = max_mz
         self.remove_precursor_tol = remove_precursor_tol
         self.min_intensity = min_intensity
         self.max_peaks_used = max_peaks_used
@@ -84,11 +78,8 @@ class SpectrumProcessingConfig:
             A new instance of SpectrumProcessingConfig initialized with parser values.
         """
         return cls(
-            fragment_tol=parser.get("fragment_tol"),
             min_peaks=parser.get("min_peaks"),
             min_mz_range=parser.get("min_mz_range"),
-            min_mz=parser.get("min_mz"),
-            max_mz=parser.get("max_mz"),
             remove_precursor_tol=parser.get("remove_precursor_tol"),
             min_intensity=parser.get("min_intensity"),
             max_peaks_used=parser.get("max_peaks_used"),

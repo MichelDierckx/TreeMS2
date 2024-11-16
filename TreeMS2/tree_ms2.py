@@ -11,6 +11,7 @@ from TreeMS2.lance.lance_dataset_manager import LanceDatasetManager
 from TreeMS2.peak_file.peak_file import PeakFile
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
 from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline, ProcessingPipelineFactory
+from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
 from logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -25,7 +26,7 @@ class TreeMS2:
 
     def run(self):
         groups = self._read_group_data()
-        self._process_spectra(groups)
+        self._read_and_process_spectra(groups)
 
     def _create_lance_dataset_manager(self) -> LanceDatasetManager:
         output_config = self.config_factory.create_output_config()
@@ -39,16 +40,18 @@ class TreeMS2:
         groups = Groups.from_file(groups_config.sample_to_group_file)  # read information from file
         return groups
 
-    def _process_spectra(self, groups: Groups):
+    def _read_and_process_spectra(self, groups: Groups):
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue: queue.Queue[Optional[GroupSpectrum]] = queue.Queue(maxsize=self.max_spectra_in_memory)
         config = self.config_factory.create_spectrum_processing_config()
         processing_pipeline = ProcessingPipelineFactory.create_pipeline(config=config)
 
+        # note, add vectorization in a function here that first vectorizes and then calls self.lance_data_set_manager.write_spectra
+        # while true loop must be moved to this function
         lance_writers = multiprocessing.pool.ThreadPool(
             max_file_workers,
-            self.lance_dataset_manager.write_spectra,
+            self._vectorize_and_write_spectra,
             spectra_queue,
         )
 
@@ -101,3 +104,38 @@ class TreeMS2:
         spectra = list(file.get_spectra(processing_pipeline))
         # Return spectra, counters, group_id and file_id
         return spectra, file.failed_parsed, file.failed_processed, file.total_spectra, file.get_id(), file.get_group_id()
+
+    def _vectorize_and_write_spectra(self, spectra_queue: queue.Queue[Optional[GroupSpectrum]],
+                                     vectorizer: SpectrumVectorizer):
+        spec_to_write = []
+
+        while True:
+            spec = spectra_queue.get()
+            if spec is None:
+                if len(spec_to_write) == 0:
+                    return
+                dict_list = []
+                specs = [spec.spectrum for spec in spec_to_write]
+                vectors = vectorizer.vectorize(specs)
+                for i, vec in enumerate(vectors):
+                    spec_to_write[i].vector = vec
+                    dict_list.append(spec_to_write[i].to_dict())
+
+                self.lance_dataset_manager.write_to_dataset(
+                    dict_list,
+                )
+                spec_to_write.clear()
+                return
+            spec_to_write.append(spec)
+            if len(spec_to_write) >= 10_000:
+                dict_list = []
+                specs = [spec.spectrum for spec in spec_to_write]
+                vectors = vectorizer.vectorize(specs)
+                for i, vec in enumerate(vectors):
+                    spec_to_write[i].vector = vec
+                    dict_list.append(spec_to_write[i].to_dict())
+
+                self.lance_dataset_manager.write_to_dataset(
+                    dict_list,
+                )
+                spec_to_write.clear()

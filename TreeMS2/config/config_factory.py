@@ -7,6 +7,7 @@ import configargparse
 from .groups_config import GroupsConfig
 from .output_config import OutputConfig
 from .spectrum_processing_config import SpectrumProcessingConfig
+from .vectorization_config import VectorizationConfig
 from ..logger_config import get_logger
 
 # Create a logger for this module
@@ -32,6 +33,9 @@ class ConfigFactory:
 
     def create_output_config(self) -> OutputConfig:
         return OutputConfig.from_parser(self.parser)
+
+    def create_vectorization_config(self) -> VectorizationConfig:
+        return VectorizationConfig.from_parser(self.parser)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """
