@@ -33,8 +33,9 @@ class TreeMS2:
                                                                             max_mz=self.vectorizer.binner.max_mz)
 
     def run(self):
-        # Main entry point
+        # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
+        # Reads spectra from the peak files and stores them a lance dataset
         self._read_and_process_spectra(groups)
 
     def _setup_lance_dataset_manager(self) -> LanceDatasetManager:
