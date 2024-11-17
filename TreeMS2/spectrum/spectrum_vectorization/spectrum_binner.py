@@ -44,7 +44,9 @@ def _to_vector(
     Convert spectra to sparse binned vectors for input into a vectorizer.
     """
     n_spectra = len(mzs)
-    n_peaks = sum(len(mz) for mz in mzs)
+    n_peaks = 0
+    for mz in mzs:
+        n_peaks += len(mz)
 
     data = np.zeros(n_peaks, dtype=np.float32)
     indices = np.zeros(n_peaks, dtype=np.int32)

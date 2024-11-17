@@ -24,9 +24,11 @@ class Group:
     def get_size(self):
         return len(self._peak_files)
 
-    def add(self, peak_file: PeakFile):
+    def add(self, peak_file: PeakFile) -> PeakFile:
         peak_file.set_id(len(self._peak_files))
+        peak_file.set_group_id(self._id)
         self._peak_files.append(peak_file)
+        return self._peak_files[-1]
 
     def get_peak_file(self, peak_file_id):
         return self._peak_files[peak_file_id]

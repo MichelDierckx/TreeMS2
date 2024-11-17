@@ -35,16 +35,15 @@ class LanceDatasetManager:
         with self.lock:
             if self.dataset is None:
                 self._create_lance_dataset()
-            lance.write_dataset(new_rows, self.dataset, mode="append")
+            lance.write_dataset(new_rows, self.dataset.uri, mode="append")
             return len(new_rows)
 
-    def _create_lance_dataset(self) -> lance.LanceDataset:
+    def _create_lance_dataset(self):
         lance_path = self.dataset_path
-        dataset = lance.write_dataset(
+        self.dataset = lance.write_dataset(
             pa.Table.from_pylist([], self.schema),
             lance_path,
             mode="overwrite",
             data_storage_version="stable",
         )
         logger.info(f"Creating dataset at '{lance_path}'.")
-        return dataset

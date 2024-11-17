@@ -35,6 +35,7 @@ class TreeMS2:
     def run(self):
         # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
+        print(groups._groups[0]._peak_files[0]._group_id)
         # Reads spectra from the peak files and stores them a lance dataset
         self._read_and_process_spectra(groups)
 

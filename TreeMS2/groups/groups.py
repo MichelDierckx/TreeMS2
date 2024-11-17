@@ -13,9 +13,10 @@ class Groups:
     def __init__(self):
         self._groups: List[Group] = []
 
-    def add(self, group: Group):
+    def add(self, group: Group) -> Group:
         group.set_id(len(self._groups))
         self._groups.append(group)
+        return self._groups[-1]
 
     def get_groups(self) -> List[Group]:
         return self._groups
@@ -92,8 +93,7 @@ class Groups:
 
                 peak_file = file_factory.create(absolute_file_path)
                 group = Group(group_value)
-                group.add(peak_file)
-                groups.add(group)
+                groups.add(group).add(peak_file)
                 data_rows_found = True  # At least one valid data row was found
 
             # If no valid data rows were found
