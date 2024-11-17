@@ -16,4 +16,4 @@ class IntensityFilterProcessor(SpectrumProcessor):
         return spectrum.filter_intensity(self.min_intensity, self.max_peaks_used)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(min_intensity={self.min_intensity}, max_peaks_used={self.max_peaks_used}, validator={self.validator})"
+        return f"{self.__class__.__name__}(min_intensity={self.min_intensity:.3f}, max_peaks_used={self.max_peaks_used}, validator={self.validator})"

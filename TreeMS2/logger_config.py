@@ -1,17 +1,16 @@
 import logging
-from logging.handlers import RotatingFileHandler
 
 LOG_FILE = "logs/app.log"
 
 
 def setup_logging():
     # Create a rotating file handler (logs to file with size limit and backups)
-    file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5_000_000, backupCount=3)
+    file_handler = logging.FileHandler(LOG_FILE)
     file_handler.setLevel(logging.DEBUG)
 
     # Create a console handler
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
 
     # Set up a formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -25,6 +24,10 @@ def setup_logging():
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
+
+    # Disable dependency non-critical log messages.
+    logging.getLogger("numba").setLevel(logging.WARNING)
+    logging.getLogger("numexpr").setLevel(logging.WARNING)
 
 
 def get_logger(module_name: str) -> logging.Logger:

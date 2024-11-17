@@ -90,7 +90,7 @@ class TreeMS2:
             for file in group.get_peak_files()
         ]
 
-        logger.info(f"Processing spectra from {len(all_files)} files...")
+        logger.info(f"Processing spectra from {len(all_files)} files ...")
 
         # Process spectra in parallel for each file using joblib.
         for result in joblib.Parallel(n_jobs=max_file_workers)(
@@ -120,9 +120,9 @@ class TreeMS2:
         # Log final processing statistics.
         logger.info(
             f"Processed {total_spectra_counter} spectra from {len(all_files)} files:\n"
-            f"  - {low_quality_counter} spectra were filtered out as low quality.\n"
-            f"  - {failed_to_parse_counter} spectra could not be parsed.\n"
-            f"  - {total_spectra_counter - low_quality_counter - failed_to_parse_counter} spectra were successfully written to the dataset."
+            f"\t- {low_quality_counter} spectra were filtered out as low quality.\n"
+            f"\t- {failed_to_parse_counter} spectra could not be parsed.\n"
+            f"\t- {total_spectra_counter - low_quality_counter - failed_to_parse_counter} spectra were successfully written to the dataset."
         )
 
     @staticmethod

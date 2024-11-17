@@ -46,4 +46,4 @@ class LanceDatasetManager:
             mode="overwrite",
             data_storage_version="stable",
         )
-        logger.info(f"Creating dataset at '{lance_path}'.")
+        logger.debug(f"Creating lance dataset at '{lance_path}'.")

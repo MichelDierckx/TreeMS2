@@ -17,4 +17,4 @@ class MZRangeFilterProcessor(SpectrumProcessor):
         return spectrum
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(mz_min={self.mz_min}, mz_max={self.mz_max}, validator={self.validator})"
+        return f"{self.__class__.__name__}(mz_min={self.mz_min:.3f}, mz_max={self.mz_max:.3f}, validator={self.validator})"

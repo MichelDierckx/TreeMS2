@@ -29,8 +29,8 @@ class SpectrumProcessingPipeline:
 
     def __repr__(self) -> str:
         """Provide a textual representation of the pipeline and its processors."""
-        processors_repr = "\n  ".join([repr(processor) for processor in self.processors])
-        return f"SpectrumProcessingPipeline with processors:\n  {processors_repr}"
+        processors_repr = "\n\t".join([repr(processor) for processor in self.processors])
+        return f"\t{processors_repr}"
 
 
 # Pipeline Factory that creates the processing pipeline based on configuration
@@ -38,7 +38,6 @@ class ProcessingPipelineFactory:
     @staticmethod
     def create_pipeline(config: SpectrumProcessingConfig, min_mz, max_mz) -> SpectrumProcessingPipeline:
         processors = []
-
         validator = SpectrumValidator(min_peaks=config.min_peaks, min_mz_range=config.min_mz_range)
         processors.append(MZRangeFilterProcessor(mz_min=min_mz, mz_max=max_mz, validator=validator))
 
@@ -57,6 +56,6 @@ class ProcessingPipelineFactory:
         processors.append(SpectrumNormalizerProcessor())
 
         pipeline = SpectrumProcessingPipeline(processors=processors)
-        logger.info(f"Created processing pipeline:\n{pipeline}")
 
+        logger.debug(f"Created processing pipeline:\n{pipeline}")
         return pipeline
