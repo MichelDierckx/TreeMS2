@@ -6,7 +6,7 @@ import configargparse
 
 from .groups_config import GroupsConfig
 from .output_config import OutputConfig
-from .spectrum_processing_config import SpectrumProcessingConfig
+from .spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
 from .vectorization_config import VectorizationConfig
 from ..logger_config import get_logger
 
@@ -26,16 +26,20 @@ class Config:
         self._namespace = None
 
     def create_groups_config(self) -> GroupsConfig:
-        return GroupsConfig.from_parser(self.parser)
+        return GroupsConfig(sample_to_group_file=self.sample_to_group_file)
 
     def create_spectrum_processing_config(self) -> SpectrumProcessingConfig:
-        return SpectrumProcessingConfig.from_parser(self.parser)
+        return SpectrumProcessingConfig(min_peaks=self.min_peaks, min_mz_range=self.min_mz_range,
+                                        remove_precursor_tol=self.remove_precursor_tol,
+                                        min_intensity=self.min_intensity, max_peaks_used=self.max_peaks_used,
+                                        scaling=ScalingMethod(self.scaling))
 
     def create_output_config(self) -> OutputConfig:
-        return OutputConfig.from_parser(self.parser)
+        return OutputConfig(work_dir=self.work_dir)
 
     def create_vectorization_config(self) -> VectorizationConfig:
-        return VectorizationConfig.from_parser(self.parser)
+        return VectorizationConfig(min_mz=self.min_mz, max_mz=self.max_mz, fragment_tol=self.fragment_tol,
+                                   low_dim=self.low_dim)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """
@@ -63,7 +67,7 @@ class Config:
 
         # Parse the arguments
         self._namespace = vars(self._parser.parse_args(args_str))
-        self._validate_file_path("sample_to_group")
+        self._validate_file_path("sample_to_group_file")
         self._validate_directory_path("work_dir")
         self._validate_positive_int("low_dim", True)
         self._log_parameters()

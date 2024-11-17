@@ -41,7 +41,7 @@ class Groups:
         valid_extensions = [".csv", ".tsv"]
         file_extension = path.suffix.lower()
         match file_extension:
-            case ".csv" | "tsv":
+            case ".csv" | ".tsv":
                 groups = cls._read_groups_from_file(path)
             case _:
                 raise ValueError(

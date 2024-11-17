@@ -17,7 +17,6 @@ class SpectrumProcessingConfig:
             min_intensity: float = 0.01,
             max_peaks_used: int = 50,
             scaling: ScalingMethod = ScalingMethod.OFF,
-            low_dim: int = 400
     ):
         """
         Configuration for spectrum processing parameters.
@@ -60,29 +59,3 @@ class SpectrumProcessingConfig:
         self.min_intensity = min_intensity
         self.max_peaks_used = max_peaks_used
         self.scaling = scaling
-        self.low_dim = low_dim
-
-    @classmethod
-    def from_parser(cls, parser) -> "SpectrumProcessingConfig":
-        """
-        Creates an instance of SpectrumProcessingConfig by fetching values from the parser.
-
-        Parameters:
-        ----------
-        parser : configargparse.ArgParser or similar
-            The parser instance containing the parsed configuration.
-
-        Returns:
-        -------
-        SpectrumProcessingConfig
-            A new instance of SpectrumProcessingConfig initialized with parser values.
-        """
-        return cls(
-            min_peaks=parser.get("min_peaks"),
-            min_mz_range=parser.get("min_mz_range"),
-            remove_precursor_tol=parser.get("remove_precursor_tol"),
-            min_intensity=parser.get("min_intensity"),
-            max_peaks_used=parser.get("max_peaks_used"),
-            scaling=ScalingMethod(parser.get("scaling")),
-            low_dim=parser.get("low_dim")
-        )

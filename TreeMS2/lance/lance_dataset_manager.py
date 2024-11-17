@@ -1,4 +1,4 @@
-import multiprocessing
+from threading import Lock
 from typing import List, Optional, Dict
 
 import lance
@@ -28,7 +28,7 @@ class LanceDatasetManager:
             ]
         )
         self.dataset: Optional[lance.LanceDataset] = None
-        self.lock = multiprocessing.Lock()
+        self.lock = Lock()  # Lock to ensure thread-safe access to `self.dataset`
 
     def write_to_dataset(self, entries_to_write: List[Dict]):
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
@@ -36,7 +36,7 @@ class LanceDatasetManager:
             if self.dataset is None:
                 self._create_lance_dataset()
             lance.write_dataset(new_rows, self.dataset, mode="append")
-        return len(new_rows)
+            return len(new_rows)
 
     def _create_lance_dataset(self) -> lance.LanceDataset:
         lance_path = self.dataset_path

@@ -1,5 +1,5 @@
 # entry point
-from .tree_ms2 import main
+from .main import main
 
 if __name__ == "__main__":
     main()
