@@ -46,3 +46,6 @@ class DimensionalityReducer:
             # Normalize for cosine similarity
             faiss.normalize_L2(dense_vectors)
         return dense_vectors
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(low_dim={self.low_dim}, high_dim={self.high_dim})"

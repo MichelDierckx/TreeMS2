@@ -5,7 +5,7 @@ LOG_FILE = "logs/app.log"
 
 def setup_logging():
     # Create a rotating file handler (logs to file with size limit and backups)
-    file_handler = logging.FileHandler(LOG_FILE)
+    file_handler = logging.FileHandler(filename=LOG_FILE, mode='w')
     file_handler.setLevel(logging.DEBUG)
 
     # Create a console handler

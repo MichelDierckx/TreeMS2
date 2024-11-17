@@ -19,6 +19,7 @@ logger = get_logger(__name__)
 class SpectrumProcessingPipeline:
     def __init__(self, processors: List[SpectrumProcessor]):
         self.processors = processors
+        logger.debug(f"Created {self}")
 
     def process(self, spectrum: sus.MsmsSpectrum) -> Optional[sus.MsmsSpectrum]:
         for processor in self.processors:  # Iterate over the list of processors
@@ -30,7 +31,7 @@ class SpectrumProcessingPipeline:
     def __repr__(self) -> str:
         """Provide a textual representation of the pipeline and its processors."""
         processors_repr = "\n\t".join([repr(processor) for processor in self.processors])
-        return f"\t{processors_repr}"
+        return f"{self.__class__.__name__}:\n\t{processors_repr}"
 
 
 # Pipeline Factory that creates the processing pipeline based on configuration
@@ -57,5 +58,4 @@ class ProcessingPipelineFactory:
 
         pipeline = SpectrumProcessingPipeline(processors=processors)
 
-        logger.debug(f"Created processing pipeline:\n{pipeline}")
         return pipeline

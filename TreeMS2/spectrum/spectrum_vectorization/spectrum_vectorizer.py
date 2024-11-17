@@ -5,6 +5,9 @@ import spectrum_utils.spectrum as sus
 
 from .dimensionality_reducer import DimensionalityReducer
 from .spectrum_binner import SpectrumBinner
+from ...logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class SpectrumVectorizer:
@@ -21,6 +24,7 @@ class SpectrumVectorizer:
                 f"does not match reducer input dimensionality ({self.reducer.high_dim})."
             )
         self.norm = norm
+        logger.debug(f"Created {self}")
 
     def vectorize(self, spectra: List[sus.MsmsSpectrum]) -> np.ndarray:
         """
@@ -29,3 +33,6 @@ class SpectrumVectorizer:
         sparse_vectors = self.binner.bin(spectra)
         dense_vectors = self.reducer.reduce(sparse_vectors, normalize=self.norm)
         return dense_vectors
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(norm={self.norm}):\n\t{self.binner}\n\t{self.reducer}"

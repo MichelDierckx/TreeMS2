@@ -32,6 +32,9 @@ class SpectrumBinner:
             (data, indices, indptr), shape=(len(spectra), self.dim), dtype=np.float32
         )
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(bin_size={self.bin_size:.3f}, dim={self.dim}, min_mz={self.min_mz:.3f}, max_mz={self.max_mz:.3f})"
+
 
 @nb.njit(cache=True)
 def _to_vector(
