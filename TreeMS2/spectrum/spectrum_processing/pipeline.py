@@ -5,7 +5,7 @@ import spectrum_utils.spectrum as sus
 from .processors.intensity_filter_processor import IntensityFilterProcessor
 from .processors.intensity_scaling_processor import IntensityScalingProcessor
 from .processors.mz_range_filter_processor import MZRangeFilterProcessor
-from .processors.precursor_peak_remove_processor import PrecursorPeakRemoverProcessor
+from .processors.precursor_peak_remover_processor import PrecursorPeakRemoverProcessor
 from .processors.spectrum_normalizer_processor import SpectrumNormalizerProcessor
 from .processors.spectrum_validator import SpectrumValidator
 from .spectrum_processor import SpectrumProcessor
