@@ -43,4 +43,7 @@ def _norm_intensity(spectrum_intensity: np.ndarray) -> np.ndarray:
     np.ndarray
         The normalized peak intensities.
     """
-    return spectrum_intensity / np.linalg.norm(spectrum_intensity)
+    norm = np.linalg.norm(spectrum_intensity)
+    if norm == 0:
+        return spectrum_intensity  # Return the same array if all intensities are zero
+    return spectrum_intensity / norm
