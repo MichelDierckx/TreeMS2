@@ -101,3 +101,7 @@ class Groups:
                 raise ValueError("The file does not contain any valid data rows.")
 
         return groups
+
+    def __repr__(self) -> str:
+        groups_repr = "\n\t".join([repr(group) for group in self._groups])
+        return f"{self.__class__.__name__}({self.get_size()} groups, {self.get_nr_files()} files):\n\t{groups_repr}"

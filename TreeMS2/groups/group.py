@@ -32,3 +32,7 @@ class Group:
 
     def get_peak_file(self, peak_file_id):
         return self._peak_files[peak_file_id]
+
+    def __repr__(self) -> str:
+        files_repr = "\n\t".join([repr(file) for file in self._peak_files])
+        return f"{self.__class__.__name__}(id={self._id}):\n\t{files_repr}"

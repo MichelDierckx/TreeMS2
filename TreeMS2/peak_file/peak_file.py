@@ -35,3 +35,6 @@ class PeakFile(ABC):
 
     def get_group_id(self):
         return self._group_id
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(id={self._id}, filepath={self.file_path})"
