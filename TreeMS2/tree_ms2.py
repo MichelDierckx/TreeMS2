@@ -72,6 +72,7 @@ class TreeMS2:
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue = queue.Queue(maxsize=self.max_spectra_in_memory)
 
+        self.lance_dataset_manager.create_datasets(groups.get_group_ids())
         lance_writers = multiprocessing.pool.ThreadPool(
             max_file_workers,
             self._vectorize_and_write_spectra,
@@ -96,9 +97,10 @@ class TreeMS2:
                 joblib.delayed(TreeMS2._read_spectra)(file, self.processing_pipeline)
                 for file in all_files):
             file_spectra, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id = result
-            groups.get_group(file_group_id).get_peak_file(file_id).failed_parsed = file_failed_parsed
-            groups.get_group(file_group_id).failed_processed = file_failed_processed
-            groups.get_group(file_group_id).total_spectra = file_total_spectra
+            peak_file = groups.get_group(file_group_id).get_peak_file(file_id)
+            peak_file.failed_parsed = file_failed_parsed
+            peak_file.failed_processed = file_failed_processed
+            peak_file.total_spectra = file_total_spectra
 
             # Update counters for logging.
             low_quality_counter += file_failed_processed

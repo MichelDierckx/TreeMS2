@@ -33,6 +33,9 @@ class Groups:
     def get_group(self, group_id: int) -> Group:
         return self._groups[group_id]
 
+    def get_group_ids(self) -> List[int]:
+        return [group.get_id() for group in self._groups]
+
     @classmethod
     def from_file(cls, file_path: str):
         path = Path(file_path)
