@@ -39,5 +39,13 @@ class PeakFile(ABC):
     def get_group_id(self):
         return self._group_id
 
+    def compute_spectrum_range(self, begin_id: int):
+        self.begin = begin_id
+        self.end = begin_id + self.total_spectra
+        return self.end
+
+    def get_global_id(self, spectrum_id: int) -> int:
+        return self.begin + spectrum_id
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id={self._id}, filepath={self.file_path})"

@@ -13,6 +13,13 @@ class Groups:
     def __init__(self):
         self._groups: List[Group] = []
 
+        self.total_spectra = 0
+        self.failed_parsed = 0
+        self.failed_processed = 0
+
+        self.begin = 0
+        self.end = 0
+
     def add(self, group: Group) -> Group:
         group.set_id(len(self._groups))
         self._groups.append(group)
@@ -36,13 +43,14 @@ class Groups:
     def get_group_ids(self) -> List[int]:
         return [group.get_id() for group in self._groups]
 
-    def get_global_id(self, group_id: int, file_id, spectrum_id) -> int:
+    def compute_spectrum_range(self):
+        self.end = self.total_spectra
+        cur_id = self.begin
+        for group in self._groups:
+            cur_id = group.compute_spectrum_range(begin_id=cur_id)
 
-        global_id = 0
-        for group in self._groups[:group_id + 1]:
-            for file in group.get_peak_files()[:file_id]:
-                global_id += (file.total_spectra - file.failed_processed - file.failed_parsed)
-        global_id += spectrum_id
+    def get_global_id(self, group_id: int, file_id, spectrum_id) -> int:
+        global_id = self._groups[group_id].get_global_id(file_id, spectrum_id)
         return global_id
 
     @classmethod

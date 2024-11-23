@@ -105,6 +105,9 @@ class TreeMS2:
             peak_file.failed_parsed = file_failed_parsed
             peak_file.failed_processed = file_failed_processed
             peak_file.total_spectra = file_total_spectra
+            groups.failed_parsed += file_failed_parsed
+            groups.failed_processed += file_failed_processed
+            groups.total_spectra += file_total_spectra
 
             # Update counters for logging.
             low_quality_counter += file_failed_processed
