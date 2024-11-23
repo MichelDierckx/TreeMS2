@@ -71,12 +71,11 @@ class TreeMS2:
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue = queue.Queue(maxsize=self.max_spectra_in_memory)
-        lance_lock = multiprocessing.Lock()
 
         lance_writers = multiprocessing.pool.ThreadPool(
             max_file_workers,
             self._vectorize_and_write_spectra,
-            (spectra_queue, lance_lock),
+            (spectra_queue,)
         )
 
         low_quality_counter = 0
@@ -131,24 +130,24 @@ class TreeMS2:
         spectra = list(file.get_spectra(processing_pipeline))
         return spectra, file.failed_parsed, file.failed_processed, file.total_spectra, file.get_id(), file.get_group_id()
 
-    def _vectorize_and_write_spectra(self, spectra_queue: queue.Queue[Optional[GroupSpectrum]],
-                                     lance_lock: multiprocessing.Lock):
+    def _vectorize_and_write_spectra(self, spectra_queue: queue.Queue[Optional[GroupSpectrum]]):
         """
         Consumes spectra, vectorizes, and writes them to the dataset.
         """
-        spec_to_write = []
+        spec_to_write = {}
 
         def _process_batch():
-            if not spec_to_write:
-                return
-            specs = [spec.spectrum for spec in spec_to_write]
-            vectors = self.vectorizer.vectorize(specs)
-            dict_list = [
-                {**spec.to_dict(), "vector": vector}
-                for spec, vector in zip(spec_to_write, vectors)
-            ]
-            with lance_lock:
-                self.lance_dataset_manager.write_to_dataset(dict_list)
+            """Process and write the collected spectra."""
+            for group_id, specs in spec_to_write.items():
+                # Extract and vectorize spectra
+                spectra = [spec.spectrum for spec in specs]
+                vectors = self.vectorizer.vectorize(spectra)
+                dict_list = [
+                    {**spec.to_dict(), "vector": vector}
+                    for spec, vector in zip(specs, vectors)
+                ]
+                # Write to the Lance dataset for the group
+                self.lance_dataset_manager.write_to_group(group_id, dict_list)
             spec_to_write.clear()
 
         while True:
@@ -158,6 +157,12 @@ class TreeMS2:
                 _process_batch()
                 break
 
-            spec_to_write.append(spectrum)
-            if len(spec_to_write) >= 10_000:  # Batch size
+            # Group spectra by group_id
+            group_id = spectrum.get_group_id()
+            if group_id not in spec_to_write:
+                spec_to_write[group_id] = []
+            spec_to_write[group_id].append(spectrum)
+
+            # Process batch if size limit is reached
+            if sum(len(specs) for specs in spec_to_write.values()) >= 10_000:
                 _process_batch()

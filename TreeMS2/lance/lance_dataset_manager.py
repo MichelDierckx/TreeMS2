@@ -1,5 +1,7 @@
+import os
+from collections import defaultdict
 from threading import Lock
-from typing import List, Optional, Dict
+from typing import List, Dict
 
 import lance
 import pyarrow as pa
@@ -11,8 +13,8 @@ logger = get_logger(__name__)
 
 
 class LanceDatasetManager:
-    def __init__(self, dataset_path: str):
-        self.dataset_path = dataset_path
+    def __init__(self, base_path: str):
+        self.base_path = base_path
         self.schema = pa.schema(
             [
                 pa.field("id", pa.uint16()),
@@ -27,23 +29,30 @@ class LanceDatasetManager:
                 pa.field("vector", pa.list_(pa.float32())),
             ]
         )
-        self.dataset: Optional[lance.LanceDataset] = None
-        self.lock = Lock()  # Lock to ensure thread-safe access to `self.dataset`
+        self.locks = defaultdict(Lock)  # locking mechanism per dataset
 
-    def write_to_dataset(self, entries_to_write: List[Dict]):
-        new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
-        with self.lock:
-            if self.dataset is None:
-                self._create_lance_dataset()
-            lance.write_dataset(new_rows, self.dataset.uri, mode="append")
-            return len(new_rows)
-
-    def _create_lance_dataset(self):
-        lance_path = self.dataset_path
-        self.dataset = lance.write_dataset(
+    def create_dataset(self, group_id: int):
+        dataset_path = self.get_group_path(group_id)
+        lance.write_dataset(
             pa.Table.from_pylist([], self.schema),
-            lance_path,
+            dataset_path,
             mode="overwrite",
             data_storage_version="stable",
         )
-        logger.debug(f"Creating lance dataset at '{lance_path}'.")
+        logger.debug(f"Creating lance dataset at '{dataset_path}'.")
+
+    def create_datasets(self, group_ids: List[int]):
+        for group_id in group_ids:
+            self.create_dataset(group_id)
+
+    def get_group_path(self, group_id: int) -> str:
+        """Return the path for the group's dataset."""
+        return os.path.join(self.base_path, f"group{group_id}")
+
+    def write_to_group(self, group_id: int, entries_to_write: List[Dict]):
+        """Write data to a specific group's dataset."""
+        group_path = self.get_group_path(group_id)
+        os.makedirs(group_path, exist_ok=True)
+        with self.locks[group_id]:
+            new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
+            lance.write_dataset(new_rows, group_path, mode="append")
