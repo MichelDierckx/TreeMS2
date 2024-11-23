@@ -12,8 +12,8 @@ from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipe
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
+from .groups.peak_file.peak_file import PeakFile
 from .logger_config import get_logger
-from .peak_file.peak_file import PeakFile
 from .spectrum.group_spectrum import GroupSpectrum
 
 logger = get_logger(__name__)
@@ -97,7 +97,11 @@ class TreeMS2:
                 joblib.delayed(TreeMS2._read_spectra)(file, self.processing_pipeline)
                 for file in all_files):
             file_spectra, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id = result
-            peak_file = groups.get_group(file_group_id).get_peak_file(file_id)
+            group = groups.get_group(file_group_id)
+            group.failed_parsed += file_failed_parsed
+            group.failed_processed += file_failed_processed
+            group.total_spectra += file_total_spectra
+            peak_file = group.get_peak_file(file_id)
             peak_file.failed_parsed = file_failed_parsed
             peak_file.failed_processed = file_failed_processed
             peak_file.total_spectra = file_total_spectra

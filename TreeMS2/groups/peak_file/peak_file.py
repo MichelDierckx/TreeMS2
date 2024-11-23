@@ -3,7 +3,7 @@ from typing import Iterable
 
 import spectrum_utils.spectrum as sus
 
-from ..spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
+from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 
 class PeakFile(ABC):
@@ -15,6 +15,9 @@ class PeakFile(ABC):
         self.total_spectra = 0
         self.failed_parsed = 0
         self.failed_processed = 0
+
+        self.begin = 0
+        self.end = 0
 
     @abstractmethod
     def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[sus.MsmsSpectrum]:

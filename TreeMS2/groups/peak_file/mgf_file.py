@@ -4,8 +4,8 @@ import pyteomics.mgf
 import spectrum_utils.spectrum as sus
 
 from .peak_file import PeakFile
-from ..spectrum.group_spectrum import GroupSpectrum
-from ..spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
+from ...spectrum.group_spectrum import GroupSpectrum
+from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 
 class MgfFile(PeakFile):

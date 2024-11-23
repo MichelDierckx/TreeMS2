@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from TreeMS2.peak_file.mgf_file import MgfFile
-from TreeMS2.peak_file.peak_file import PeakFile
+from TreeMS2.groups.peak_file.mgf_file import MgfFile
+from TreeMS2.groups.peak_file.peak_file import PeakFile
 
 
 class PeakFileFactory:

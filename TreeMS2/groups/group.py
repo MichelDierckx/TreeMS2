@@ -1,6 +1,6 @@
 from typing import List
 
-from TreeMS2.peak_file.peak_file import PeakFile
+from TreeMS2.groups.peak_file.peak_file import PeakFile
 
 
 class Group:
@@ -8,6 +8,13 @@ class Group:
         self._group_name = group_name
         self._id = None
         self._peak_files: List[PeakFile] = []
+
+        self.total_spectra = 0
+        self.failed_parsed = 0
+        self.failed_processed = 0
+
+        self.begin = 0
+        self.end = 0
 
     def set_id(self, file_id: int):
         self._id = file_id
