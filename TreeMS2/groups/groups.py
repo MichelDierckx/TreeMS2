@@ -44,7 +44,7 @@ class Groups:
         return [group.get_id() for group in self._groups]
 
     def compute_spectrum_range(self):
-        self.end = self.total_spectra
+        self.end = self.total_spectra - 1
         cur_id = self.begin
         for group in self._groups:
             cur_id = group.compute_spectrum_range(begin_id=cur_id)
@@ -124,4 +124,4 @@ class Groups:
 
     def __repr__(self) -> str:
         groups_repr = "\n\t".join([repr(group) for group in self._groups])
-        return f"{self.__class__.__name__}({self.get_size()} groups, {self.get_nr_files()} files):\n\t{groups_repr}"
+        return f"{self.__class__.__name__}({self.get_size()} groups, {self.get_nr_files()} files, [{self.begin}, {self.end}]):\n\t{groups_repr}"

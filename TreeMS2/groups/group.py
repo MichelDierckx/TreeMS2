@@ -42,11 +42,11 @@ class Group:
 
     def compute_spectrum_range(self, begin_id):
         self.begin = begin_id
-        self.end = begin_id + self.total_spectra
+        self.end = begin_id + self.total_spectra - 1
         cur_id = self.begin
         for peak_file in self._peak_files:
             cur_id = peak_file.compute_spectrum_range(cur_id)
-        return self.end
+        return self.end + 1
 
     def get_global_id(self, peak_file_id: int, spectrum_id: int) -> int:
         global_id = self._peak_files[peak_file_id].get_global_id(spectrum_id)
@@ -54,4 +54,4 @@ class Group:
 
     def __repr__(self) -> str:
         files_repr = "\n\t".join([repr(file) for file in self._peak_files])
-        return f"{self.__class__.__name__}(id={self._id}):\n\t{files_repr}"
+        return f"{self.__class__.__name__}(id={self._id}, [{self.begin}, {self.end}]):\n\t{files_repr}"

@@ -37,6 +37,8 @@ class TreeMS2:
         groups = self._read_groups()
         # Reads spectra from the peak files and stores them a lance dataset
         self._read_and_process_spectra(groups)
+        groups.compute_spectrum_range()
+        logger.debug(f"{groups}")
 
     def _setup_lance_dataset_manager(self) -> LanceDatasetManager:
         # Create a LanceDatasetManager instance for managing output storage.
