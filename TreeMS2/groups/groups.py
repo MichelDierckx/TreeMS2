@@ -21,6 +21,9 @@ class Groups:
         self.end = 0
 
     def add(self, group: Group) -> Group:
+        for g in self._groups:
+            if g.get_group_name() == group.get_group_name():
+                return g
         group.set_id(len(self._groups))
         self._groups.append(group)
         return self._groups[-1]
