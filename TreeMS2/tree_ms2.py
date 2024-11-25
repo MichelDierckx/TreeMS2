@@ -1,5 +1,4 @@
 import multiprocessing
-import os
 import queue
 from typing import Optional
 
@@ -43,7 +42,7 @@ class TreeMS2:
     def _setup_lance_dataset_manager(self) -> LanceDatasetManager:
         # Create a LanceDatasetManager instance for managing output storage.
         config = self.config_factory.create_output_config()
-        lance_dataset_path = os.path.join(config.work_dir, "spectra", f"spectra.lance")
+        lance_dataset_path = config.work_dir
         return LanceDatasetManager(lance_dataset_path)
 
     def _setup_spectrum_processing_pipeline(self, min_mz: float, max_mz: float) -> SpectrumProcessingPipeline:
@@ -74,7 +73,9 @@ class TreeMS2:
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue = queue.Queue(maxsize=self.max_spectra_in_memory)
 
+        self.lance_dataset_manager.delete_old_datasets()
         self.lance_dataset_manager.create_datasets(groups.get_group_ids())
+
         lance_writers = multiprocessing.pool.ThreadPool(
             max_file_workers,
             self._vectorize_and_write_spectra,
