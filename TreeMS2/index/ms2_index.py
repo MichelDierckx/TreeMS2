@@ -1,7 +1,10 @@
-from typing import Tuple
+from typing import Tuple, Optional, List
 
 import faiss
+from tqdm import tqdm
 
+from ..groups.groups import Groups
+from ..lance.lance_dataset_manager import LanceDatasetManager
 from ..logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -46,14 +49,14 @@ class MS2Index:
         self.d = d
         self.n_spectra = n_spectra
 
-        self.index, self.index_type = self._initialize_index(n_spectra, d)
+        self.index, self.index_type, self.nlist = self._initialize_index(n_spectra, d)
 
         self.metric = faiss.METRIC_INNER_PRODUCT
 
         logger.debug(f"Created index {self}")
 
     @classmethod
-    def _initialize_index(cls, n_spectra: int, d: int) -> Tuple[faiss.Index, str]:
+    def _initialize_index(cls, n_spectra: int, d: int) -> Tuple[faiss.Index, str, Optional[int]]:
         """
         Create and initialize the appropriate index structure.
         :param n_spectra: The number of spectra to be indexed
@@ -74,6 +77,7 @@ class MS2Index:
 
         # Proceed with index creation depending on the number of spectra
         if n_spectra <= 10 ** 4:
+            nlist = None
             index = faiss.IndexIDMap(faiss.IndexFlatIP(d))
             index_type = "Flat"
         elif n_spectra <= 10 ** 6:
@@ -92,25 +96,29 @@ class MS2Index:
             # the number of spectra exceeds the allowed limit
             max_spectra = 10 ** 8  # The largest number of spectra allowed
             raise IndexingTooLargeError(n_spectra, max_spectra)
-        return index, index_type
+        return index, index_type, nlist
 
-    def train(self, data):
-        """
-        Train the FAISS index (required for IVF-based indexes).
-        :param data: (numpy.ndarray): Training data (shape: [n_samples, d]).
-        :return:
-        """
+    def train(self, lance_dataset_manager: LanceDatasetManager, group_ids: List[int]):
         if not self.index.is_trained:
-            self.index.train(data)
+            if not self.nlist is None:
+                sample_size = min(50 * self.nlist, self.n_spectra)
+                training_data = lance_dataset_manager.sample(self.n_spectra, group_ids)
+                self.index.train(sample_size, training_data)
             logger.debug(f"Trained index.")
 
-    def add_vectors(self, data):
+    def index_groups(self, lance_dataset_manager: LanceDatasetManager, groups: Groups, batch_size: int):
         """
-        Add vectors to the FAISS index.
-        :param data: (numpy.ndarray): Vectors to add (shape: [n_samples, d]).
+        Add vectors to the FAISS index in batch for the given groups.
+        :param batch_size: the number of vectors in a batch
+        :param lance_dataset_manager: a LanceDatasetManager instance to retrieve the vector data
+        :param groups: the groups to be indexed
         :return:
         """
-        self.index.add(data)
+        for group in tqdm(groups.get_groups(), desc="Groups added to index", unit="group"):
+            for vectors, ids, nr_vectors in tqdm(
+                    lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
+                    desc="Batches added to index", unit="batch"):
+                self.index.add_with_ids(vectors, nr_vectors, ids)
 
     def save_index(self, filepath):
         """

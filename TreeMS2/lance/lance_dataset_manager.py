@@ -3,13 +3,15 @@ import os
 import random
 import threading
 from collections import defaultdict
-from typing import List, Dict, DefaultDict
+from typing import List, Dict, DefaultDict, Tuple
 
 import lance
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from numpy import ndarray
 
+from ..groups.group import Group
 from ..logger_config import get_logger
 
 # Create a logger for this module
@@ -132,6 +134,21 @@ class LanceDatasetManager:
         df = pd.concat(data_frames)
         samples = np.stack(df["vector"].to_numpy())
         return samples
+
+    def to_vector_batches(self, batch_size: int, group: Group) -> Tuple[ndarray, ndarray, int]:
+        """
+        Returns vectors in batch for the given group, along with their global id and the number of vectors in the batch.
+        :param batch_size: the maximum number of vectors in the batch
+        :param group: the group for which the vectors are retrieved
+        :return: A triplet: (vectors, vector_ids, number_of_vectors)
+        """
+        dataset = lance.dataset(self.get_group_path(group.get_id()))
+        for batch in dataset.to_batches(columns=["file_id", "id", "vector"], batch_size=batch_size):
+            df = batch.to_pandas()
+            df['global_id'] = df.apply(lambda x: group.get_global_id(x.file, x.id), axis=1)
+            vectors = np.stack(df["vector"].to_numpy())
+            ids = np.stack(df["global_id"].to_numpy())
+            yield vectors, ids, batch.num_rows
 
 
 def _partition_integers(sorted_list: List[int], partition_limits: List[int]) -> List[List[int]]:
