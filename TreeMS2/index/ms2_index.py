@@ -158,7 +158,6 @@ class MS2Index:
                     desc="Batches queried", unit="batch"):
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(n=query_vectors, x=nr_vectors, radius=radius, params=params)
-
         return
 
     def __repr__(self):
