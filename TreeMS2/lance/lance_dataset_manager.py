@@ -6,6 +6,8 @@ from collections import defaultdict
 from typing import List, Dict, DefaultDict
 
 import lance
+import numpy as np
+import pandas as pd
 import pyarrow as pa
 
 from ..logger_config import get_logger
@@ -105,30 +107,31 @@ class LanceDatasetManager:
 
     def sample(self, n: int, group_ids: List[int]):
         sorted_group_ids = sorted(group_ids)
+        partition_limits = []
 
         total_rows = 0
-
-        for group_id, nr_entries in self.datasets.items():
+        for group_id in sorted_group_ids:
             if group_id not in self.datasets:
                 raise ValueError(f"Dataset for group {group_id} does not exist.")
-            total_rows += nr_entries
+
+            total_rows += self.datasets[group_id]
+            last_index = total_rows - 1
+            partition_limits.append(last_index)
 
         indices = random.sample(range(total_rows), n)
         indices = sorted(indices)
 
-        cur_minus = 0
-        i = 0
-        cur_end_index = self.datasets[sorted_group_ids[0]] - 1
+        partitions = _partition_integers(indices, partition_limits)
 
-        indices_per_group = defaultdict(list)
+        data_frames = []
+        for group_index, partition in enumerate(partitions):
+            dataset = lance.dataset(self.get_group_path(sorted_group_ids[group_index]))
+            partition_samples = dataset.take(indices=partition, columns=["vector"]).to_pandas()
+            data_frames.append(partition_samples)
 
-        for index in indices:
-            normalized_index = index - cur_minus
-            if normalized_index > cur_end_index:
-                cur_minus += self.datasets[sorted_group_ids[i]]
-                i += 1
-                cur_end_index = self.datasets[sorted_group_ids[i]] - 1
-            indices_per_group[sorted_group_ids[i]].append(i)
+        df = pd.concat(data_frames)
+        samples = np.stack(df["vector"].to_numpy())
+        return samples
 
 
 def _partition_integers(sorted_list: List[int], partition_limits: List[int]) -> List[List[int]]:

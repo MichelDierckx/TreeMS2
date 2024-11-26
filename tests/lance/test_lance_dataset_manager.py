@@ -3,6 +3,11 @@ import unittest
 from TreeMS2.lance.lance_dataset_manager import _partition_integers
 
 
+# 10 10 10
+
+# 0-9 10-19 20-29
+
+
 class TestPartitionAndNormalize(unittest.TestCase):
 
     def test_basic_partitioning(self):
