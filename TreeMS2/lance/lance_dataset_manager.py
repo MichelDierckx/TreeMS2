@@ -1,8 +1,9 @@
 import glob
 import os
+import random
+import threading
 from collections import defaultdict
-from threading import Lock
-from typing import List, Dict
+from typing import List, Dict, DefaultDict
 
 import lance
 import pyarrow as pa
@@ -33,7 +34,8 @@ class LanceDatasetManager:
                 pa.field("vector", pa.list_(pa.float32())),
             ]
         )
-        self.locks = defaultdict(Lock)  # locking mechanism per dataset
+        self.locks: DefaultDict[int, threading.Lock] = defaultdict(threading.Lock)  # locking mechanism per dataset
+        self.datasets: DefaultDict[int, int] = defaultdict(int)  # (group id, nr_rows)
 
     def delete_old_datasets(self):
         logger.warning(f"Deleting existing datasets in '{self.base_path}'")
@@ -76,7 +78,7 @@ class LanceDatasetManager:
 
     def create_dataset(self, group_id: int):
         dataset_path = self.get_group_path(group_id)
-        dataset = lance.write_dataset(
+        lance.write_dataset(
             pa.Table.from_pylist([], self.schema),
             dataset_path,
             mode="overwrite",
@@ -97,5 +99,93 @@ class LanceDatasetManager:
         group_path = self.get_group_path(group_id)
         os.makedirs(group_path, exist_ok=True)
         with self.locks[group_id]:
+            self.datasets[group_id] += len(entries_to_write)
             new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
             lance.write_dataset(new_rows, group_path, mode="append")
+
+    def sample(self, n: int, group_ids: List[int]):
+        sorted_group_ids = sorted(group_ids)
+
+        total_rows = 0
+
+        for group_id, nr_entries in self.datasets.items():
+            if group_id not in self.datasets:
+                raise ValueError(f"Dataset for group {group_id} does not exist.")
+            total_rows += nr_entries
+
+        indices = random.sample(range(total_rows), n)
+        indices = sorted(indices)
+
+        cur_minus = 0
+        i = 0
+        cur_end_index = self.datasets[sorted_group_ids[0]] - 1
+
+        indices_per_group = defaultdict(list)
+
+        for index in indices:
+            normalized_index = index - cur_minus
+            if normalized_index > cur_end_index:
+                cur_minus += self.datasets[sorted_group_ids[i]]
+                i += 1
+                cur_end_index = self.datasets[sorted_group_ids[i]] - 1
+            indices_per_group[sorted_group_ids[i]].append(i)
+
+
+def _partition_integers(sorted_list: List[int], partition_limits: List[int]) -> List[List[int]]:
+    """
+    Partitions a sorted list of integers into intervals based on specified partition limits and normalizes
+    the values in each partition by subtracting the minimum value of the respective partition.
+
+    The function divides the sorted input list into partitions where each partition is defined by a maximum
+    value from `partition_limits`. Each partition contains integers that are within the range
+    `[partition_limits[i-1] + 1, partition_limits[i]]` (for partition i, with the first partition starting at 0).
+    The minimum value for each partition is subtracted from all integers in that partition.
+
+    Args:
+        sorted_list (List[int]): A sorted list of positive integers to be partitioned.
+        partition_limits (List[int]): A sorted list of maximum values that define the upper bounds of each partition.
+                                      The minimum value for partition 0 is assumed to be 0.
+                                      Each partition `i` includes values between `partition_limits[i-1] + 1`
+                                      and `partition_limits[i]`.
+
+    Returns:
+        List[List[int]]: A list of partitions, where each partition is represented by a list of integers.
+                         Each partition contains the normalized values, which are the original values minus the
+                         minimum value of the respective partition. The partitions are ordered according to
+                         the partition limits.
+
+    Example:
+        sorted_list = [3, 8, 15, 20, 25, 30, 40]
+        partition_limits = [10, 20, 30]
+
+        result = partition_and_normalize(sorted_list, partition_limits)
+
+        # Output:
+        [
+            [3, 8],         # Partition for [0-10]
+            [4, 9],         # Partition for [11-20]
+            [4, 9],         # Partition for [21-30]
+            [9]             # Partition for [31+]
+        ]
+    """
+    partitions = []
+    partition_index = 0
+    partition_min = partition_limits[partition_index - 1] + 1 if partition_index > 0 else 0
+    partition_max = partition_limits[partition_index]
+
+    number_of_partitions = len(partition_limits)
+    for i in range(number_of_partitions):
+        partitions.append([])
+
+    for value in sorted_list:
+        while value > partition_max:
+            partition_index += 1
+            if partition_index > len(partition_limits) - 1:
+                return partitions
+
+            partition_min = partition_limits[partition_index - 1] + 1 if partition_index > 0 else 0
+            partition_max = partition_limits[partition_index]
+
+        partitions[partition_index].append(value - partition_min)
+
+    return partitions
