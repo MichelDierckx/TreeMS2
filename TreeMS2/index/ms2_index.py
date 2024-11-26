@@ -150,11 +150,14 @@ class MS2Index:
         :return:
         """
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
+            # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
+            sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
+            params = faiss.SearchParameters(sel=sel)
             for query_vectors, ids, nr_vectors in tqdm(
                     lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches queried", unit="batch"):
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
-                lims, d, i = self.index.range_search(query_vectors, nr_vectors, radius)
+                lims, d, i = self.index.range_search(n=query_vectors, x=nr_vectors, radius=radius, params=params)
 
         return
 
