@@ -156,8 +156,18 @@ class MS2Index:
             for query_vectors, ids, nr_vectors in tqdm(
                     lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches queried", unit="batch"):
+
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(n=query_vectors, x=nr_vectors, radius=radius, params=params)
+
+                for i in range(query_vectors):
+                    start = lims[i]
+                    end = lims[i + 1]
+                    neighbors = i[start:end]
+                    for neighbor in neighbors:
+                        pass
+
+
                 # TODO: use data structure to save required/optional results
         return
 

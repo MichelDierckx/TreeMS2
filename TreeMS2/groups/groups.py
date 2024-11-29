@@ -11,6 +11,8 @@ logger = get_logger(__name__)
 
 class Groups:
     def __init__(self):
+        self.filename = ""
+
         self._groups: List[Group] = []
 
         self.total_spectra = 0
@@ -85,6 +87,8 @@ class Groups:
 
         # Get the directory of the CSV/TSV file to resolve relative paths
         file_dir = path.parent
+        file_name = path.name
+        groups.filename = file_name
 
         with path.open(newline='', mode='r') as f:
             # Determine the delimiter based on file extension
