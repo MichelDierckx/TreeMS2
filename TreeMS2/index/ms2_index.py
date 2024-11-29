@@ -3,6 +3,7 @@ from typing import Tuple, Optional, List
 import faiss
 from tqdm import tqdm
 
+from ..distances.distances import Distances
 from ..groups.groups import Groups
 from ..lance.lance_dataset_manager import LanceDatasetManager
 from ..logger_config import get_logger
@@ -39,15 +40,17 @@ class IndexingTooLargeError(Exception):
 
 
 class MS2Index:
-    def __init__(self, n_spectra: int, d: int):
+    def __init__(self, n_spectra: int, d: int, work_dir: str):
         """
         Index for fast ms/ms spectrum similarity search.
         :param n_spectra: the number of spectra to be indexed
         :param d: the dimension of the spectra to be indexed
+        :param work_dir: the working directory
         """
 
-        self.d = d
         self.n_spectra = n_spectra
+        self.d = d
+        self.work_dir = work_dir
 
         self.index, self.index_type, self.nlist = self._initialize_index(n_spectra, d)
 
@@ -102,8 +105,8 @@ class MS2Index:
         if not self.index.is_trained:
             if not self.nlist is None:
                 sample_size = min(50 * self.nlist, self.n_spectra)
-                training_data = lance_dataset_manager.sample(self.n_spectra, group_ids)
-                self.index.train(sample_size, training_data)
+                training_data = lance_dataset_manager.sample(sample_size, group_ids)
+                self.index.train(training_data)
             logger.debug(f"Trained index.")
 
     def index_groups(self, lance_dataset_manager: LanceDatasetManager, groups: Groups, batch_size: int):
@@ -118,7 +121,7 @@ class MS2Index:
             for vectors, ids, nr_vectors in tqdm(
                     lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches added to index", unit="batch"):
-                self.index.add_with_ids(vectors, nr_vectors, ids)
+                self.index.add_with_ids(vectors, ids)
 
     def save_index(self, filepath):
         """
@@ -138,27 +141,33 @@ class MS2Index:
         self.index = faiss.read_index(filepath)
         logger.debug(f"Loaded index from {filepath}")
 
-    def range_search(self, radius, lance_dataset_manager: LanceDatasetManager, groups: Groups, batch_size: int):
+    def range_search(self, similarity_threshold: float, lance_dataset_manager: LanceDatasetManager, groups: Groups,
+                     batch_size: int):
         """
         Perform a range search on the FAISS index for every vector for every group in batches.
 
-        :param radius: (float), Search radius.
+        :param similarity_threshold: (float), Search radius.
         :param lance_dataset_manager: a LanceDatasetManager instance to retrieve the vector data
         :param groups: the groups to be indexed
         :param batch_size: the number of vectors in a batch
 
         :return:
         """
+        radius = 1.0 - similarity_threshold
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
             # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
-            sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
-            params = faiss.SearchParameters(sel=sel)
+            # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
+            # params = faiss.SearchParameters(sel=sel)
             for query_vectors, ids, nr_vectors in tqdm(
                     lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches queried", unit="batch"):
 
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
-                lims, d, i = self.index.range_search(n=query_vectors, x=nr_vectors, radius=radius, params=params)
+                lims, d, i = self.index.range_search(query_vectors, radius)
+
+                distances = Distances(self.n_spectra, self.work_dir)
+
+                distances.update()
 
                 for i in range(query_vectors):
                     start = lims[i]
@@ -166,7 +175,6 @@ class MS2Index:
                     neighbors = i[start:end]
                     for neighbor in neighbors:
                         pass
-
 
                 # TODO: use data structure to save required/optional results
         return
