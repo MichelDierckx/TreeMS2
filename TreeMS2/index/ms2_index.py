@@ -1,6 +1,7 @@
 from typing import Tuple, Optional, List
 
 import faiss
+import numpy as np
 from tqdm import tqdm
 
 from ..distances.distances import Distances
@@ -142,18 +143,20 @@ class MS2Index:
         logger.debug(f"Loaded index from {filepath}")
 
     def range_search(self, similarity_threshold: float, lance_dataset_manager: LanceDatasetManager, groups: Groups,
-                     batch_size: int):
+                     batch_size: int) -> Distances:
         """
-        Perform a range search on the FAISS index for every vector for every group in batches.
+        Perform a range search on the FAISS index for every vector for every group in batches. Capture result in Distances object.
 
         :param similarity_threshold: (float), Search radius.
         :param lance_dataset_manager: a LanceDatasetManager instance to retrieve the vector data
         :param groups: the groups to be indexed
         :param batch_size: the number of vectors in a batch
 
-        :return:
+        :return: Distances
         """
         radius = 1.0 - similarity_threshold
+        distances = Distances(self.n_spectra, self.work_dir)
+
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
             # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
             # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
@@ -165,19 +168,27 @@ class MS2Index:
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(query_vectors, radius)
 
-                distances = Distances(self.n_spectra, self.work_dir)
+                # nr of similar vectors found
+                total_results = lims[-1]
+                if total_results == 0:
+                    continue  # Skip processing if no results found
 
-                distances.update()
+                # preallocate arrays
+                data = np.full(total_results, True, dtype=bool)
+                rows = np.empty(total_results, dtype=np.int64)
+                cols = np.empty(total_results, dtype=np.int64)
 
-                for i in range(query_vectors):
-                    start = lims[i]
-                    end = lims[i + 1]
-                    neighbors = i[start:end]
-                    for neighbor in neighbors:
-                        pass
+                # Populate rows and cols
+                for query_idx in range(query_vectors.shape[0]):
+                    start = lims[query_idx]
+                    end = lims[query_idx + 1]
+                    # Fill only if there are results
+                    if start < end:
+                        rows[start:end] = ids[query_idx]
+                        cols[start:end] = i[start:end]
 
-                # TODO: use data structure to save required/optional results
-        return
+                distances.update(data=data, rows=rows, cols=cols)
+        return distances
 
     def __repr__(self):
         return (f"MS2Index(d={self.d}, "
