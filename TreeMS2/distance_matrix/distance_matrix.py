@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+import numba as nb
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -87,13 +88,55 @@ class Distances:
         # return s to calculate global distance matrix
         return s
 
-    @classmethod
-    def create_mega(cls, s: npt.NDArray[np.uint64], groups: Groups, similarity_threshold: float):
+    def create_mega(self, s: npt.NDArray[np.uint64], groups: Groups, similarity_threshold: float):
         lines: List[str] = ["#mega", f"TITLE: {groups.filename} (similarity_threshold={similarity_threshold}))", "\n"]
         for group in groups.get_groups():
             lines.append(f"#{group.get_group_name()}")
         lines.append("\n")
 
-        # TODO: implement mega file writing
-
+        # construct Lower-left triangular matrix
+        for j in range(1, groups.get_size()):
+            distances = []
+            b = groups.get_group(j).total_spectra
+            for i in range(j - 1):
+                a = groups.get_group(i).total_spectra
+                s_a = s.item((i, j))
+                s_b = s.item((j, i))
+                global_similarity = _global_similarity(a, b, s_a, s_b)
+                global_distance = _global_distance(a, b, global_similarity)
+                distances.append(global_distance)
+            line = "\t".join(f"{x:.4f}" for x in distances)
+            lines.append(line)
+        text = "\n".join(lines)
+        path = os.path.join(self.base_path, "distance_matrix.meg")
+        with open(path, 'w') as f:
+            f.write(text)
         return
+
+
+@nb.njit("f4(u4, u4, u4, u4)", cache=True)
+def _global_similarity(a: int, b: int, s_a: int, s_b: int) -> float:
+    """
+    Computes the global similarity between two sets of tandem mass spectra.
+    :param a: the number of spectra in set a
+    :param b: the number of spectra in set b
+    :param s_a: the number of spectra in set a that have at least one similar spectrum in set b
+    :param s_b: the number of spectra in set b that have at least one similar spectrum in set a
+    :return: the global similarity between set a and set b
+    """
+    return (s_a / (2 * a)) + (s_b / (2 * b))
+
+
+@nb.njit("f4(u4, u4, f4)", cache=True)
+def _global_distance(a: int, b: int, global_similarity: float) -> float:
+    """
+    Computes the global distance between two sets of tandem mass spectra.
+    :param a: the number of spectra in set a
+    :param b: the number of spectra in set b
+    :param global_similarity: the global similarity between set a and set b
+    :return: the global distance between set a and set b
+    """
+    if global_similarity > 0:
+        return (1 / global_similarity) - 1
+    if global_similarity == 0:
+        return ((4 * a * b) / (a + b)) - 1
