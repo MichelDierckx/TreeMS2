@@ -47,7 +47,7 @@ class Distances:
 
         return instance
 
-    def write_similarity_sets_counts(self, groups: Groups):
+    def write_similarity_sets_counts(self, groups: Groups) -> npt.NDArray[np.uint64]:
         nr_groups = groups.get_size()
         s = np.zeros((nr_groups, nr_groups), dtype=np.uint64)
 
