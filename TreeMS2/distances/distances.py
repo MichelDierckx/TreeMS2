@@ -8,6 +8,9 @@ import pandas as pd
 from scipy.sparse import csr_matrix, save_npz, load_npz
 
 from TreeMS2.groups.groups import Groups
+from TreeMS2.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class Distances:
@@ -25,8 +28,9 @@ class Distances:
         return self.similarity_matrix.data.nbytes + self.similarity_matrix.indptr.nbytes + self.similarity_matrix.indices.nbytes
 
     def write_similarity_matrix(self):
-        os.path.join(self.base_path, "similarity_matrix.npz")
-        save_npz(self.base_path, self.similarity_matrix)
+        file_path = os.path.join(self.base_path, "similarity_matrix.npz")
+        logger.info(f"Writing similarity matrix to '{file_path}'.")
+        save_npz(file_path, self.similarity_matrix)
 
     @classmethod
     def load(cls, work_dir: str) -> 'Distances':
@@ -81,6 +85,7 @@ class Distances:
         group_names = [group.get_group_name() for group in groups.get_groups()]
         df = pd.DataFrame(s, index=group_names, columns=group_names)
         path = os.path.join(self.base_path, "s.txt")
+        logger.info(f"Writing similarity statistics to '{path}'.")
         with open(path, 'w') as f:
             df_string = df.to_string()
             f.write(df_string)
@@ -109,6 +114,7 @@ class Distances:
             lines.append(line)
         text = "\n".join(lines)
         path = os.path.join(self.base_path, "distance_matrix.meg")
+        logger.info(f"Writing distance matrix to '{path}'.")
         with open(path, 'w') as f:
             f.write(text)
         return

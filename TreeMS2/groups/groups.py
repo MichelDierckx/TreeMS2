@@ -152,6 +152,7 @@ class Groups:
         :return:
         """
         file_path = os.path.join(work_dir, "groups.json")
+        logger.info(f"Writing group statistics to '{file_path}'.")
         with open(file_path, "w") as json_file:
             json.dump(self.to_dict(), json_file, indent=4)
 

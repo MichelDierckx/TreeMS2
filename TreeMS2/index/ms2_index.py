@@ -59,7 +59,7 @@ class MS2Index:
 
         self.metric = faiss.METRIC_INNER_PRODUCT
 
-        logger.debug(f"Created index {self}")
+        logger.info(f"Created index {self}")
 
     @classmethod
     def _initialize_index(cls, n_spectra: int, d: int) -> Tuple[faiss.Index, str, Optional[int]]:
@@ -107,10 +107,11 @@ class MS2Index:
     def train(self, vector_store: VectorStore, group_ids: List[int]):
         if not self.index.is_trained:
             if not self.nlist is None:
+                logger.info("Training index...")
                 sample_size = min(50 * self.nlist, self.total_valid_spectra)
                 training_data = vector_store.sample(sample_size, group_ids)
                 self.index.train(training_data)
-            logger.debug(f"Trained index.")
+                logger.info(f"Trained index.")
 
     def index_groups(self, vector_store: VectorStore, groups: Groups, batch_size: int):
         """
@@ -120,11 +121,13 @@ class MS2Index:
         :param groups: the groups to be indexed
         :return:
         """
+        logger.info("Adding spectra to the index...")
         for group in tqdm(groups.get_groups(), desc="Groups added to index", unit="group"):
             for vectors, ids, nr_vectors in tqdm(
                     vector_store.to_vector_batches(batch_size=batch_size, group=group),
-                    desc="Batches added to index", unit="batch"):
+                    desc="Batches added to index", unit=f"{batch_size} spectra"):
                 self.index.add_with_ids(vectors, ids)
+        logger.info("Added all spectra to the index.")
 
     def save_index(self, filepath):
         """
@@ -159,13 +162,14 @@ class MS2Index:
         radius = 1.0 - similarity_threshold
         distances = Distances(self.total_spectra, self.work_dir)
 
+        logger.info("Querying the index for similar spectra ...")
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
             # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
             # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
             # params = faiss.SearchParameters(sel=sel)
             for query_vectors, ids, nr_vectors in tqdm(
                     vector_store.to_vector_batches(batch_size=batch_size, group=group),
-                    desc="Batches queried", unit="batch"):
+                    desc="Batches queried", unit=f"{batch_size} spectra"):
 
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(query_vectors, radius)
@@ -190,6 +194,7 @@ class MS2Index:
                         cols[start:end] = i[start:end]
 
                 distances.update(data=data, rows=rows, cols=cols)
+        logger.info("Finished querying.")
         return distances
 
     def __repr__(self):
