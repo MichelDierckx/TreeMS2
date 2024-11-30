@@ -11,7 +11,9 @@ from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import Dimen
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
 from TreeMS2.vector_store.vector_store import VectorStore
+from .distances.distances import Distances
 from .groups.peak_file.peak_file import PeakFile
+from .index.ms2_index import MS2Index
 from .logger_config import get_logger
 from .spectrum.group_spectrum import GroupSpectrum
 
@@ -35,14 +37,18 @@ class TreeMS2:
         # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
         # Reads spectra from the peak files, convert them to low dimension vectors and store to disk
-        self._read_and_process_spectra(groups)
+        self._read_and_process_spectra(groups=groups)
         # Update groups information after all spectra have been processed
         groups.update()
         logger.debug(f"{groups}")
         # Write groups information to file
-        self._write_groups(groups)
+        self._write_groups(groups=groups)
         # Create an index
-        # TODO: index creation here
+        index = self._index(groups=groups)
+        # Query the index
+        distances = self._query(index=index, groups=groups)
+        # Write output to file
+        self._output_distances(distances=distances, groups=groups)
 
     def _setup_vector_store(self) -> VectorStore:
         # Create a VectorStore instance for storing spectra and their vector representations
@@ -188,8 +194,35 @@ class TreeMS2:
         output_config = self.config_factory.create_output_config()
         groups.write_to_file(output_config.work_dir)
 
-    def _index(self, groups: Groups):
-        similarity_threshold = self.config_factory.create_index_config()
+    def _index(self, groups: Groups) -> MS2Index:
+        output_config = self.config_factory.create_output_config()
         d = self.vectorizer.reducer.low_dim
-        nr_spectra = groups.total_spectra
-        pass
+        total_spectra = groups.total_spectra
+        total_valid_spectra = groups.total_valid_spectra()
+        # create index instance
+        index = MS2Index(total_valid_spectra=total_valid_spectra, total_spectra=total_spectra, d=d,
+                         work_dir=output_config.work_dir)
+        # train the index
+        index.train(vector_store=self.vector_store, group_ids=groups.get_group_ids())
+        # index the spectra for the groups
+        index.index_groups(vector_store=self.vector_store, groups=groups, batch_size=1000)
+        return index
+
+    def _query(self, index: MS2Index, groups: Groups) -> Distances:
+        index_config = self.config_factory.create_index_config()
+        similarity_threshold = index_config.similarity
+        # query each spectrum against the index
+        distances = index.range_search(similarity_threshold=similarity_threshold, vector_store=self.vector_store,
+                                       groups=groups, batch_size=1000)
+        return distances
+
+    def _output_distances(self, distances: Distances, groups: Groups):
+        index_config = self.config_factory.create_index_config()
+        similarity_threshold = index_config.similarity
+
+        # write similarity matrix to file
+        distances.write_similarity_matrix()
+        # write similarity set counts to file
+        s = distances.write_similarity_sets_counts(groups=groups)
+        # write MEGA file
+        distances.create_mega(s=s, groups=groups, similarity_threshold=similarity_threshold)
