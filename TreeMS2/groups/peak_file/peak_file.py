@@ -60,7 +60,7 @@ class PeakFile(ABC):
             "failed_processed": self.failed_processed,
             "begin": self.begin,
             "end": self.end,
-            "filtered": [file.to_dict() for file in self._peak_files],
+            "filtered": self.filtered,
         }
 
     def __repr__(self) -> str:

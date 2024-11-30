@@ -142,7 +142,9 @@ def _global_distance(a: int, b: int, global_similarity: float) -> float:
     :param global_similarity: the global similarity between set a and set b
     :return: the global distance between set a and set b
     """
-    if global_similarity > 0:
+    if global_similarity > 0.0:
         return (1 / global_similarity) - 1
-    if global_similarity == 0:
+    elif global_similarity == 0.0:
         return ((4 * a * b) / (a + b)) - 1
+    else:
+        return -1.0
