@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 from ..distances.distances import Distances
 from ..groups.groups import Groups
-from ..lance.vector_store import VectorStore
 from ..logger_config import get_logger
+from ..vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
@@ -15,13 +15,13 @@ logger = get_logger(__name__)
 class IndexingMemoryError(Exception):
     """Custom exception raised when there is not enough memory to index the spectra."""
 
-    def __init__(self, n_spectra, d, memory_budget_gigabytes, memory_required):
+    def __init__(self, total_valid_spectra, d, memory_budget_gigabytes, memory_required):
         message = (
-            f"Not enough memory to index {n_spectra} spectra with dimensions {d}. "
+            f"Not enough memory to index {total_valid_spectra} spectra with dimensions {d}. "
             f"Memory required: {memory_required} bytes, but only {memory_budget_gigabytes} GB available."
         )
         super().__init__(message)
-        self.n_spectra = n_spectra
+        self.total_valid_spectra = total_valid_spectra
         self.d = d
         self.memory_budget_gigabytes = memory_budget_gigabytes
         self.memory_required = memory_required
@@ -30,30 +30,32 @@ class IndexingMemoryError(Exception):
 class IndexingTooLargeError(Exception):
     """Custom exception raised when the number of spectra is too large for the current indexing method."""
 
-    def __init__(self, n_spectra, max_spectra):
+    def __init__(self, total_valid_spectra, max_spectra):
         message = (
-            f"The number of spectra ({n_spectra}) exceeds the maximum supported limit "
+            f"The number of spectra ({total_valid_spectra}) exceeds the maximum supported limit "
             f"for the current indexing method. The limit is {max_spectra} spectra."
         )
         super().__init__(message)
-        self.n_spectra = n_spectra
+        self.total_valid_spectra = total_valid_spectra
         self.max_spectra = max_spectra
 
 
 class MS2Index:
-    def __init__(self, n_spectra: int, d: int, work_dir: str):
+    def __init__(self, total_valid_spectra: int, total_spectra: int, d: int, work_dir: str):
         """
         Index for fast ms/ms spectrum similarity search.
-        :param n_spectra: the number of spectra to be indexed
+        :param total_valid_spectra: the total number of valid spectra
+        :param total_spectra: the total number of spectra
         :param d: the dimension of the spectra to be indexed
         :param work_dir: the working directory
         """
 
-        self.n_spectra = n_spectra
+        self.total_valid_spectra = total_valid_spectra
+        self.total_spectra = total_spectra
         self.d = d
         self.work_dir = work_dir
 
-        self.index, self.index_type, self.nlist = self._initialize_index(n_spectra, d)
+        self.index, self.index_type, self.nlist = self._initialize_index(total_valid_spectra, d)
 
         self.metric = faiss.METRIC_INNER_PRODUCT
 
@@ -105,7 +107,7 @@ class MS2Index:
     def train(self, lance_dataset_manager: VectorStore, group_ids: List[int]):
         if not self.index.is_trained:
             if not self.nlist is None:
-                sample_size = min(50 * self.nlist, self.n_spectra)
+                sample_size = min(50 * self.nlist, self.total_valid_spectra)
                 training_data = lance_dataset_manager.sample(sample_size, group_ids)
                 self.index.train(training_data)
             logger.debug(f"Trained index.")
@@ -155,7 +157,7 @@ class MS2Index:
         :return: Distances
         """
         radius = 1.0 - similarity_threshold
-        distances = Distances(self.n_spectra, self.work_dir)
+        distances = Distances(self.total_spectra, self.work_dir)
 
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
             # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion

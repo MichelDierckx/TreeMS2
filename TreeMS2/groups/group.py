@@ -52,6 +52,9 @@ class Group:
         global_id = self._peak_files[peak_file_id].get_global_id(spectrum_id)
         return global_id
 
+    def total_valid_spectra(self) -> int:
+        return self.total_spectra - self.failed_parsed - self.failed_processed
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "group_name": self._group_name,

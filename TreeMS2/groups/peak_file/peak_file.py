@@ -49,6 +49,9 @@ class PeakFile(ABC):
     def get_global_id(self, spectrum_id: int) -> int:
         return self.begin + spectrum_id
 
+    def total_valid_spectra(self) -> int:
+        return self.total_spectra - self.failed_parsed - self.failed_processed
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "filename": self.file_path,

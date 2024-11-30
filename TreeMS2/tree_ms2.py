@@ -101,12 +101,13 @@ class TreeMS2:
         for result in joblib.Parallel(n_jobs=max_file_workers)(
                 joblib.delayed(TreeMS2._read_spectra)(file, self.processing_pipeline)
                 for file in all_files):
-            file_spectra, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id = result
+            file_spectra, file_filtered, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id = result
             group = groups.get_group(file_group_id)
             group.failed_parsed += file_failed_parsed
             group.failed_processed += file_failed_processed
             group.total_spectra += file_total_spectra
             peak_file = group.get_peak_file(file_id)
+            peak_file.filtered = file_filtered
             peak_file.failed_parsed = file_failed_parsed
             peak_file.failed_processed = file_failed_processed
             peak_file.total_spectra = file_total_spectra
@@ -144,7 +145,7 @@ class TreeMS2:
     def _read_spectra(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline):
         # Extract spectra from the file using the provided processing pipeline.
         spectra = list(file.get_spectra(processing_pipeline))
-        return spectra, file.failed_parsed, file.failed_processed, file.total_spectra, file.get_id(), file.get_group_id()
+        return spectra, file.filtered, file.failed_parsed, file.failed_processed, file.total_spectra, file.get_id(), file.get_group_id()
 
     def _vectorize_and_write_spectra(self, spectra_queue: queue.Queue[Optional[GroupSpectrum]]):
         """

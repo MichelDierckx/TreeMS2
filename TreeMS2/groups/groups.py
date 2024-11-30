@@ -60,6 +60,9 @@ class Groups:
         global_id = self._groups[group_id].get_global_id(file_id, spectrum_id)
         return global_id
 
+    def total_valid_spectra(self) -> int:
+        return self.total_spectra - self.failed_parsed - self.failed_processed
+
     @classmethod
     def from_file(cls, file_path: str):
         path = Path(file_path)
