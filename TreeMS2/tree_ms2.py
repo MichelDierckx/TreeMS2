@@ -6,11 +6,11 @@ import joblib
 
 from TreeMS2.config.config import Config
 from TreeMS2.groups.groups import Groups
-from TreeMS2.lance.lance_dataset_manager import LanceDatasetManager
 from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline, ProcessingPipelineFactory
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
+from TreeMS2.vector_store.vector_store import VectorStore
 from .groups.peak_file.peak_file import PeakFile
 from .logger_config import get_logger
 from .spectrum.group_spectrum import GroupSpectrum
@@ -26,7 +26,7 @@ class TreeMS2:
         logger.debug(f"max_spectra_in_memory = {self.max_spectra_in_memory}")
 
         # Set up dataset manager, spectrum vectorizer, and processing pipeline
-        self.lance_dataset_manager = self._setup_lance_dataset_manager()
+        self.vector_store = self._setup_vector_store()
         self.vectorizer = self._setup_vectorizer()
         self.processing_pipeline = self._setup_spectrum_processing_pipeline(min_mz=self.vectorizer.binner.min_mz,
                                                                             max_mz=self.vectorizer.binner.max_mz)
@@ -34,16 +34,16 @@ class TreeMS2:
     def run(self):
         # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
-        # Reads spectra from the peak files and stores them a lance dataset
+        # Reads spectra from the peak files and stores them to disk
         self._read_and_process_spectra(groups)
         groups.compute_spectrum_range()
         logger.debug(f"{groups}")
 
-    def _setup_lance_dataset_manager(self) -> LanceDatasetManager:
-        # Create a LanceDatasetManager instance for managing output storage.
+    def _setup_vector_store(self) -> VectorStore:
+        # Create a VectorStore instance for storing spectra and their vector representations
         config = self.config_factory.create_output_config()
-        lance_dataset_path = config.work_dir
-        return LanceDatasetManager(lance_dataset_path)
+        vector_store_path = config.work_dir
+        return VectorStore(vector_store_path)
 
     def _setup_spectrum_processing_pipeline(self, min_mz: float, max_mz: float) -> SpectrumProcessingPipeline:
         # Create a spectrum processing pipeline using configuration and mass-to-charge range.
@@ -73,10 +73,7 @@ class TreeMS2:
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
         spectra_queue = queue.Queue(maxsize=self.max_spectra_in_memory)
 
-        self.lance_dataset_manager.delete_old_datasets()
-        self.lance_dataset_manager.create_datasets(groups.get_group_ids())
-
-        lance_writers = multiprocessing.pool.ThreadPool(
+        vector_store_writer = multiprocessing.pool.ThreadPool(
             max_file_workers,
             self._vectorize_and_write_spectra,
             (spectra_queue,)
@@ -125,8 +122,10 @@ class TreeMS2:
         for _ in range(max_file_workers):
             spectra_queue.put(None)
 
-        lance_writers.close()
-        lance_writers.join()
+        vector_store_writer.close()
+        vector_store_writer.join()
+
+        self.vector_store.cleanup()
 
         # Log final processing statistics.
         logger.info(
@@ -158,8 +157,8 @@ class TreeMS2:
                     {**spec.to_dict(), "vector": vector}
                     for spec, vector in zip(specs, vectors)
                 ]
-                # Write to the Lance dataset for the group
-                self.lance_dataset_manager.write_to_group(group_id, dict_list)
+                # Save data to disk for the group
+                self.vector_store.write_to_group(group_id, dict_list)
             spec_to_write.clear()
 
         while True:

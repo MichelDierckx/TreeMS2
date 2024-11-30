@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from ..distances.distances import Distances
 from ..groups.groups import Groups
-from ..lance.lance_dataset_manager import LanceDatasetManager
+from ..lance.vector_store import VectorStore
 from ..logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -102,7 +102,7 @@ class MS2Index:
             raise IndexingTooLargeError(n_spectra, max_spectra)
         return index, index_type, nlist
 
-    def train(self, lance_dataset_manager: LanceDatasetManager, group_ids: List[int]):
+    def train(self, lance_dataset_manager: VectorStore, group_ids: List[int]):
         if not self.index.is_trained:
             if not self.nlist is None:
                 sample_size = min(50 * self.nlist, self.n_spectra)
@@ -110,7 +110,7 @@ class MS2Index:
                 self.index.train(training_data)
             logger.debug(f"Trained index.")
 
-    def index_groups(self, lance_dataset_manager: LanceDatasetManager, groups: Groups, batch_size: int):
+    def index_groups(self, lance_dataset_manager: VectorStore, groups: Groups, batch_size: int):
         """
         Add vectors to the FAISS index in batch for the given groups.
         :param batch_size: the number of vectors in a batch
@@ -142,7 +142,7 @@ class MS2Index:
         self.index = faiss.read_index(filepath)
         logger.debug(f"Loaded index from {filepath}")
 
-    def range_search(self, similarity_threshold: float, lance_dataset_manager: LanceDatasetManager, groups: Groups,
+    def range_search(self, similarity_threshold: float, lance_dataset_manager: VectorStore, groups: Groups,
                      batch_size: int) -> Distances:
         """
         Perform a range search on the FAISS index for every vector for every group in batches. Capture result in Distances object.

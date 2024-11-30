@@ -1,6 +1,6 @@
 import unittest
 
-from TreeMS2.lance.lance_dataset_manager import _partition_integers
+from TreeMS2.vector_store.vector_store import _partition_integers
 
 
 # 10 10 10
