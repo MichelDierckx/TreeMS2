@@ -104,25 +104,25 @@ class MS2Index:
             raise IndexingTooLargeError(n_spectra, max_spectra)
         return index, index_type, nlist
 
-    def train(self, lance_dataset_manager: VectorStore, group_ids: List[int]):
+    def train(self, vector_store: VectorStore, group_ids: List[int]):
         if not self.index.is_trained:
             if not self.nlist is None:
                 sample_size = min(50 * self.nlist, self.total_valid_spectra)
-                training_data = lance_dataset_manager.sample(sample_size, group_ids)
+                training_data = vector_store.sample(sample_size, group_ids)
                 self.index.train(training_data)
             logger.debug(f"Trained index.")
 
-    def index_groups(self, lance_dataset_manager: VectorStore, groups: Groups, batch_size: int):
+    def index_groups(self, vector_store: VectorStore, groups: Groups, batch_size: int):
         """
         Add vectors to the FAISS index in batch for the given groups.
         :param batch_size: the number of vectors in a batch
-        :param lance_dataset_manager: a LanceDatasetManager instance to retrieve the vector data
+        :param vector_store: a VectorStore instance to retrieve the vector data
         :param groups: the groups to be indexed
         :return:
         """
         for group in tqdm(groups.get_groups(), desc="Groups added to index", unit="group"):
             for vectors, ids, nr_vectors in tqdm(
-                    lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
+                    vector_store.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches added to index", unit="batch"):
                 self.index.add_with_ids(vectors, ids)
 
@@ -144,13 +144,13 @@ class MS2Index:
         self.index = faiss.read_index(filepath)
         logger.debug(f"Loaded index from {filepath}")
 
-    def range_search(self, similarity_threshold: float, lance_dataset_manager: VectorStore, groups: Groups,
+    def range_search(self, similarity_threshold: float, vector_store: VectorStore, groups: Groups,
                      batch_size: int) -> Distances:
         """
         Perform a range search on the FAISS index for every vector for every group in batches. Capture result in Distances object.
 
         :param similarity_threshold: (float), Search radius.
-        :param lance_dataset_manager: a LanceDatasetManager instance to retrieve the vector data
+        :param vector_store: a VectorStore instance to retrieve the vector data
         :param groups: the groups to be indexed
         :param batch_size: the number of vectors in a batch
 
@@ -164,7 +164,7 @@ class MS2Index:
             # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
             # params = faiss.SearchParameters(sel=sel)
             for query_vectors, ids, nr_vectors in tqdm(
-                    lance_dataset_manager.to_vector_batches(batch_size=batch_size, group=group),
+                    vector_store.to_vector_batches(batch_size=batch_size, group=group),
                     desc="Batches queried", unit="batch"):
 
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
