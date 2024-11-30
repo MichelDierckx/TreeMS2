@@ -34,10 +34,15 @@ class TreeMS2:
     def run(self):
         # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
-        # Reads spectra from the peak files and stores them to disk
+        # Reads spectra from the peak files, convert them to low dimension vectors and store to disk
         self._read_and_process_spectra(groups)
-        groups.compute_spectrum_range()
+        # Update groups information after all spectra have been processed
+        groups.update()
         logger.debug(f"{groups}")
+        # Write groups information to file
+        self._write_groups(groups)
+        # Create an index
+        # TODO: index creation here
 
     def _setup_vector_store(self) -> VectorStore:
         # Create a VectorStore instance for storing spectra and their vector representations
@@ -177,3 +182,13 @@ class TreeMS2:
             # Process batch if size limit is reached
             if sum(len(specs) for specs in spec_to_write.values()) >= 10_000:
                 _process_batch()
+
+    def _write_groups(self, groups: Groups):
+        output_config = self.config_factory.create_output_config()
+        groups.write_to_file(output_config.work_dir)
+
+    def _index(self, groups: Groups):
+        similarity_threshold = self.config_factory.create_index_config()
+        d = self.vectorizer.reducer.low_dim
+        nr_spectra = groups.total_spectra
+        pass

@@ -1,6 +1,8 @@
 import csv
+import json
+import os
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 from .group import Group
 from .peak_file.peak_file_factory import PeakFileFactory
@@ -48,11 +50,11 @@ class Groups:
     def get_group_ids(self) -> List[int]:
         return [group.get_id() for group in self._groups]
 
-    def compute_spectrum_range(self):
+    def update(self):
         self.end = self.total_spectra - 1
         cur_id = self.begin
         for group in self._groups:
-            cur_id = group.compute_spectrum_range(begin_id=cur_id)
+            cur_id = group.update(begin_id=cur_id)
 
     def get_global_id(self, group_id: int, file_id, spectrum_id) -> int:
         global_id = self._groups[group_id].get_global_id(file_id, spectrum_id)
@@ -128,6 +130,27 @@ class Groups:
                 raise ValueError("The file does not contain any valid data rows.")
 
         return groups
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "filename": self.filename,
+            "total_spectra": self.total_spectra,
+            "failed_parsed": self.failed_parsed,
+            "failed_processed": self.failed_processed,
+            "begin": self.begin,
+            "end": self.end,
+            "groups": [group.to_dict() for group in self._groups],
+        }
+
+    def write_to_file(self, work_dir: str):
+        """
+        Write the groups to a JSON-file named groups.json.
+        :param work_dir: The directory in which the file will be created or overwritten.
+        :return:
+        """
+        file_path = os.path.join(work_dir, "groups.json")
+        with open(file_path, "w") as json_file:
+            json.dump(self.to_dict(), json_file, indent=4)
 
     def __repr__(self) -> str:
         groups_repr = "\n\t".join([repr(group) for group in self._groups])

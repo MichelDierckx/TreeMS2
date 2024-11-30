@@ -23,12 +23,14 @@ class MgfFile(PeakFile):
                 except (ValueError, KeyError):
                     # If parsing fails, increment failed parsing counter and skip this spectrum
                     self.failed_parsed += 1
+                    self.filtered.append(spectrum_i)
                     continue
 
                 # Process the spectrum and skip if it returns None
                 processed_spectrum = processing_pipeline.process(msms_spectrum)
                 if processed_spectrum is None:
                     self.failed_processed += 1  # Increment failed processing counter
+                    self.filtered.append(spectrum_i)
                     continue
 
                 # Create a Spectrum instance and assign the correct file_id and group_id

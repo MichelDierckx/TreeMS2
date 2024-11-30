@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterable
+from typing import Iterable, Dict, Any, List
 
 import spectrum_utils.spectrum as sus
 
@@ -18,6 +18,7 @@ class PeakFile(ABC):
 
         self.begin = 0
         self.end = 0
+        self.filtered: List[int] = []
 
     @abstractmethod
     def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[sus.MsmsSpectrum]:
@@ -39,13 +40,25 @@ class PeakFile(ABC):
     def get_group_id(self):
         return self._group_id
 
-    def compute_spectrum_range(self, begin_id: int):
+    def update(self, begin_id: int):
         self.begin = begin_id
         self.end = begin_id + self.total_spectra - 1
+        self.filtered = [x + self.begin for x in self.filtered]
         return self.end + 1
 
     def get_global_id(self, spectrum_id: int) -> int:
         return self.begin + spectrum_id
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "filename": self.file_path,
+            "total_spectra": self.total_spectra,
+            "failed_parsed": self.failed_parsed,
+            "failed_processed": self.failed_processed,
+            "begin": self.begin,
+            "end": self.end,
+            "filtered": [file.to_dict() for file in self._peak_files],
+        }
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id={self._id}, filepath={self.file_path}, [{self.begin}, {self.end}])"
