@@ -1,10 +1,11 @@
 # TreeMS2/config/config_factory.py
 import os
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 import configargparse
 
 from .groups_config import GroupsConfig
+from .index_config import IndexConfig
 from .output_config import OutputConfig
 from .spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
 from .vectorization_config import VectorizationConfig
@@ -41,6 +42,9 @@ class Config:
         return VectorizationConfig(min_mz=self.min_mz, max_mz=self.max_mz, fragment_tol=self.fragment_tol,
                                    low_dim=self.low_dim)
 
+    def create_index_config(self) -> IndexConfig:
+        return IndexConfig(similarity=self.similarity)
+
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """
         Retrieve configuration options with a default value if the option does not exist.
@@ -70,6 +74,7 @@ class Config:
         self._validate_file_path("sample_to_group_file")
         self._validate_directory_path("work_dir")
         self._validate_positive_int("low_dim", True)
+        self._validate_number_range("similarity", min_value=0.0, max_value=1.0)
         self._log_parameters()
 
     def _define_arguments(self) -> None:
@@ -183,6 +188,15 @@ class Config:
             dest="low_dim",
         )
 
+        # Indexing
+        self._parser.add_argument(
+            "--similarity",
+            default=0.8,
+            type=float,
+            help="Minimum cosine similarity score for 2 spectra to be considered similar (default: %(default)s).",
+            dest="similarity",
+        )
+
     def _validate_choice(self, param: str, valid_options: list) -> None:
         """
         Validate that the value of a configuration parameter is in the list of valid options.
@@ -248,6 +262,20 @@ class Config:
         if (strict and int_value <= 0) or (not strict and int_value < 0):
             comparison = "greater than 0" if strict else "0 or greater"
             raise ValueError(f"--{param}: {value} is not a positive integer ({comparison}).")
+
+    def _validate_number_range(self, param: str, min_value: Union[int, float], max_value: Union[int, float]) -> None:
+        """
+        Validate that the value of a configuration parameter is in the range (inclusive) specified by the user.
+        :param param: The name of the parameter to be validated
+        :param min_value: The minimum value of the range
+        :param max_value: The maximum value of the range
+        :return: None, raises ValueError if the value is not within the specified range
+        """
+        value = self.get(param)
+        if value < min_value:
+            raise ValueError(f"--{param}: value can not be less than {min_value:.4f}. Got {value:.4f}.")
+        if value > max_value:
+            raise ValueError(f"--{param}: value can not be greater than {max_value:.4f}. Got {value:.4f}.")
 
     def _log_parameters(self) -> None:
         """Log all chosen parameters."""
