@@ -46,10 +46,10 @@ class VectorStore:
             path = self.get_group_path(group_id)
             try:
                 ds = lance.dataset(path)
+                time_delta = timedelta(microseconds=1)
+                ds.cleanup_old_versions(older_than=time_delta)
             except ValueError:
                 return
-            time_delta = timedelta(microseconds=1)
-            ds.cleanup_old_versions(older_than=time_delta)
 
     def get_group_path(self, group_id: int) -> str:
         """Return the path for the group's dataset."""
@@ -60,19 +60,19 @@ class VectorStore:
         group_path = self.get_group_path(group_id)
         os.makedirs(group_path, exist_ok=True)
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
-        if group_id in self.datasets:
-            with self.locks[group_id]:
+        with self.locks[group_id]:
+            if group_id in self.datasets:
                 lance.write_dataset(new_rows, group_path, mode="append")
                 self.datasets[group_id] += len(entries_to_write)
-        else:
-            lance.write_dataset(
-                new_rows,
-                group_path,
-                mode="overwrite",
-                data_storage_version="stable",
-            )
-            self.datasets[group_id] += len(entries_to_write)
-            logger.debug(f"Creating lance dataset at '{group_path}'.")
+            else:
+                lance.write_dataset(
+                    new_rows,
+                    group_path,
+                    mode="overwrite",
+                    data_storage_version="stable",
+                )
+                self.datasets[group_id] += len(entries_to_write)
+                logger.debug(f"Creating lance dataset at '{group_path}'.")
 
     def sample(self, n: int, group_ids: List[int]):
         sorted_group_ids = sorted(group_ids)
