@@ -112,7 +112,7 @@ class VectorStore:
         dataset = lance.dataset(self.get_group_path(group.get_id()))
         for batch in dataset.to_batches(columns=["file_id", "id", "vector"], batch_size=batch_size):
             df = batch.to_pandas()
-            df['global_id'] = df.apply(lambda x: group.get_global_id(x.file, x.id), axis=1)
+            df['global_id'] = df.apply(lambda x: group.get_global_id(x.file_id, x.id), axis=1)
             vectors = np.stack(df["vector"].to_numpy())
             ids = np.stack(df["global_id"].to_numpy())
             yield vectors, ids, batch.num_rows
