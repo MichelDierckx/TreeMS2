@@ -200,4 +200,4 @@ class MS2Index:
     def __repr__(self):
         return (f"MS2Index(d={self.d}, "
                 f"index_type={self.index_type}, "
-                f"metric={'INNER_PRODUCT' if self.metric == faiss.METRIC_INNER_PRODUCT else 'L2'}")
+                f"metric={'INNER_PRODUCT' if self.metric == faiss.METRIC_INNER_PRODUCT else 'L2'})")
