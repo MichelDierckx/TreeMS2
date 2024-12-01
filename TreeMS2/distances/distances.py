@@ -94,10 +94,10 @@ class Distances:
         return s
 
     def create_mega(self, s: npt.NDArray[np.uint64], groups: Groups, similarity_threshold: float):
-        lines: List[str] = ["#mega", f"TITLE: {groups.filename} (similarity_threshold={similarity_threshold}))", "\n"]
+        lines: List[str] = ["#mega", f"TITLE: {groups.filename} (similarity_threshold={similarity_threshold}))", ""]
         for group in groups.get_groups():
             lines.append(f"#{group.get_group_name()}")
-        lines.append("\n")
+        lines.extend(["", ""])
 
         # construct Lower-left triangular matrix
         for j in range(1, groups.get_size()):
@@ -112,7 +112,7 @@ class Distances:
                 distances.append(global_distance)
             line = "\t".join(f"{x:.4f}" for x in distances)
             lines.append(line)
-        text = "\n".join(lines)
+        text = "\r\n".join(lines)
         path = os.path.join(self.base_path, "distance_matrix.meg")
         logger.info(f"Writing distance matrix to '{path}'.")
         with open(path, 'w') as f:
