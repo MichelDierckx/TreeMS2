@@ -54,6 +54,7 @@ class PeakFile(ABC):
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "id": self._id,
             "filename": self.file_path,
             "total_spectra": self.total_spectra,
             "failed_parsed": self.failed_parsed,

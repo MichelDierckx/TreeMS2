@@ -57,7 +57,8 @@ class Group:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "group_name": self._group_name,
+            "id": self._id,
+            "name": self._group_name,
             "total_spectra": self.total_spectra,
             "failed_parsed": self.failed_parsed,
             "failed_processed": self.failed_processed,
