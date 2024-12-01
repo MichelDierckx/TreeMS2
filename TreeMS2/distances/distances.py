@@ -103,7 +103,7 @@ class Distances:
         for j in range(1, groups.get_size()):
             distances = []
             b = groups.get_group(j).total_spectra
-            for i in range(j - 1):
+            for i in range(j):
                 a = groups.get_group(i).total_spectra
                 s_a = s.item((i, j))
                 s_b = s.item((j, i))
