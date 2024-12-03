@@ -60,6 +60,12 @@ class Groups:
         global_id = self._groups[group_id].get_global_id(file_id, spectrum_id)
         return global_id
 
+    def get_group_id_from_global_id(self, global_id: int) -> int:
+        for group in self._groups:
+            if group.begin() <= global_id <= group.end():
+                return group.get_id()
+        raise ValueError(f"Global id '{global_id}' does not belong to any group.")
+
     def total_valid_spectra(self) -> int:
         return self.total_spectra - self.failed_parsed - self.failed_processed
 

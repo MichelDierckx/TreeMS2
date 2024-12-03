@@ -1,6 +1,6 @@
 import unittest
 
-from TreeMS2.vector_store.vector_store import _partition_integers
+from TreeMS2.utils.utils import partition_pylist
 
 
 # 10 10 10
@@ -8,7 +8,7 @@ from TreeMS2.vector_store.vector_store import _partition_integers
 # 0-9 10-19 20-29
 
 
-class TestPartitionAndNormalize(unittest.TestCase):
+class TestPartitionPylist(unittest.TestCase):
 
     def test_basic_partitioning(self):
         sorted_list = [3, 8, 15, 20, 25, 30, 40]
@@ -18,7 +18,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
             [4, 9],  # Partition for [11-20]
             [4, 9],  # Partition for [21-30]
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_single_partition(self):
@@ -27,7 +27,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
         expected_result = [
             [5, 6, 7, 8, 9]  # No normalization, as everything is in the first partition
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_no_values_in_partition(self):
@@ -38,7 +38,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
             [4, 9],  # Partition for [11-20]
             [4, 9],  # Partition for [21-30] (normalized)
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_values_beyond_last_limit(self):
@@ -49,7 +49,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
             [4, 9],  # Partition for [11-20] (normalized)
             [9],  # Partition for [21-30] (normalized)
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_empty_list(self):
@@ -60,7 +60,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
             [],
             [],
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_single_element_partition(self):
@@ -69,7 +69,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
         expected_result = [
             [5]  # The only value falls in the [0-10] range with no adjustment needed.
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
     def test_partition_with_all_elements_in_last_range(self):
@@ -80,7 +80,7 @@ class TestPartitionAndNormalize(unittest.TestCase):
             [],  # Empty partition for [11-20]
             [],  # Empty partition for [21-30]
         ]
-        result = _partition_integers(sorted_list, partition_limits)
+        result = partition_pylist(sorted_list, partition_limits)
         self.assertEqual(result, expected_result)
 
 
