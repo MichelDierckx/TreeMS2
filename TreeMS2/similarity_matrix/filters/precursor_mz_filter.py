@@ -11,7 +11,7 @@ from TreeMS2.vector_store.vector_store import VectorStore
 class PrecursorMzFilter(MaskFilter):
     def __init__(self, similarity_matrix: SimilarityMatrix, precursor_mz_window: float, vector_store: VectorStore,
                  groups: Groups):
-        self.window = precursor_mz_window
+        self.precursor_mz_window = precursor_mz_window
         mask = self.construct_mask(similarity_matrix, vector_store, groups)
         super().__init__(mask)
 
@@ -28,9 +28,12 @@ class PrecursorMzFilter(MaskFilter):
             row_precursor_mz = vector_store.get_metadata(row_group_id, row, groups, "precursor_mz")
             col_precursor_mz = vector_store.get_metadata(col_group_id, col, groups, "precursor_mz")
 
-            if abs(row_precursor_mz - col_precursor_mz) <= self.window:
+            if abs(row_precursor_mz - col_precursor_mz) <= self.precursor_mz_window:
                 mask_data[index] = False
 
         m = csr_matrix(mask_data, (rows, cols))
         mask = SpectraMatrix(m)
         return mask
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(precursor_mz_window={self.precursor_mz_window:.3f})"

@@ -7,6 +7,7 @@ import configargparse
 from .groups_config import GroupsConfig
 from .index_config import IndexConfig
 from .output_config import OutputConfig
+from .sim_matrix_processing_config import SimMatrixProcessingConfig
 from .spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
 from .vectorization_config import VectorizationConfig
 from ..logger_config import get_logger
@@ -44,6 +45,9 @@ class Config:
 
     def create_index_config(self) -> IndexConfig:
         return IndexConfig(similarity=self.similarity)
+
+    def create_sim_matrix_processing_config(self) -> SimMatrixProcessingConfig:
+        return SimMatrixProcessingConfig(precursor_mz_window=self.precursor_mz_window)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """
