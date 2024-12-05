@@ -73,8 +73,17 @@ class Config:
         self._namespace = vars(self._parser.parse_args(args_str))
         self._validate_file_path("sample_to_group_file")
         self._validate_directory_path("work_dir")
-        self._validate_positive_int("low_dim", True)
+
+        self._validate_positive_number("fragment_tol", True)
+        self._validate_positive_number("min_peaks")
+        self._validate_positive_number("min_mz_range")
+        self._validate_positive_number("min_mz")
+        self._validate_positive_number("max_mz")
+        self._validate_positive_number("remove_precursor_tol")
+        self._validate_number_range("min_intensity", min_value=0.0, max_value=1.0)
+        self._validate_positive_number("low_dim", True)
         self._validate_number_range("similarity", min_value=0.0, max_value=1.0)
+        self._validate_positive_number("precursor_mz_window", True)
         self._log_parameters()
 
     def _define_arguments(self) -> None:
@@ -197,6 +206,15 @@ class Config:
             dest="similarity",
         )
 
+        # Post-processing search results
+        self._parser.add_argument(
+            "--precursor_mz_window",
+            default=2.05,
+            type=float,
+            help="Maximum difference in precursor m/z for two spectra to be considered similar (default: %(default)s).",
+            dest="precursor_mz_window",
+        )
+
     def _validate_choice(self, param: str, valid_options: list) -> None:
         """
         Validate that the value of a configuration parameter is in the list of valid options.
@@ -256,10 +274,10 @@ class Config:
                     f"--{param}: Path '{path}' does not end with one of the following extensions: {valid_extensions}"
                 )
 
-    def _validate_positive_int(self, param: str, strict: bool = False) -> None:
+    def _validate_positive_number(self, param: str, strict: bool = False) -> None:
         value = self.get(param)
-        int_value = int(value)
-        if (strict and int_value <= 0) or (not strict and int_value < 0):
+        float_value = float(value)
+        if (strict and float_value <= 0) or (not strict and float_value < 0):
             comparison = "greater than 0" if strict else "0 or greater"
             raise ValueError(f"--{param}: {value} is not a positive integer ({comparison}).")
 
