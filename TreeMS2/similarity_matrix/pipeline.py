@@ -17,9 +17,10 @@ class SimilarityMatrixPipeline:
         self.mask_filters = mask_filters
         logger.debug(f"Created {self}")
 
-    def process(self, similarity_matrix: SimilarityMatrix) -> SimilarityMatrix:
+    def process(self, similarity_matrix: SimilarityMatrix, work_dir: str) -> SimilarityMatrix:
         for mask_filter in self.mask_filters:  # Iterate over the list of mask filters
             similarity_matrix = mask_filter.apply(similarity_matrix)  # Apply each mask filter
+            mask_filter.save_mask(work_dir=work_dir)
         return similarity_matrix
 
     def __repr__(self) -> str:
@@ -31,12 +32,12 @@ class SimilarityMatrixPipeline:
 # Pipeline Factory that creates the processing pipeline based on configuration
 class SimilarityMatrixPipelineFactory:
     @staticmethod
-    def create_pipeline(config: SimMatrixProcessingConfig, similarity_matrix: SimilarityMatrix,
+    def create_pipeline(config: SimMatrixProcessingConfig,
                         vector_store: VectorStore, groups: Groups) -> SimilarityMatrixPipeline:
         mask_filters = []
         if config.precursor_mz_window is not None:
             mask_filters.append(
-                PrecursorMzFilter(similarity_matrix=similarity_matrix, precursor_mz_window=config.precursor_mz_window,
+                PrecursorMzFilter(precursor_mz_window=config.precursor_mz_window,
                                   vector_store=vector_store, groups=groups))
         pipeline = SimilarityMatrixPipeline(mask_filters=mask_filters)
         return pipeline

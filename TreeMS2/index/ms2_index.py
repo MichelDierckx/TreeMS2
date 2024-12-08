@@ -4,9 +4,9 @@ import faiss
 import numpy as np
 from tqdm import tqdm
 
-from ..distances.distances import Distances
 from ..groups.groups import Groups
 from ..logger_config import get_logger
+from ..similarity_matrix.similarity_matrix import SimilarityMatrix
 from ..vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
@@ -148,7 +148,7 @@ class MS2Index:
         logger.debug(f"Loaded index from {filepath}")
 
     def range_search(self, similarity_threshold: float, vector_store: VectorStore, groups: Groups,
-                     batch_size: int) -> Distances:
+                     batch_size: int) -> SimilarityMatrix:
         """
         Perform a range search on the FAISS index for every vector for every group in batches. Capture result in Distances object.
 
@@ -160,7 +160,7 @@ class MS2Index:
         :return: Distances
         """
         radius = 1.0 - similarity_threshold
-        distances = Distances(self.total_spectra, self.work_dir)
+        similarity_matrix = SimilarityMatrix(self.total_spectra, similarity_threshold=similarity_threshold)
 
         logger.info("Querying the index for similar spectra ...")
         for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
@@ -193,9 +193,9 @@ class MS2Index:
                         rows[start:end] = ids[query_idx]
                         cols[start:end] = i[start:end]
 
-                distances.update(data=data, rows=rows, cols=cols)
+                similarity_matrix.update(data=data, rows=rows, cols=cols)
         logger.info("Finished querying.")
-        return distances
+        return similarity_matrix
 
     def __repr__(self):
         return (f"MS2Index(d={self.d}, "

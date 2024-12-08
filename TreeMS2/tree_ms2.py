@@ -5,16 +5,19 @@ from typing import Optional
 import joblib
 
 from TreeMS2.config.config import Config
+from TreeMS2.distances import Distances
 from TreeMS2.groups.groups import Groups
 from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline, ProcessingPipelineFactory
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
 from TreeMS2.vector_store.vector_store import VectorStore
-from .distances.distances import Distances
 from .groups.peak_file.peak_file import PeakFile
 from .index.ms2_index import MS2Index
 from .logger_config import get_logger
+from .similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
+from .similarity_matrix.similarity_matrix import SimilarityMatrix
+from .similarity_sets import SimilaritySets
 from .spectrum.group_spectrum import GroupSpectrum
 
 logger = get_logger(__name__)
@@ -34,6 +37,8 @@ class TreeMS2:
                                                                             max_mz=self.vectorizer.binner.max_mz)
 
     def run(self):
+        # retrieve output configuration
+        output_config = self.config_factory.create_output_config()
         # Read group information: which groups exist and which peak files belong to the group
         groups = self._read_groups()
         # Reads spectra from the peak files, convert them to low dimension vectors and store to disk
@@ -42,13 +47,32 @@ class TreeMS2:
         groups.update()
         logger.debug(f"{groups}")
         # Write groups information to file
-        self._write_groups(groups=groups)
+        groups.write_to_file(output_config.work_dir)
         # Create an index
         index = self._index(groups=groups)
         # Query the index
-        distances = self._query(index=index, groups=groups)
-        # Write output to file
-        self._output_distances(distances=distances, groups=groups)
+        similarity_matrix = self._query(index=index, groups=groups)
+        # Write similarity matrix to file before filtering
+        similarity_matrix.write(work_dir=output_config.work_dir, filename="similarity_matrix_before_filtering")
+        # Compute similarity sets
+        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
+        # Write similarity sets to file
+        similarity_sets.write(work_dir=output_config.work_dir, filename="similarity_statistics_before_filtering")
+        # Compute distances
+        distances = Distances(similarity_sets=similarity_sets)
+        distances.create_mega(work_dir=output_config.work_dir, filename="distances_before_filtering")
+        # Filter similarity matrix
+        similarity_matrix = self._filter_similarity_matrix(similarity_matrix=similarity_matrix, groups=groups,
+                                                           work_dir=output_config.work_dir)
+        # Write similarity matrix to file after filtering
+        similarity_matrix.write(work_dir=output_config.work_dir, filename="similarity_matrix_after_filtering")
+        # Compute similarity sets
+        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
+        # Write similarity sets to file
+        similarity_sets.write(work_dir=output_config.work_dir, filename="similarity_statistics_after_filtering")
+        # Compute distances
+        distances = Distances(similarity_sets=similarity_sets)
+        distances.create_mega(work_dir=output_config.work_dir, filename="distances_after_filtering")
 
     def _setup_vector_store(self) -> VectorStore:
         # Create a VectorStore instance for storing spectra and their vector representations
@@ -190,10 +214,6 @@ class TreeMS2:
             if sum(len(specs) for specs in spec_to_write.values()) >= 10_000:
                 _process_batch()
 
-    def _write_groups(self, groups: Groups):
-        output_config = self.config_factory.create_output_config()
-        groups.write_to_file(output_config.work_dir)
-
     def _index(self, groups: Groups) -> MS2Index:
         output_config = self.config_factory.create_output_config()
         d = self.vectorizer.reducer.low_dim
@@ -208,21 +228,19 @@ class TreeMS2:
         index.index_groups(vector_store=self.vector_store, groups=groups, batch_size=1000)
         return index
 
-    def _query(self, index: MS2Index, groups: Groups) -> Distances:
+    def _query(self, index: MS2Index, groups: Groups) -> SimilarityMatrix:
         index_config = self.config_factory.create_index_config()
         similarity_threshold = index_config.similarity
         # query each spectrum against the index
-        distances = index.range_search(similarity_threshold=similarity_threshold, vector_store=self.vector_store,
-                                       groups=groups, batch_size=1000)
-        return distances
+        similarity_matrix = index.range_search(similarity_threshold=similarity_threshold,
+                                               vector_store=self.vector_store,
+                                               groups=groups, batch_size=1000)
+        return similarity_matrix
 
-    def _output_distances(self, distances: Distances, groups: Groups):
-        index_config = self.config_factory.create_index_config()
-        similarity_threshold = index_config.similarity
-
-        # write similarity matrix to file
-        distances.write_similarity_matrix()
-        # write similarity set counts to file
-        s = distances.write_similarity_sets_counts(groups=groups)
-        # write MEGA file
-        distances.create_mega(s=s, groups=groups, similarity_threshold=similarity_threshold)
+    def _filter_similarity_matrix(self, similarity_matrix: SimilarityMatrix, groups: Groups,
+                                  work_dir: str) -> SimilarityMatrix:
+        sim_matrix_processing_config = self.config_factory.create_sim_matrix_processing_config()
+        pipeline = SimilarityMatrixPipelineFactory.create_pipeline(config=sim_matrix_processing_config,
+                                                                   vector_store=self.vector_store, groups=groups)
+        similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix, work_dir=work_dir)
+        return similarity_matrix

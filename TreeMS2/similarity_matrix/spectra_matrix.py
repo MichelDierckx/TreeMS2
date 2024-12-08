@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz, load_npz
 
@@ -24,8 +26,10 @@ class SpectraMatrix:
     def nr_bytes(self):
         return self.matrix.data.nbytes + self.matrix.indptr.nbytes + self.matrix.indices.nbytes
 
-    def write(self, path: str):
+    def write(self, work_dir: str, filename: str) -> str:
+        path = os.path.join(work_dir, filename)
         save_npz(path, self.matrix)
+        return path
 
     def subtract(self, spectra_matrix: 'SpectraMatrix'):
         self.matrix -= spectra_matrix.matrix
