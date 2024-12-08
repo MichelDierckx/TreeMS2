@@ -21,6 +21,7 @@ class SimilarityMatrixPipeline:
         for mask_filter in self.mask_filters:  # Iterate over the list of mask filters
             mask_filter.apply(similarity_matrix)  # Apply each mask filter
             mask_filter.save_mask(work_dir=work_dir)
+            mask_filter.write_filter_statistics(work_dir=work_dir)
         return similarity_matrix
 
     def __repr__(self) -> str:
