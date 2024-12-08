@@ -124,7 +124,7 @@ class VectorStore:
         row = _get_row(group_id=group_id, global_spectrum_id=global_spectrum_id, groups=groups)
         ds = lance.dataset(self.get_group_path(group_id=group_id))
         ta = ds.take([row], columns=columns)
-        return ta[0][0]
+        return ta[0][0].as_py()
 
 
 def _get_row(group_id: int, global_spectrum_id: int, groups: Groups) -> int:
