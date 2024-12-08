@@ -37,7 +37,7 @@ class PrecursorMzFilter(MaskFilter):
             if abs(row_precursor_mz - col_precursor_mz) <= self.precursor_mz_window:
                 mask_data[index] = False
 
-        m = csr_matrix(mask_data, (rows, cols))
+        m = csr_matrix((mask_data, (rows, cols)), shape=similarity_matrix.matrix.shape, dtype=np.bool_)
         mask = SpectraMatrix(m)
         return mask
 
