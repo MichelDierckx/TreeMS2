@@ -146,5 +146,5 @@ def _get_row(group_id: int, global_spectrum_id: int, groups: Groups) -> int:
             row_nr = global_spectrum_id - invalid_group_spectra
             return row_nr
         else:
-            invalid_group_spectra += file.failed_parsed + file.failed_read
+            invalid_group_spectra += file.failed_parsed + file.failed_processed
     raise ValueError(f"Global id {global_spectrum_id} does not belong to any file.")
