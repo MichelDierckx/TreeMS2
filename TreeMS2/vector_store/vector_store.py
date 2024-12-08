@@ -139,7 +139,7 @@ def _get_row(group_id: int, global_spectrum_id: int, groups: Groups) -> int:
 
     invalid_group_spectra = 0
     for file in group.get_peak_files():
-        if file.begin() <= global_spectrum_id <= file.end():
+        if file.begin <= global_spectrum_id <= file.end:
             for invalid_spectrum in file.filtered:
                 if invalid_spectrum < global_spectrum_id:
                     invalid_group_spectra += 1
