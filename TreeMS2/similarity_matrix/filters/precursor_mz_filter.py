@@ -27,7 +27,7 @@ class PrecursorMzFilter(MaskFilter):
 
         mask_data = np.zeros(shape=rows.shape, dtype=np.bool_)
 
-        for index, row, col in enumerate(zip(rows, cols)):
+        for index, (row, col) in enumerate(zip(rows, cols)):
             row_group_id = self.groups.get_group_id_from_global_id(row)
             col_group_id = self.groups.get_group_id_from_global_id(col)
 
