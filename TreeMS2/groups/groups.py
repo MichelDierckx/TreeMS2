@@ -62,7 +62,7 @@ class Groups:
 
     def get_group_id_from_global_id(self, global_id: int) -> int:
         for group in self._groups:
-            if group.begin() <= global_id <= group.end():
+            if group.begin <= global_id <= group.end:
                 return group.get_id()
         raise ValueError(f"Global id '{global_id}' does not belong to any group.")
 
