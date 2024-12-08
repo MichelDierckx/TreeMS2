@@ -123,6 +123,8 @@ class VectorStore:
         columns = [column]
         row = _get_row(group_id=group_id, global_spectrum_id=global_spectrum_id, groups=groups)
         ds = lance.dataset(self.get_group_path(group_id=group_id))
+        if ds.count_rows() < row + 1:
+            logger.error(f"group_id = {group_id}, global_spectrum_id = {global_spectrum_id}")
         ta = ds.take([row], columns=columns)
         return ta[0][0].as_py()
 
@@ -143,7 +145,7 @@ def _get_row(group_id: int, global_spectrum_id: int, groups: Groups) -> int:
             for invalid_spectrum in file.filtered:
                 if invalid_spectrum < global_spectrum_id:
                     invalid_group_spectra += 1
-            row_nr = global_spectrum_id - invalid_group_spectra
+            row_nr = global_spectrum_id - invalid_group_spectra - group.begin
             return row_nr
         else:
             invalid_group_spectra += file.failed_parsed + file.failed_processed
