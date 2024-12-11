@@ -6,16 +6,16 @@ import spectrum_utils.spectrum as sus
 class GroupSpectrum:
     def __init__(self, spectrum: sus.MsmsSpectrum):
         self.spectrum = spectrum
-        self._id = None
+        self._spectrum_id = None
         self._file_id = None
         self._group_id = None
         self.vector = None
 
     def set_id(self, spectrum_id: int):
-        self._id = spectrum_id
+        self._spectrum_id = spectrum_id
 
     def get_id(self):
-        return self._id
+        return self._spectrum_id
 
     def set_file_id(self, file_id: int):
         self._file_id = file_id
@@ -31,7 +31,7 @@ class GroupSpectrum:
 
     def to_dict(self) -> Dict:
         return {
-            "id": self._id,
+            "spectrum_id": self._spectrum_id,
             "file_id": self._file_id,
             "group_id": self._group_id,
             "identifier": self.spectrum.identifier,

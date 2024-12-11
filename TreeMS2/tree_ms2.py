@@ -5,13 +5,13 @@ from typing import Optional
 import joblib
 
 from TreeMS2.config.config import Config
-from TreeMS2.distances import Distances
 from TreeMS2.groups.groups import Groups
 from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline, ProcessingPipelineFactory
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
 from TreeMS2.vector_store.vector_store import VectorStore
+from .distances import Distances
 from .groups.peak_file.peak_file import PeakFile
 from .index.ms2_index import MS2Index
 from .logger_config import get_logger
@@ -48,6 +48,8 @@ class TreeMS2:
         logger.debug(f"{groups}")
         # Write groups information to file
         groups.write_to_file(output_config.work_dir)
+        # Add global ids to vector store
+        self.vector_store.add_global_ids(groups)
         # Create an index
         index = self._index(groups=groups)
         # Query the index
@@ -181,20 +183,18 @@ class TreeMS2:
         """
         Consumes spectra, vectorizes, and writes them to the dataset.
         """
-        spec_to_write = {}
+        spec_to_write = []
 
         def _process_batch():
             """Process and write the collected spectra."""
-            for group_id, specs in spec_to_write.items():
-                # Extract and vectorize spectra
-                spectra = [spec.spectrum for spec in specs]
-                vectors = self.vectorizer.vectorize(spectra)
-                dict_list = [
-                    {**spec.to_dict(), "vector": vector}
-                    for spec, vector in zip(specs, vectors)
-                ]
-                # Save data to disk for the group
-                self.vector_store.write_to_group(group_id, dict_list)
+
+            spectra = [spec.spectrum for spec in spec_to_write]
+            vectors = self.vectorizer.vectorize(spectra)
+            dict_list = [
+                {**spec.to_dict(), "vector": vector}
+                for spec, vector in zip(spec_to_write, vectors)
+            ]
+            self.vector_store.write(dict_list)
             spec_to_write.clear()
 
         while True:
@@ -205,13 +205,10 @@ class TreeMS2:
                 break
 
             # Group spectra by group_id
-            group_id = spectrum.get_group_id()
-            if group_id not in spec_to_write:
-                spec_to_write[group_id] = []
-            spec_to_write[group_id].append(spectrum)
+            spec_to_write.append(spectrum)
 
             # Process batch if size limit is reached
-            if sum(len(specs) for specs in spec_to_write.values()) >= 10_000:
+            if len(spec_to_write) >= 10_000:
                 _process_batch()
 
     def _index(self, groups: Groups) -> MS2Index:
