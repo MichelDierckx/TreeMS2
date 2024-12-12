@@ -205,7 +205,8 @@ class TreeMS2:
             spectrum = spectra_queue.get()
             if spectrum is None:
                 # Signal to finish processing
-                _process_batch()
+                if spec_to_write:
+                    _process_batch()
                 break
 
             # Group spectra by group_id
