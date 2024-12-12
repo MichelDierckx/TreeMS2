@@ -32,11 +32,11 @@ class PrecursorMzFilter(MaskFilter):
 
         mask_data = np.abs(precursor_mz_rows - precursor_mz_cols) > self.precursor_mz_window
         # Filter the rows and columns based on the mask
-        precursor_mz_rows = precursor_mz_rows[mask_data]
-        precursor_mz_cols = precursor_mz_cols[mask_data]
-        mask_data = np.ones(precursor_mz_rows.size, dtype=np.bool_)
+        rows = rows[mask_data]
+        cols = cols[mask_data]
+        mask_data = np.ones(rows.size, dtype=np.bool_)
 
-        m = csr_matrix((mask_data, (precursor_mz_rows, precursor_mz_cols)), shape=similarity_matrix.matrix.shape,
+        m = csr_matrix((mask_data, (rows, cols)), shape=similarity_matrix.matrix.shape,
                        dtype=np.bool_)
         mask = SpectraMatrix(m)
         return mask
