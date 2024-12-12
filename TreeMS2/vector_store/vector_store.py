@@ -87,7 +87,7 @@ class VectorStore:
 
     def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
         ds = lance.dataset(self.base_path)
-        df = ds.take(rows=rows, columns=columns).to_pandas()
+        df = ds.take(indices=rows, columns=columns).to_pandas()
         return df
 
     def add_global_ids(self, groups: Groups):
