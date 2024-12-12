@@ -1,3 +1,4 @@
+import time
 from typing import Tuple, Optional
 
 import faiss
@@ -84,13 +85,13 @@ class MS2Index:
             index = faiss.IndexIDMap(faiss.IndexFlatIP(d))
             index_type = "Flat"
         elif n_spectra <= 10 ** 6:
-            nlist = 16 * 2 ** 10
+            nlist = min(16 * 2 ** 10, n_spectra // 39)
             index = faiss.IndexIVFFlat(
                 faiss.IndexFlatIP(d), d, nlist, faiss.METRIC_INNER_PRODUCT
             )
             index_type = "IVF16K,Flat"
         elif n_spectra <= 10 ** 8:
-            nlist = 64 * 2 ** 10
+            nlist = min(64 * 2 ** 10, n_spectra // 39)
             index = faiss.IndexIVFFlat(
                 faiss.IndexHNSWFlat(d), d, nlist, faiss.METRIC_INNER_PRODUCT
             )
@@ -104,11 +105,12 @@ class MS2Index:
     def train(self, vector_store: VectorStore):
         if not self.index.is_trained:
             if not self.nlist is None:
-                logger.info("Training index...")
                 sample_size = min(50 * self.nlist, self.total_valid_spectra)
                 training_data = vector_store.sample(sample_size)
+                logger.info(f"Training index on {sample_size} samples.")
+                train_time_start = time.time()
                 self.index.train(training_data)
-                logger.info(f"Trained index.")
+                logger.info(f"Finished training index in {time.time() - train_time_start:.3f} seconds.")
 
     def add(self, vector_store: VectorStore, batch_size: int):
         """
@@ -193,4 +195,5 @@ class MS2Index:
     def __repr__(self):
         return (f"MS2Index(d={self.d}, "
                 f"index_type={self.index_type}, "
-                f"metric={'INNER_PRODUCT' if self.metric == faiss.METRIC_INNER_PRODUCT else 'L2'})")
+                f"metric={'INNER_PRODUCT' if self.metric == faiss.METRIC_INNER_PRODUCT else 'L2'}, "
+                f"nlist={self.nlist})")
