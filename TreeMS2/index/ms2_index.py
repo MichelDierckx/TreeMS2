@@ -118,10 +118,10 @@ class MS2Index:
         :return:
         """
         logger.info("Adding spectra to the index...")
-        for vectors, ids, nr_vectors in tqdm(
-                vector_store.to_vector_batches(batch_size=batch_size),
-                desc="Batches added to index", unit=f"{batch_size} spectra", total=vector_store.count_spectra()):
-            self.index.add_with_ids(vectors, ids)
+        with tqdm(desc="Spectra added to index", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
+            for vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
+                self.index.add_with_ids(vectors, ids)
+                pbar.update(nr_vectors)
         logger.info("Added all spectra to the index.")
 
     def save_index(self, filepath):
@@ -160,33 +160,33 @@ class MS2Index:
         # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
         # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
         # params = faiss.SearchParameters(sel=sel)
-        for query_vectors, ids, nr_vectors in tqdm(
-                vector_store.to_vector_batches(batch_size=batch_size),
-                desc="Batches queried", unit=f"{batch_size} spectra", total=vector_store.count_spectra()):
+        with tqdm(desc="Spectra queried", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
+            for query_vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
 
-            # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
-            lims, d, i = self.index.range_search(query_vectors, radius)
+                # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
+                lims, d, i = self.index.range_search(query_vectors, radius)
 
-            # nr of similar vectors found
-            total_results = lims[-1]
-            if total_results == 0:
-                continue  # Skip processing if no results found
+                # nr of similar vectors found
+                total_results = lims[-1]
+                if total_results == 0:
+                    continue  # Skip processing if no results found
 
-            # preallocate arrays
-            data = np.full(total_results, True, dtype=bool)
-            rows = np.empty(total_results, dtype=np.int64)
-            cols = np.empty(total_results, dtype=np.int64)
+                # preallocate arrays
+                data = np.full(total_results, True, dtype=bool)
+                rows = np.empty(total_results, dtype=np.int64)
+                cols = np.empty(total_results, dtype=np.int64)
 
-            # Populate rows and cols
-            for query_idx in range(query_vectors.shape[0]):
-                start = lims[query_idx]
-                end = lims[query_idx + 1]
-                # Fill only if there are results
-                if start < end:
-                    rows[start:end] = ids[query_idx]
-                    cols[start:end] = i[start:end]
+                # Populate rows and cols
+                for query_idx in range(query_vectors.shape[0]):
+                    start = lims[query_idx]
+                    end = lims[query_idx + 1]
+                    # Fill only if there are results
+                    if start < end:
+                        rows[start:end] = ids[query_idx]
+                        cols[start:end] = i[start:end]
 
-            similarity_matrix.update(data=data, rows=rows, cols=cols)
+                similarity_matrix.update(data=data, rows=rows, cols=cols)
+                pbar.update(nr_vectors)
         logger.info("Finished querying.")
         return similarity_matrix
 
