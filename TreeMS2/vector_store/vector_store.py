@@ -83,9 +83,9 @@ class VectorStore:
             ids = np.stack(df["global_id"].to_numpy())
             yield vectors, ids, batch.num_rows
 
-    def get_metadata(self, rows: List[int], columns: List[str]):
+    def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
         ds = lance.dataset(self.base_path)
-        df = ds.take(rows, columns=columns).to_pandas()
+        df = ds.take(rows=rows, columns=columns).to_pandas()
         return df
 
     def add_global_ids(self, groups: Groups):
@@ -96,9 +96,13 @@ class VectorStore:
 
         @lance.batch_udf()
         def add_global_ids_batch(batch):
-            global_ids = batch.to_pandas().apply(compute_global_id, axis=1)
-            return pd.DataFrame({"global_id": global_ids})
+            global_ids = batch.to_pandas().apply(compute_global_id, axis=1).astype(np.int32)
+            return pd.DataFrame({"global_id": global_ids}, dtype=np.int32)
 
         ds = lance.dataset(self.base_path)
         ds.add_columns(add_global_ids_batch)
         self.added_global_ids = True
+
+    def count_spectra(self):
+        ds = lance.dataset(self.base_path)
+        return ds.count_rows()

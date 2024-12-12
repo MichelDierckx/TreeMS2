@@ -3,10 +3,12 @@ import os
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from scipy.sparse import csr_matrix
 
 from TreeMS2.groups.groups import Groups
 from TreeMS2.logger_config import get_logger
 from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
+from TreeMS2.vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
@@ -17,9 +19,16 @@ class SimilaritySets:
         self.groups = groups
         self.similarity_sets: npt.NDArray[np.uint64] = self._compute_similarity_sets()
 
-    def _compute_similarity_sets(self) -> npt.NDArray[np.uint64]:
+    def _compute_similarity_sets(self, vector_store: VectorStore, total_spectra) -> npt.NDArray[np.uint64]:
         nr_groups = self.groups.get_size()
         s = np.zeros((nr_groups, nr_groups), dtype=np.uint64)
+
+        rows, cols = self.similarity_matrix.matrix.nonzero()
+
+        row_ids = vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        col_ids = vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        m = csr_matrix((self.similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
+                       dtype=np.bool_)
 
         # loop over groups representing the rows in s
         for row_group in self.groups.get_groups():
@@ -41,7 +50,7 @@ class SimilaritySets:
                 counter = 0
                 for spec_id in range(row_begin, row_end + 1):
                     # check if there is at least one spectrum in the other group marked as similar
-                    nr_similarities = self.similarity_matrix.matrix[spec_id, col_begin:col_end].count_nonzero()
+                    nr_similarities = m[spec_id, col_begin:col_end].nnz
                     if nr_similarities > 0:
                         counter += 1
                 # entry S(A,B) = number of spectra A has that have at least one similar spectrum in B

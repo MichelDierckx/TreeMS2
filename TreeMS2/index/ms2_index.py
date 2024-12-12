@@ -1,10 +1,9 @@
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 
 import faiss
 import numpy as np
 from tqdm import tqdm
 
-from ..groups.groups import Groups
 from ..logger_config import get_logger
 from ..similarity_matrix.similarity_matrix import SimilarityMatrix
 from ..vector_store.vector_store import VectorStore
@@ -41,17 +40,15 @@ class IndexingTooLargeError(Exception):
 
 
 class MS2Index:
-    def __init__(self, total_valid_spectra: int, total_spectra: int, d: int, work_dir: str):
+    def __init__(self, total_valid_spectra: int, d: int, work_dir: str):
         """
         Index for fast ms/ms spectrum similarity search.
         :param total_valid_spectra: the total number of valid spectra
-        :param total_spectra: the total number of spectra
         :param d: the dimension of the spectra to be indexed
         :param work_dir: the working directory
         """
 
         self.total_valid_spectra = total_valid_spectra
-        self.total_spectra = total_spectra
         self.d = d
         self.work_dir = work_dir
 
@@ -104,29 +101,27 @@ class MS2Index:
             raise IndexingTooLargeError(n_spectra, max_spectra)
         return index, index_type, nlist
 
-    def train(self, vector_store: VectorStore, group_ids: List[int]):
+    def train(self, vector_store: VectorStore):
         if not self.index.is_trained:
             if not self.nlist is None:
                 logger.info("Training index...")
                 sample_size = min(50 * self.nlist, self.total_valid_spectra)
-                training_data = vector_store.sample(sample_size, group_ids)
+                training_data = vector_store.sample(sample_size)
                 self.index.train(training_data)
                 logger.info(f"Trained index.")
 
-    def index_groups(self, vector_store: VectorStore, groups: Groups, batch_size: int):
+    def add(self, vector_store: VectorStore, batch_size: int):
         """
-        Add vectors to the FAISS index in batch for the given groups.
+        Add vectors present in the vector store to the FAISS index in batch.
         :param batch_size: the number of vectors in a batch
         :param vector_store: a VectorStore instance to retrieve the vector data
-        :param groups: the groups to be indexed
         :return:
         """
         logger.info("Adding spectra to the index...")
-        for group in tqdm(groups.get_groups(), desc="Groups added to index", unit="group"):
-            for vectors, ids, nr_vectors in tqdm(
-                    vector_store.to_vector_batches(batch_size=batch_size, group=group),
-                    desc="Batches added to index", unit=f"{batch_size} spectra"):
-                self.index.add_with_ids(vectors, ids)
+        for vectors, ids, nr_vectors in tqdm(
+                vector_store.to_vector_batches(batch_size=batch_size),
+                desc="Batches added to index", unit=f"{batch_size} spectra", total=vector_store.count_spectra()):
+            self.index.add_with_ids(vectors, ids)
         logger.info("Added all spectra to the index.")
 
     def save_index(self, filepath):
@@ -147,53 +142,51 @@ class MS2Index:
         self.index = faiss.read_index(filepath)
         logger.debug(f"Loaded index from {filepath}")
 
-    def range_search(self, similarity_threshold: float, vector_store: VectorStore, groups: Groups,
+    def range_search(self, similarity_threshold: float, vector_store: VectorStore,
                      batch_size: int) -> SimilarityMatrix:
         """
-        Perform a range search on the FAISS index for every vector for every group in batches. Capture result in Distances object.
+        Perform a range search on the FAISS index for every vector in the vector store in batches. Capture result in Distances object.
 
         :param similarity_threshold: (float), Search radius.
         :param vector_store: a VectorStore instance to retrieve the vector data
-        :param groups: the groups to be indexed
         :param batch_size: the number of vectors in a batch
 
         :return: Distances
         """
         radius = 1.0 - similarity_threshold
-        similarity_matrix = SimilarityMatrix(self.total_spectra, similarity_threshold=similarity_threshold)
+        similarity_matrix = SimilarityMatrix(self.total_valid_spectra, similarity_threshold=similarity_threshold)
 
         logger.info("Querying the index for similar spectra ...")
-        for group in tqdm(groups.get_groups(), desc="Groups queried", unit="group"):
-            # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
-            # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
-            # params = faiss.SearchParameters(sel=sel)
-            for query_vectors, ids, nr_vectors in tqdm(
-                    vector_store.to_vector_batches(batch_size=batch_size, group=group),
-                    desc="Batches queried", unit=f"{batch_size} spectra"):
+        # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
+        # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
+        # params = faiss.SearchParameters(sel=sel)
+        for query_vectors, ids, nr_vectors in tqdm(
+                vector_store.to_vector_batches(batch_size=batch_size),
+                desc="Batches queried", unit=f"{batch_size} spectra", total=vector_store.count_spectra()):
 
-                # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
-                lims, d, i = self.index.range_search(query_vectors, radius)
+            # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
+            lims, d, i = self.index.range_search(query_vectors, radius)
 
-                # nr of similar vectors found
-                total_results = lims[-1]
-                if total_results == 0:
-                    continue  # Skip processing if no results found
+            # nr of similar vectors found
+            total_results = lims[-1]
+            if total_results == 0:
+                continue  # Skip processing if no results found
 
-                # preallocate arrays
-                data = np.full(total_results, True, dtype=bool)
-                rows = np.empty(total_results, dtype=np.int64)
-                cols = np.empty(total_results, dtype=np.int64)
+            # preallocate arrays
+            data = np.full(total_results, True, dtype=bool)
+            rows = np.empty(total_results, dtype=np.int64)
+            cols = np.empty(total_results, dtype=np.int64)
 
-                # Populate rows and cols
-                for query_idx in range(query_vectors.shape[0]):
-                    start = lims[query_idx]
-                    end = lims[query_idx + 1]
-                    # Fill only if there are results
-                    if start < end:
-                        rows[start:end] = ids[query_idx]
-                        cols[start:end] = i[start:end]
+            # Populate rows and cols
+            for query_idx in range(query_vectors.shape[0]):
+                start = lims[query_idx]
+                end = lims[query_idx + 1]
+                # Fill only if there are results
+                if start < end:
+                    rows[start:end] = ids[query_idx]
+                    cols[start:end] = i[start:end]
 
-                similarity_matrix.update(data=data, rows=rows, cols=cols)
+            similarity_matrix.update(data=data, rows=rows, cols=cols)
         logger.info("Finished querying.")
         return similarity_matrix
 

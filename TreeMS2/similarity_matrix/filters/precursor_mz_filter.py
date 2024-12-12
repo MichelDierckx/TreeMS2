@@ -25,25 +25,26 @@ class PrecursorMzFilter(MaskFilter):
     def construct_mask(self, similarity_matrix: SimilarityMatrix) -> SpectraMatrix:
         rows, cols = similarity_matrix.matrix.nonzero()
 
-        mask_data = np.zeros(shape=rows.shape, dtype=np.bool_)
+        precursor_mz_rows = self.vector_store.get_data(rows=rows, columns=["precursor_mz"])["precursor_mz"].to_numpy(
+            dtype=np.float32)
+        precursor_mz_cols = self.vector_store.get_data(rows=cols, columns=["precursor_mz"])["precursor_mz"].to_numpy(
+            dtype=np.float32)
 
-        for index, (row, col) in enumerate(zip(rows, cols)):
-            row_group_id = self.groups.get_group_id_from_global_id(row)
-            col_group_id = self.groups.get_group_id_from_global_id(col)
-
-            row_precursor_mz = self.vector_store.get_metadata(row_group_id, row, self.groups, "precursor_mz")
-            col_precursor_mz = self.vector_store.get_metadata(col_group_id, col, self.groups, "precursor_mz")
-
-            if abs(row_precursor_mz - col_precursor_mz) <= self.precursor_mz_window:
-                mask_data[index] = False
-
+        mask_data = np.abs(precursor_mz_rows - precursor_mz_cols) > self.precursor_mz_window
         m = csr_matrix((mask_data, (rows, cols)), shape=similarity_matrix.matrix.shape, dtype=np.bool_)
         mask = SpectraMatrix(m)
         return mask
 
-    def write_filter_statistics(self, work_dir: str):
+    def write_filter_statistics(self, work_dir: str, total_spectra):
         if self.mask is None:
             raise ValueError("No mask has been constructed")
+
+        rows, cols = self.mask.matrix.nonzero()
+
+        row_ids = self.vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        col_ids = self.vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        m = csr_matrix((self.mask.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
+                       dtype=np.bool_)
 
         nr_groups = self.groups.get_size()
         s = np.zeros((nr_groups, nr_groups), dtype=np.uint64)
@@ -60,7 +61,7 @@ class PrecursorMzFilter(MaskFilter):
                 col_begin = col_group.begin
                 col_end = col_group.end
                 # count the number of spectra that have been filtered between group A and group B
-                filtered = self.mask.matrix[row_begin:row_end + 1, col_begin:col_end + 1]
+                filtered = m[row_begin:row_end + 1, col_begin:col_end + 1].nnz
                 s[row_group_id, col_group_id] = filtered
 
         # create a dataframe
@@ -89,6 +90,15 @@ class PrecursorMzFilter(MaskFilter):
         os.makedirs(filters_dir, exist_ok=True)
         # save mask
         path = self.mask.write(filters_dir, "precursor_mz")
+        logger.info(f"Precursor mz mask has been written to '{path}'.")
+        return path
+
+    def save_mask_global(self, work_dir: str, total_spectra: int):
+        # create path
+        filters_dir = os.path.join(work_dir, "filters")
+        os.makedirs(filters_dir, exist_ok=True)
+        # save mask
+        path = self.mask.write_global(filters_dir, "precursor_mz_global", total_spectra, self.vector_store)
         logger.info(f"Precursor mz mask has been written to '{path}'.")
         return path
 

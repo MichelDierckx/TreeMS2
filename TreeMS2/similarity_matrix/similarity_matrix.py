@@ -6,6 +6,7 @@ from scipy.sparse import csr_matrix
 
 from TreeMS2.logger_config import get_logger
 from TreeMS2.similarity_matrix.spectra_matrix import SpectraMatrix
+from TreeMS2.vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
@@ -25,6 +26,15 @@ class SimilarityMatrix(SpectraMatrix):
         os.makedirs(similarities_dir, exist_ok=True)
 
         path = super().write(similarities_dir, filename)
+        logger.info(f"Similarity matrix has been written to '{path}'.")
+        return path
+
+    def write_global(self, work_dir: str, filename: str, total_spectra: int, vector_store: VectorStore):
+        # create path
+        similarities_dir = os.path.join(work_dir, "similarities")
+        os.makedirs(similarities_dir, exist_ok=True)
+
+        path = super().write_global(similarities_dir, filename + "_global", total_spectra, vector_store)
         logger.info(f"Similarity matrix has been written to '{path}'.")
         return path
 

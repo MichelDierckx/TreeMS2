@@ -53,9 +53,11 @@ class TreeMS2:
         # Create an index
         index = self._index(groups=groups)
         # Query the index
-        similarity_matrix = self._query(index=index, groups=groups)
+        similarity_matrix = self._query(index=index)
         # Write similarity matrix to file before filtering
         similarity_matrix.write(work_dir=output_config.work_dir, filename="similarity_matrix_before_filtering")
+        similarity_matrix.write_global(work_dir=output_config.work_dir, filename="similarity_matrix_before_filtering",
+                                       total_spectra=groups.total_spectra, vector_store=self.vector_store)
         # Compute similarity sets
         similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
         # Write similarity sets to file
@@ -68,6 +70,8 @@ class TreeMS2:
                                                            work_dir=output_config.work_dir)
         # Write similarity matrix to file after filtering
         similarity_matrix.write(work_dir=output_config.work_dir, filename="similarity_matrix_after_filtering")
+        similarity_matrix.write_global(work_dir=output_config.work_dir, filename="similarity_matrix_after_filtering",
+                                       total_spectra=groups.total_spectra, vector_store=self.vector_store)
         # Compute similarity sets
         similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
         # Write similarity sets to file
@@ -214,24 +218,22 @@ class TreeMS2:
     def _index(self, groups: Groups) -> MS2Index:
         output_config = self.config_factory.create_output_config()
         d = self.vectorizer.reducer.low_dim
-        total_spectra = groups.total_spectra
         total_valid_spectra = groups.total_valid_spectra()
         # create index instance
-        index = MS2Index(total_valid_spectra=total_valid_spectra, total_spectra=total_spectra, d=d,
+        index = MS2Index(total_valid_spectra=total_valid_spectra, d=d,
                          work_dir=output_config.work_dir)
         # train the index
-        index.train(vector_store=self.vector_store, group_ids=groups.get_group_ids())
+        index.train(vector_store=self.vector_store)
         # index the spectra for the groups
-        index.index_groups(vector_store=self.vector_store, groups=groups, batch_size=1000)
+        index.add(vector_store=self.vector_store, batch_size=1000)
         return index
 
-    def _query(self, index: MS2Index, groups: Groups) -> SimilarityMatrix:
+    def _query(self, index: MS2Index) -> SimilarityMatrix:
         index_config = self.config_factory.create_index_config()
         similarity_threshold = index_config.similarity
         # query each spectrum against the index
         similarity_matrix = index.range_search(similarity_threshold=similarity_threshold,
-                                               vector_store=self.vector_store,
-                                               groups=groups, batch_size=1000)
+                                               vector_store=self.vector_store, batch_size=1000)
         return similarity_matrix
 
     def _filter_similarity_matrix(self, similarity_matrix: SimilarityMatrix, groups: Groups,
@@ -239,5 +241,6 @@ class TreeMS2:
         sim_matrix_processing_config = self.config_factory.create_sim_matrix_processing_config()
         pipeline = SimilarityMatrixPipelineFactory.create_pipeline(config=sim_matrix_processing_config,
                                                                    vector_store=self.vector_store, groups=groups)
-        similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix, work_dir=work_dir)
+        similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix, work_dir=work_dir,
+                                             total_spectra=groups.total_spectra)
         return similarity_matrix

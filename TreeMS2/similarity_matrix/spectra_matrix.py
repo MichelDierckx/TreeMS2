@@ -3,6 +3,8 @@ import os
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz, load_npz
 
+from TreeMS2.vector_store.vector_store import VectorStore
+
 
 class SpectraMatrix:
     def __init__(self, *args):
@@ -29,6 +31,15 @@ class SpectraMatrix:
     def write(self, work_dir: str, filename: str) -> str:
         path = os.path.join(work_dir, filename)
         save_npz(path, self.matrix)
+        return path
+
+    def write_global(self, work_dir: str, filename: str, total_spectra: int, vector_store: VectorStore):
+        path = os.path.join(work_dir, filename)
+        rows, cols = self.matrix.nonzero()
+        row_ids = vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        col_ids = vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        m = csr_matrix((self.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra), dtype=np.bool_)
+        save_npz(path, m)
         return path
 
     def subtract(self, spectra_matrix: 'SpectraMatrix'):
