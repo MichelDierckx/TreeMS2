@@ -72,15 +72,15 @@ class VectorStore:
 
     def to_vector_batches(self, batch_size: int) -> Tuple[ndarray, ndarray, int]:
         """
-        Returns vectors in batch, along with their global id and the number of vectors in the batch.
+        Returns vectors in batch, along with their dataset row ids and the number of vectors in the batch.
         :param batch_size: the maximum number of vectors in the batch
         :return: A triplet: (vectors, vector_ids, number_of_vectors)
         """
         dataset = lance.dataset(self.base_path)
-        for batch in dataset.to_batches(columns=["global_id", "vector"], batch_size=batch_size):
+        for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size, with_row_id=True):
             df = batch.to_pandas()
             vectors = np.stack(df["vector"].to_numpy())
-            ids = np.stack(df["global_id"].to_numpy())
+            ids = np.stack(df["_rowid"].to_numpy(dtype=np.uint64))
             yield vectors, ids, batch.num_rows
 
     def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
