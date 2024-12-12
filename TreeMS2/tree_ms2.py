@@ -59,7 +59,8 @@ class TreeMS2:
         similarity_matrix.write_global(work_dir=output_config.work_dir, filename="similarity_matrix_before_filtering",
                                        total_spectra=groups.total_spectra, vector_store=self.vector_store)
         # Compute similarity sets
-        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
+        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups,
+                                         vector_store=self.vector_store)
         # Write similarity sets to file
         similarity_sets.write(work_dir=output_config.work_dir, filename="similarity_statistics_before_filtering")
         # Compute distances
@@ -73,7 +74,8 @@ class TreeMS2:
         similarity_matrix.write_global(work_dir=output_config.work_dir, filename="similarity_matrix_after_filtering",
                                        total_spectra=groups.total_spectra, vector_store=self.vector_store)
         # Compute similarity sets
-        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups)
+        similarity_sets = SimilaritySets(similarity_matrix=similarity_matrix, groups=groups,
+                                         vector_store=self.vector_store)
         # Write similarity sets to file
         similarity_sets.write(work_dir=output_config.work_dir, filename="similarity_statistics_after_filtering")
         # Compute distances

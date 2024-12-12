@@ -14,19 +14,21 @@ logger = get_logger(__name__)
 
 
 class SimilaritySets:
-    def __init__(self, similarity_matrix: SimilarityMatrix, groups: Groups):
+    def __init__(self, similarity_matrix: SimilarityMatrix, groups: Groups, vector_store: VectorStore):
         self.similarity_matrix = similarity_matrix
         self.groups = groups
+        self.vector_store = vector_store
         self.similarity_sets: npt.NDArray[np.uint64] = self._compute_similarity_sets()
 
-    def _compute_similarity_sets(self, vector_store: VectorStore, total_spectra) -> npt.NDArray[np.uint64]:
+    def _compute_similarity_sets(self) -> npt.NDArray[np.uint64]:
         nr_groups = self.groups.get_size()
         s = np.zeros((nr_groups, nr_groups), dtype=np.uint64)
 
         rows, cols = self.similarity_matrix.matrix.nonzero()
+        total_spectra = self.groups.total_spectra
 
-        row_ids = vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
-        col_ids = vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        row_ids = self.vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        col_ids = self.vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
         m = csr_matrix((self.similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
                        dtype=np.bool_)
 
