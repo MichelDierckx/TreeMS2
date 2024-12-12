@@ -77,10 +77,12 @@ class VectorStore:
         :return: A triplet: (vectors, vector_ids, number_of_vectors)
         """
         dataset = lance.dataset(self.base_path)
-        for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size, with_row_id=True):
+        first = 0
+        for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size):
             df = batch.to_pandas()
             vectors = np.stack(df["vector"].to_numpy())
-            ids = np.stack(df["_rowid"].to_numpy(dtype=np.uint64))
+            ids = np.arange(start=first, stop=first + batch.num_rows, dtype=np.uint64)
+            first += batch.num_rows
             yield vectors, ids, batch.num_rows
 
     def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
