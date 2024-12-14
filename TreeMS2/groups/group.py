@@ -67,6 +67,18 @@ class Group:
             "files": [file.to_dict() for file in self._peak_files],
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Group":
+        group = cls(data["name"])
+        group._id = data["id"]
+        group.total_spectra = data["total_spectra"]
+        group.failed_parsed = data["failed_parsed"]
+        group.failed_processed = data["failed_processed"]
+        group.begin = data["begin"]
+        group.end = data["end"]
+        group._peak_files = [PeakFile.from_dict(file) for file in data["files"]]
+        return group
+
     def __repr__(self) -> str:
         files_repr = "\n\t".join([repr(file) for file in self._peak_files])
         return f"{self.__class__.__name__}(id={self._id}, [{self.begin}, {self.end}]):\n\t{files_repr}"

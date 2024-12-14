@@ -64,5 +64,17 @@ class PeakFile(ABC):
             "filtered": self.filtered,
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PeakFile":
+        peak_file = cls(data["filename"])
+        peak_file._id = data["id"]
+        peak_file.total_spectra = data["total_spectra"]
+        peak_file.failed_parsed = data["failed_parsed"]
+        peak_file.failed_processed = data["failed_processed"]
+        peak_file.begin = data["begin"]
+        peak_file.end = data["end"]
+        peak_file.filtered = data["filtered"]
+        return peak_file
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id={self._id}, filepath={self.file_path}, [{self.begin}, {self.end}])"

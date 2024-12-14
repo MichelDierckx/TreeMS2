@@ -17,8 +17,8 @@ logger = get_logger(__name__)
 
 
 class VectorStore:
-    def __init__(self, work_dir: str):
-        self.base_path = os.path.join(work_dir, "spectra.lance")
+    def __init__(self, path: str):
+        self.base_path = path
         # Check if the directory exists, if not, create it
         if not os.path.exists(self.base_path):
             os.makedirs(self.base_path)

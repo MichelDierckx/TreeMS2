@@ -1,6 +1,5 @@
 import csv
 import json
-import os
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -70,7 +69,7 @@ class Groups:
         return self.total_spectra - self.failed_parsed - self.failed_processed
 
     @classmethod
-    def from_file(cls, file_path: str):
+    def read(cls, file_path: str):
         path = Path(file_path)
         # Check if the file exists
         if not path.exists() or not path.is_file():
@@ -151,16 +150,35 @@ class Groups:
             "groups": [group.to_dict() for group in self._groups],
         }
 
-    def write_to_file(self, work_dir: str):
+    def write_to_file(self, path: str):
         """
-        Write the groups to a JSON-file named groups.json.
-        :param work_dir: The directory in which the file will be created or overwritten.
+        Write the groups to a JSON-file.
+        :param path: The path to which the JSON file will be written.
         :return:
         """
-        file_path = os.path.join(work_dir, "groups.json")
-        logger.info(f"Writing group statistics to '{file_path}'.")
-        with open(file_path, "w") as json_file:
+        logger.info(f"Writing group statistics to '{path}'.")
+        with open(path, "w") as json_file:
             json.dump(self.to_dict(), json_file, indent=4)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Groups":
+        groups = cls()
+        groups.filename = data["filename"]
+        groups.total_spectra = data["total_spectra"]
+        groups.failed_parsed = data["failed_parsed"]
+        groups.failed_processed = data["failed_processed"]
+        groups.begin = data["begin"]
+        groups.end = data["end"]
+
+        groups._groups = [Group.from_dict(group) for group in data["groups"]]
+        return groups
+
+    @classmethod
+    def from_file(cls, path: str) -> "Groups":
+        logger.info(f"Loading group statistics from '{path}'.")
+        with open(path, "r") as json_file:
+            data = json.load(json_file)
+        return cls.from_dict(data)
 
     def __repr__(self) -> str:
         groups_repr = "\n\t".join([repr(group) for group in self._groups])

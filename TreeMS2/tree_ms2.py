@@ -105,7 +105,7 @@ class TreeMS2:
     def _read_groups(self) -> Groups:
         # Read group and file information
         groups_config = self.config_factory.create_groups_config()
-        groups = Groups.from_file(groups_config.sample_to_group_file)
+        groups = Groups.read(groups_config.sample_to_group_file)
         return groups
 
     def _read_and_process_spectra(self, groups: Groups):
