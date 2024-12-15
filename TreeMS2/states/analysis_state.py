@@ -15,8 +15,8 @@ SIMILARITY_STATISTICS = "analysis/similarity_statistics.txt"
 DISTANCES = "analysis/distances.meg"
 
 # after post-processing
-SIMILARITY_MATRIX_POST = "analysis/similarity_matrix_post"
-SIMILARITY_MATRIX_POST_GLOBAL = "analysis/similarity_matrix_post_global.meg"
+SIMILARITY_MATRIX_POST = "analysis/similarity_matrix_post.npz"
+SIMILARITY_MATRIX_POST_GLOBAL = "analysis/similarity_matrix_post_global.npz"
 SIMILARITY_STATISTICS_POST = "analysis/similarity_statistics_post.txt"
 DISTANCES_POST = "analysis/distances_post.meg"
 
@@ -90,5 +90,4 @@ class AnalysisState(State):
         for file in required_files:
             if not os.path.isfile(os.path.join(self.work_dir, file)):
                 return False
-
         return True
