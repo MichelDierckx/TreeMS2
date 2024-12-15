@@ -8,8 +8,8 @@ from TreeMS2.states.context import Context
 from TreeMS2.states.state import State
 from TreeMS2.vector_store.vector_store import VectorStore
 
-SIMILARITY_MATRIX = "similarity_matrix"
-SIMILARITY_MATRIX_GLOBAL = "similarity_matrix_global"
+SIMILARITY_MATRIX = "similarity_matrix.npz"
+SIMILARITY_MATRIX_GLOBAL = "similarity_matrix_global.npz"
 
 
 class QueryIndexState(State):

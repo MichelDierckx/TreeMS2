@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, load_npz
 
 from TreeMS2.logger_config import get_logger
 from TreeMS2.similarity_matrix.spectra_matrix import SpectraMatrix
@@ -30,9 +30,10 @@ class SimilarityMatrix(SpectraMatrix):
 
     @classmethod
     def load_with_threshold(cls, path: str, similarity_threshold: float) -> 'SimilarityMatrix':
-        base_matrix = cls.load(path)
-        base_matrix.similarity_threshold = similarity_threshold
-        return base_matrix
+        # Load the matrix from file
+        matrix = load_npz(path)
+        # Create an instance of SimilarityMatrix with the loaded matrix and threshold
+        return cls(matrix, similarity_threshold=similarity_threshold)
 
     def __sub__(self, other):
         if isinstance(other, SpectraMatrix):
