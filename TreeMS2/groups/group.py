@@ -1,5 +1,7 @@
+import os
 from typing import List, Dict, Any
 
+from TreeMS2.groups.peak_file.mgf_file import MgfFile
 from TreeMS2.groups.peak_file.peak_file import PeakFile
 
 
@@ -76,7 +78,13 @@ class Group:
         group.failed_processed = data["failed_processed"]
         group.begin = data["begin"]
         group.end = data["end"]
-        group._peak_files = [PeakFile.from_dict(file) for file in data["files"]]
+        for file in data["files"]:
+            _, file_extension = os.path.splitext(file["filename"])
+            match file_extension:
+                case ".mgf":
+                    MgfFile.from_dict(file)
+                case _:
+                    continue
         return group
 
     def __repr__(self) -> str:
