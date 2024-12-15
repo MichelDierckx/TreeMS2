@@ -24,15 +24,15 @@ class MaskFilter(ABC):
         pass
 
     @abstractmethod
-    def write_filter_statistics(self, work_dir: str, total_spectra: int):
+    def write_filter_statistics(self, target_dir: str, total_spectra: int):
         pass
 
     @abstractmethod
-    def save_mask(self, work_dir: str):
+    def save_mask(self, target_dir: str):
         pass
 
     @abstractmethod
-    def save_mask_global(self, work_dir: str, total_spectra: int):
+    def save_mask_global(self, target_dir: str, total_spectra: int):
         pass
 
     def __repr__(self) -> str:

@@ -1,10 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 from TreeMS2.logger_config import get_logger
 from .filters.mask_filter import MaskFilter
 from .filters.precursor_mz_filter import PrecursorMzFilter
 from .similarity_matrix import SimilarityMatrix
-from ..config.sim_matrix_processing_config import SimMatrixProcessingConfig
 from ..groups.groups import Groups
 from ..vector_store.vector_store import VectorStore
 
@@ -17,12 +16,12 @@ class SimilarityMatrixPipeline:
         self.mask_filters = mask_filters
         logger.debug(f"Created {self}")
 
-    def process(self, similarity_matrix: SimilarityMatrix, total_spectra: int, work_dir: str) -> SimilarityMatrix:
+    def process(self, similarity_matrix: SimilarityMatrix, total_spectra: int, target_dir: str) -> SimilarityMatrix:
         for mask_filter in self.mask_filters:  # Iterate over the list of mask filters
             mask_filter.apply(similarity_matrix)  # Apply each mask filter
-            mask_filter.save_mask(work_dir=work_dir)
-            mask_filter.save_mask_global(work_dir=work_dir, total_spectra=total_spectra)
-            mask_filter.write_filter_statistics(work_dir=work_dir, total_spectra=total_spectra)
+            mask_filter.save_mask(target_dir=target_dir)
+            mask_filter.save_mask_global(target_dir=target_dir, total_spectra=total_spectra)
+            mask_filter.write_filter_statistics(target_dir=target_dir, total_spectra=total_spectra)
         return similarity_matrix
 
     def __repr__(self) -> str:
@@ -34,12 +33,12 @@ class SimilarityMatrixPipeline:
 # Pipeline Factory that creates the processing pipeline based on configuration
 class SimilarityMatrixPipelineFactory:
     @staticmethod
-    def create_pipeline(config: SimMatrixProcessingConfig,
-                        vector_store: VectorStore, groups: Groups) -> SimilarityMatrixPipeline:
+    def create_pipeline(
+            groups: Groups, vector_store: VectorStore,
+            precursor_mz_window: Optional[float]) -> SimilarityMatrixPipeline:
         mask_filters = []
-        if config.precursor_mz_window is not None:
+        if precursor_mz_window is not None:
             mask_filters.append(
-                PrecursorMzFilter(precursor_mz_window=config.precursor_mz_window,
-                                  vector_store=vector_store, groups=groups))
+                PrecursorMzFilter(groups=groups, vector_store=vector_store, precursor_mz_window=precursor_mz_window))
         pipeline = SimilarityMatrixPipeline(mask_filters=mask_filters)
         return pipeline

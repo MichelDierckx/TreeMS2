@@ -41,17 +41,15 @@ class IndexingTooLargeError(Exception):
 
 
 class MS2Index:
-    def __init__(self, total_valid_spectra: int, d: int, work_dir: str):
+    def __init__(self, total_valid_spectra: int, d: int):
         """
         Index for fast ms/ms spectrum similarity search.
         :param total_valid_spectra: the total number of valid spectra
         :param d: the dimension of the spectra to be indexed
-        :param work_dir: the working directory
         """
 
         self.total_valid_spectra = total_valid_spectra
         self.d = d
-        self.work_dir = work_dir
 
         self.index, self.index_type, self.nlist = self._initialize_index(total_valid_spectra, d)
 
@@ -126,23 +124,23 @@ class MS2Index:
                 pbar.update(nr_vectors)
         logger.info("Added all spectra to the index.")
 
-    def save_index(self, filepath):
+    def save_index(self, path):
         """
         Save the FAISS index to a file.
-        :param filepath: filepath (str): Path to save the index.
+        :param path: filepath (str): Path to save the index.
         :return:
         """
-        faiss.write_index(self.index, filepath)
-        logger.debug(f"Saved index to {filepath}")
+        faiss.write_index(self.index, path)
+        logger.debug(f"Saved index to {path}")
 
-    def load_index(self, filepath):
+    def load_index(self, path):
         """
         Load a FAISS index from a file.
-        :param filepath: str, path to the saved the index.
+        :param path: str, path to the saved the index.
         :return:
         """
-        self.index = faiss.read_index(filepath)
-        logger.debug(f"Loaded index from {filepath}")
+        self.index = faiss.read_index(path)
+        logger.debug(f"Loaded index from {path}")
 
     def range_search(self, similarity_threshold: float, vector_store: VectorStore,
                      batch_size: int) -> SimilarityMatrix:

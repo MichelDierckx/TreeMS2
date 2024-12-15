@@ -38,7 +38,6 @@ class VectorStore:
         )
         self.lock = threading.Lock()  # locking mechanism per dataset
         self.has_data: bool = False
-        self.added_global_ids: bool = False
 
     def cleanup(self):
         try:
@@ -103,7 +102,6 @@ class VectorStore:
 
         ds = lance.dataset(self.base_path)
         ds.add_columns(add_global_ids_batch)
-        self.added_global_ids = True
 
     def count_spectra(self):
         ds = lance.dataset(self.base_path)

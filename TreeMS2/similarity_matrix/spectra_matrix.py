@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz, load_npz
 
@@ -28,13 +26,11 @@ class SpectraMatrix:
     def nr_bytes(self):
         return self.matrix.data.nbytes + self.matrix.indptr.nbytes + self.matrix.indices.nbytes
 
-    def write(self, work_dir: str, filename: str) -> str:
-        path = os.path.join(work_dir, filename)
+    def write(self, path: str) -> str:
         save_npz(path, self.matrix)
         return path
 
-    def write_global(self, work_dir: str, filename: str, total_spectra: int, vector_store: VectorStore):
-        path = os.path.join(work_dir, filename)
+    def write_global(self, path: str, total_spectra: int, vector_store: VectorStore):
         rows, cols = self.matrix.nonzero()
         row_ids = vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
         col_ids = vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)

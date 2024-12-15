@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -60,16 +58,11 @@ class SimilaritySets:
         # return s to calculate global distance matrix
         return s
 
-    def write(self, work_dir: str, filename: str):
+    def write(self, path: str):
         s = self.similarity_sets
         # create a dataframe
         group_names = [group.get_group_name() for group in self.groups.get_groups()]
         df = pd.DataFrame(s, index=group_names, columns=group_names)
-
-        # create path
-        similarities = os.path.join(work_dir, "similarities")
-        os.makedirs(similarities, exist_ok=True)
-        path = os.path.join(similarities, f"{filename}.txt")
 
         # write S to a file in human-readable format
         logger.info(f"Writing similarity statistics to '{path}'.")

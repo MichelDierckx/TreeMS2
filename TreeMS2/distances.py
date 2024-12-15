@@ -1,4 +1,3 @@
-import os
 from typing import List
 
 import numba as nb
@@ -15,7 +14,7 @@ class Distances:
         self.groups = self.similarity_sets.groups
         self.similarity_threshold = similarity_sets.similarity_matrix.similarity_threshold
 
-    def create_mega(self, work_dir: str, filename: str):
+    def create_mega(self, path: str):
         lines: List[str] = ["#mega",
                             f"TITLE: {self.groups.filename} (similarity_threshold={self.similarity_threshold}))",
                             ""]
@@ -37,11 +36,6 @@ class Distances:
             line = "\t".join(f"{x:.4f}" for x in distances)
             lines.append(line)
         text = "\r\n".join(lines)
-
-        # create path
-        distances_dir = os.path.join(work_dir, "distances")
-        os.makedirs(distances_dir, exist_ok=True)
-        path = os.path.join(distances_dir, f"{filename}.meg")
 
         logger.info(f"Writing distance matrix to '{path}'.")
         with open(path, 'w') as f:

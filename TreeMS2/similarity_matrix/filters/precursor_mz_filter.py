@@ -15,8 +15,8 @@ logger = get_logger(__name__)
 
 
 class PrecursorMzFilter(MaskFilter):
-    def __init__(self, precursor_mz_window: float, vector_store: VectorStore,
-                 groups: Groups):
+    def __init__(self, groups: Groups, vector_store: VectorStore,
+                 precursor_mz_window: float):
         self.precursor_mz_window = precursor_mz_window
         self.vector_store = vector_store
         self.groups = groups
@@ -41,7 +41,7 @@ class PrecursorMzFilter(MaskFilter):
         mask = SpectraMatrix(m)
         return mask
 
-    def write_filter_statistics(self, work_dir: str, total_spectra):
+    def write_filter_statistics(self, target_dir: str, total_spectra):
         if self.mask is None:
             raise ValueError("No mask has been constructed")
 
@@ -75,7 +75,7 @@ class PrecursorMzFilter(MaskFilter):
         df = pd.DataFrame(s, index=group_names, columns=group_names)
 
         # create path
-        filters_dir = os.path.join(work_dir, "filters")
+        filters_dir = os.path.join(target_dir, "filters")
         os.makedirs(filters_dir, exist_ok=True)
         path = os.path.join(filters_dir, "precursor_mz.txt")
 
@@ -90,21 +90,15 @@ class PrecursorMzFilter(MaskFilter):
             f"Overview of the number of similarities filtered due to precursor m/z difference written to '{path}'")
         return s
 
-    def save_mask(self, work_dir: str):
-        # create path
-        filters_dir = os.path.join(work_dir, "filters")
-        os.makedirs(filters_dir, exist_ok=True)
+    def save_mask(self, target_dir: str):
         # save mask
-        path = self.mask.write(filters_dir, "precursor_mz")
+        path = self.mask.write(os.path.join(target_dir, "precursor_mz"))
         logger.info(f"Precursor mz mask has been written to '{path}'.")
         return path
 
-    def save_mask_global(self, work_dir: str, total_spectra: int):
-        # create path
-        filters_dir = os.path.join(work_dir, "filters")
-        os.makedirs(filters_dir, exist_ok=True)
+    def save_mask_global(self, target_dir: str, total_spectra: int):
         # save mask
-        path = self.mask.write_global(filters_dir, "precursor_mz_global", total_spectra, self.vector_store)
+        path = self.mask.write_global(os.path.join(target_dir, "precursor_mz_global"), total_spectra, self.vector_store)
         logger.info(f"Precursor mz mask has been written to '{path}'.")
         return path
 

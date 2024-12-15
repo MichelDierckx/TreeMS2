@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 import numpy.typing as npt
 from scipy.sparse import csr_matrix
@@ -20,23 +18,21 @@ class SimilarityMatrix(SpectraMatrix):
     def update(self, data: npt.NDArray[np.bool_], rows: npt.NDArray[np.int64], cols: npt.NDArray[np.int64]):
         self.matrix += csr_matrix((data, (rows, cols)), self.matrix.shape)
 
-    def write(self, work_dir: str, filename: str) -> str:
-        # create path
-        similarities_dir = os.path.join(work_dir, "similarities")
-        os.makedirs(similarities_dir, exist_ok=True)
-
-        path = super().write(similarities_dir, filename)
+    def write(self, path: str) -> str:
+        path = super().write(path)
         logger.info(f"Similarity matrix has been written to '{path}'.")
         return path
 
-    def write_global(self, work_dir: str, filename: str, total_spectra: int, vector_store: VectorStore):
-        # create path
-        similarities_dir = os.path.join(work_dir, "similarities")
-        os.makedirs(similarities_dir, exist_ok=True)
-
-        path = super().write_global(similarities_dir, filename + "_global", total_spectra, vector_store)
+    def write_global(self, path: str, total_spectra: int, vector_store: VectorStore):
+        path = super().write_global(path, total_spectra, vector_store)
         logger.info(f"Similarity matrix has been written to '{path}'.")
         return path
+
+    @classmethod
+    def load_with_threshold(cls, path: str, similarity_threshold: float) -> 'SimilarityMatrix':
+        base_matrix = cls.load(path)
+        base_matrix.similarity_threshold = similarity_threshold
+        return base_matrix
 
     def __sub__(self, other):
         if isinstance(other, SpectraMatrix):

@@ -9,7 +9,7 @@ from .processors.precursor_peak_remover_processor import PrecursorPeakRemoverPro
 from .processors.spectrum_normalizer_processor import SpectrumNormalizerProcessor
 from .processors.spectrum_validator import SpectrumValidator
 from .spectrum_processor import SpectrumProcessor
-from ...config.spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
+from ...config.spectrum_processing_config import ScalingMethod
 from ...logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -37,22 +37,24 @@ class SpectrumProcessingPipeline:
 # Pipeline Factory that creates the processing pipeline based on configuration
 class ProcessingPipelineFactory:
     @staticmethod
-    def create_pipeline(config: SpectrumProcessingConfig, min_mz, max_mz) -> SpectrumProcessingPipeline:
+    def create_pipeline(min_peaks: int, min_mz_range: float, remove_precursor_tol: float, min_intensity: float,
+                        max_peaks_used: int, scaling: ScalingMethod, min_mz: float,
+                        max_mz: float) -> SpectrumProcessingPipeline:
         processors = []
-        validator = SpectrumValidator(min_peaks=config.min_peaks, min_mz_range=config.min_mz_range)
+        validator = SpectrumValidator(min_peaks=min_peaks, min_mz_range=min_mz_range)
         processors.append(MZRangeFilterProcessor(mz_min=min_mz, mz_max=max_mz, validator=validator))
 
-        if config.remove_precursor_tol is not None:
-            processors.append(PrecursorPeakRemoverProcessor(remove_precursor_tolerance=config.remove_precursor_tol,
+        if remove_precursor_tol is not None:
+            processors.append(PrecursorPeakRemoverProcessor(remove_precursor_tolerance=remove_precursor_tol,
                                                             validator=validator))
 
-        if config.min_intensity is not None or config.max_peaks_used is not None:
+        if min_intensity is not None or max_peaks_used is not None:
             processors.append(
-                IntensityFilterProcessor(min_intensity=config.min_intensity, max_peaks_used=config.max_peaks_used,
+                IntensityFilterProcessor(min_intensity=min_intensity, max_peaks_used=max_peaks_used,
                                          validator=validator))
 
-        if not config.scaling != ScalingMethod.OFF:
-            processors.append(IntensityScalingProcessor(scaling=config.scaling, max_rank=config.max_peaks_used))
+        if not scaling != ScalingMethod.OFF:
+            processors.append(IntensityScalingProcessor(scaling=scaling, max_rank=max_peaks_used))
 
         processors.append(SpectrumNormalizerProcessor())
 
