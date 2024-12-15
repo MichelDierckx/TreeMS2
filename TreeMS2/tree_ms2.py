@@ -15,6 +15,9 @@ class TreeMS2:
     def run(self):
         self.context.push_state(state=ProcessSpectraState(context=self.context))
         loop_nr = 0
-        while self.context.states and loop_nr < LOOP_LIMIT:
+        while self.context.states:
+            if loop_nr > LOOP_LIMIT:
+                logger.error("Program exited with pending tasks.")
+                break
             self.context.get_state().run(overwrite=True)
             loop_nr += 1

@@ -1,9 +1,16 @@
+from enum import Enum
 from typing import Optional, Literal
 
 import spectrum_utils.spectrum as sus
 
 from ..spectrum_processor import SpectrumProcessor
-from ....config.spectrum_processing_config import ScalingMethod
+
+
+class ScalingMethod(Enum):
+    OFF = "off"
+    ROOT = "root"
+    LOG = "log"
+    RANK = "rank"
 
 
 class IntensityScalingProcessor(SpectrumProcessor):

@@ -4,12 +4,6 @@ from typing import Optional, Any, Union
 
 import configargparse
 
-from .groups_config import GroupsConfig
-from .index_config import IndexConfig
-from .output_config import OutputConfig
-from .sim_matrix_processing_config import SimMatrixProcessingConfig
-from .spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
-from .vectorization_config import VectorizationConfig
 from ..logger_config import get_logger
 
 # Create a logger for this module
@@ -26,28 +20,6 @@ class Config:
         )
         self._define_arguments()
         self._namespace = None
-
-    def create_groups_config(self) -> GroupsConfig:
-        return GroupsConfig(sample_to_group_file=self.sample_to_group_file)
-
-    def create_spectrum_processing_config(self) -> SpectrumProcessingConfig:
-        return SpectrumProcessingConfig(min_peaks=self.min_peaks, min_mz_range=self.min_mz_range,
-                                        remove_precursor_tol=self.remove_precursor_tol,
-                                        min_intensity=self.min_intensity, max_peaks_used=self.max_peaks_used,
-                                        scaling=ScalingMethod(self.scaling))
-
-    def create_output_config(self) -> OutputConfig:
-        return OutputConfig(work_dir=self.work_dir)
-
-    def create_vectorization_config(self) -> VectorizationConfig:
-        return VectorizationConfig(min_mz=self.min_mz, max_mz=self.max_mz, fragment_tol=self.fragment_tol,
-                                   low_dim=self.low_dim)
-
-    def create_index_config(self) -> IndexConfig:
-        return IndexConfig(similarity=self.similarity)
-
-    def create_sim_matrix_processing_config(self) -> SimMatrixProcessingConfig:
-        return SimMatrixProcessingConfig(precursor_mz_window=self.precursor_mz_window)
 
     def get(self, option: str, default: Optional[Any] = None) -> Optional[Any]:
         """

@@ -3,13 +3,12 @@ from typing import List, Optional
 import spectrum_utils.spectrum as sus
 
 from .processors.intensity_filter_processor import IntensityFilterProcessor
-from .processors.intensity_scaling_processor import IntensityScalingProcessor
+from .processors.intensity_scaling_processor import IntensityScalingProcessor, ScalingMethod
 from .processors.mz_range_filter_processor import MZRangeFilterProcessor
 from .processors.precursor_peak_remover_processor import PrecursorPeakRemoverProcessor
 from .processors.spectrum_normalizer_processor import SpectrumNormalizerProcessor
 from .processors.spectrum_validator import SpectrumValidator
 from .spectrum_processor import SpectrumProcessor
-from ...config.spectrum_processing_config import ScalingMethod
 from ...logger_config import get_logger
 
 logger = get_logger(__name__)

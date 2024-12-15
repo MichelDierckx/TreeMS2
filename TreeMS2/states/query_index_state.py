@@ -28,7 +28,7 @@ class QueryIndexState(State):
         self.index = index
 
         # search parameters
-        self.similarity_threshold: float = context.config.similarity_threshold
+        self.similarity_threshold: float = context.config.similarity
 
     def run(self, overwrite: bool):
         if overwrite or not self._is_output_generated():

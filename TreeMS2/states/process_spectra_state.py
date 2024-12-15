@@ -1,7 +1,6 @@
 import multiprocessing
 import os
 import queue
-from enum import Enum
 from typing import Optional, Tuple
 
 import joblib
@@ -11,25 +10,19 @@ from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.logger_config import get_logger
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
 from TreeMS2.spectrum.spectrum_processing.pipeline import ProcessingPipelineFactory, SpectrumProcessingPipeline
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
+from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
 from TreeMS2.vector_store.vector_store import VectorStore
-from context import Context
 
 logger = get_logger(__name__)
 
 GROUPS_SUMMARY_FILE = "groups.json"
 VECTOR_STORE_DIR = "spectra.lance"
-
-
-class ScalingMethod(Enum):
-    OFF = "off"
-    ROOT = "root"
-    LOG = "log"
-    RANK = "rank"
 
 
 class ProcessSpectraState(State):
