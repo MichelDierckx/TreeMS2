@@ -19,5 +19,5 @@ class TreeMS2:
             if loop_nr > LOOP_LIMIT:
                 logger.error("Program exited with pending tasks.")
                 break
-            self.context.get_state().run(overwrite=True)
+            self.context.get_state().run(overwrite=self.context.config.overwrite)
             loop_nr += 1

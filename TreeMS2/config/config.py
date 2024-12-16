@@ -90,7 +90,14 @@ class Config:
             dest="work_dir",
             metavar="<path>",
         )
+        self._parser.add_argument(
+            "--overwrite",
+            help="Overwrite existing results if they already exist (default: False).",
+            action="store_true",
+            dest="overwrite",
+        )
 
+        # Processing
         self._parser.add_argument(
             "--fragment_tol",
             type=float,
