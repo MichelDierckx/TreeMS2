@@ -153,7 +153,6 @@ class MS2Index:
 
         :return: Distances
         """
-        radius = 1.0 - similarity_threshold
         similarity_matrix = SimilarityMatrix(self.total_valid_spectra, similarity_threshold=similarity_threshold)
 
         logger.info("Querying the index for similar spectra ...")
@@ -164,7 +163,7 @@ class MS2Index:
             for query_vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
 
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
-                lims, d, i = self.index.range_search(query_vectors, radius)
+                lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
 
                 # nr of similar vectors found
                 total_results = lims[-1]
