@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.config.spectrum_processing_config import ScalingMethod
 from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import IntensityScalingProcessor
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
 
 
 class TestIntensityScalingProcessor(unittest.TestCase):
