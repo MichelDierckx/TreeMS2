@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.config.spectrum_processing_config import SpectrumProcessingConfig, ScalingMethod
 from TreeMS2.spectrum.spectrum_processing.pipeline import ProcessingPipelineFactory
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
 
 
 class TestSpectrumProcessingPipeline(unittest.TestCase):
@@ -18,24 +18,14 @@ class TestSpectrumProcessingPipeline(unittest.TestCase):
             intensity=np.array([70.0, 50.0, 300.0, 250.0, 20.0, 150.0], dtype=float),
             retention_time=10.0,
         )
-
-        # Configuration for the pipeline
-        self.config = SpectrumProcessingConfig(
-            min_peaks=2,
-            min_mz_range=100.0,
-            remove_precursor_tol=0.1,
-            min_intensity=0.1,
-            max_peaks_used=3,
-            scaling=ScalingMethod.RANK,
-        )
-
         # Parameters for the pipeline
         self.min_mz = 150.0
         self.max_mz = 500.0
 
         # Create the processing pipeline
         self.pipeline = ProcessingPipelineFactory.create_pipeline(
-            config=self.config, min_mz=self.min_mz, max_mz=self.max_mz
+            min_peaks=2, min_mz_range=100.0, remove_precursor_tol=0.1, min_intensity=0.1, max_peaks_used=3,
+            scaling=ScalingMethod.RANK, min_mz=self.min_mz, max_mz=self.max_mz
         )
 
     def test_pipeline_valid_spectrum(self):
@@ -56,7 +46,7 @@ class TestSpectrumProcessingPipeline(unittest.TestCase):
             processed_spectrum.intensity, expected_intensity_normalized,
             err_msg="Processed spectrum intensity values do not match."
         )
-        self.assertEqual(len(processed_spectrum.mz), self.config.max_peaks_used, "Incorrect number of peaks retained.")
+        self.assertEqual(len(processed_spectrum.mz), 3, "Incorrect number of peaks retained.")
 
     def test_pipeline_invalid_spectrum(self):
         # Create a spectrum that will fail validation (not enough peaks)
