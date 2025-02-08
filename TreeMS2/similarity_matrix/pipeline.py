@@ -19,9 +19,10 @@ class SimilarityMatrixPipeline:
     def process(self, similarity_matrix: SimilarityMatrix, total_spectra: int, target_dir: str) -> SimilarityMatrix:
         for mask_filter in self.mask_filters:  # Iterate over the list of mask filters
             mask_filter.apply(similarity_matrix)  # Apply each mask filter
-            mask_filter.save_mask(target_dir=target_dir)
-            mask_filter.save_mask_global(target_dir=target_dir, total_spectra=total_spectra)
-            mask_filter.write_filter_statistics(target_dir=target_dir, total_spectra=total_spectra)
+            # Optional: save filter
+            # mask_filter.save_mask(target_dir=target_dir)
+            # mask_filter.save_mask_global(target_dir=target_dir, total_spectra=total_spectra)
+            # mask_filter.write_filter_statistics(target_dir=target_dir, total_spectra=total_spectra)
         return similarity_matrix
 
     def __repr__(self) -> str:

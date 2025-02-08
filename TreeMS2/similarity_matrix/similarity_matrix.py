@@ -20,12 +20,10 @@ class SimilarityMatrix(SpectraMatrix):
 
     def write(self, path: str) -> str:
         path = super().write(path)
-        logger.info(f"Similarity matrix has been written to '{path}'.")
         return path
 
     def write_global(self, path: str, total_spectra: int, vector_store: VectorStore):
         path = super().write_global(path, total_spectra, vector_store)
-        logger.info(f"Similarity matrix has been written to '{path}'.")
         return path
 
     @classmethod

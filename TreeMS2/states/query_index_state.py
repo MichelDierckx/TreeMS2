@@ -1,15 +1,23 @@
 import os
 
+from TreeMS2.distances import Distances
 from TreeMS2.groups.groups import Groups
 from TreeMS2.index.ms2_index import MS2Index
-from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
-from TreeMS2.states.analysis_state import AnalysisState
+from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
+from TreeMS2.similarity_sets import SimilaritySets
 from TreeMS2.states.context import Context
 from TreeMS2.states.state import State
 from TreeMS2.vector_store.vector_store import VectorStore
 
-SIMILARITY_MATRIX = "similarity_matrix.npz"
-SIMILARITY_MATRIX_GLOBAL = "similarity_matrix_global.npz"
+# similarity matrices directories
+SIMILARITY_MATRICES = "similarity_matrices"
+SIMILARITY_MATRICES_POST_FILTERING = "similarity_matrices/post_filtering"
+SIMILARITY_MATRICES_POST_FILTERING_DATASET_COORDS = "similarity_matrices/post_filtering/dataset_coords"
+
+# statistics
+ANALYSIS_DIR = "analysis"
+SIMILARITY_STATISTICS = "analysis/similarity_statistics.txt"
+DISTANCES = "analysis/distances.meg"
 
 
 class QueryIndexState(State):
@@ -30,37 +38,51 @@ class QueryIndexState(State):
         # search parameters
         self.similarity_threshold: float = context.config.similarity
 
+        # post-filtering
+        self.precursor_mz_window: float = context.config.precursor_mz_window
+
     def run(self, overwrite: bool):
-        if overwrite or not self._is_output_generated():
-            # generate the required output
-            similarity_matrix = self._generate()
-        else:
-            # load the required output
-            similarity_matrix = self._load()
-        # move to the analysis state
-        self.context.replace_state(
-            state=AnalysisState(context=self.context, groups=self.groups, vector_store=self.vector_store,
-                                similarity_matrix=similarity_matrix))
+        self._generate()
+        self.context.pop_state()
 
-    def _generate(self) -> SimilarityMatrix:
-        # create a similarity matrix
-        similarity_matrix = self.index.range_search(similarity_threshold=self.similarity_threshold,
-                                                    vector_store=self.vector_store,
-                                                    batch_size=QueryIndexState.MAX_VECTORS_IN_MEM)
-        # save similarity matrix to disk
-        similarity_matrix.write(os.path.join(self.work_dir, SIMILARITY_MATRIX))
-        similarity_matrix.write(os.path.join(self.work_dir, SIMILARITY_MATRIX_GLOBAL))
-        return similarity_matrix
+    def _generate(self):
+        # create directories if do not exist
+        os.makedirs(os.path.join(self.work_dir, SIMILARITY_MATRICES), exist_ok=True)
+        os.makedirs(os.path.join(self.work_dir, SIMILARITY_MATRICES_POST_FILTERING), exist_ok=True)
+        os.makedirs(os.path.join(self.work_dir, SIMILARITY_MATRICES_POST_FILTERING_DATASET_COORDS), exist_ok=True)
+        os.makedirs(os.path.join(self.work_dir, ANALYSIS_DIR), exist_ok=True)
 
-    def _load(self):
-        # load the similarity matrix from disk
-        similarity_matrix = SimilarityMatrix.load_with_threshold(path=os.path.join(self.work_dir, SIMILARITY_MATRIX),
-                                                                 similarity_threshold=self.similarity_threshold)
-        return similarity_matrix
+        # init similarity sets
+        similarity_sets = SimilaritySets(groups=self.groups,
+                                         vector_store=self.vector_store)
+        # init filtering pipeline
+        pipeline = SimilarityMatrixPipelineFactory.create_pipeline(groups=self.groups,
+                                                                   vector_store=self.vector_store,
+                                                                   precursor_mz_window=self.precursor_mz_window)
 
-    def _is_output_generated(self) -> bool:
-        if not os.path.isfile(os.path.join(self.work_dir, SIMILARITY_MATRIX)):
-            return False
-        if not os.path.isfile(os.path.join(self.work_dir, SIMILARITY_MATRIX_GLOBAL)):
-            return False
-        return True
+        # query index
+        batch_nr = 0
+        for similarity_matrix in self.index.range_search(similarity_threshold=self.similarity_threshold,
+                                                         vector_store=self.vector_store,
+                                                         batch_size=QueryIndexState.MAX_VECTORS_IN_MEM):
+            # filter similarity matrix
+            similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix,
+                                                 total_spectra=self.groups.total_spectra,
+                                                 target_dir=os.path.join(self.work_dir,
+                                                                         SIMILARITY_MATRICES_POST_FILTERING_DATASET_COORDS,
+                                                                         f"{batch_nr}_filter.txt"))
+            # write similarity matrix to file (dataset coords)
+            similarity_matrix.write_global(
+                path=os.path.join(self.work_dir, SIMILARITY_MATRICES_POST_FILTERING_DATASET_COORDS, f"{batch_nr}.npz"),
+                total_spectra=self.groups.total_spectra, vector_store=self.vector_store)
+
+            # update similarity sets
+            similarity_sets.update_similarity_sets(similarity_matrix=similarity_matrix)
+
+            # update batch nr
+            batch_nr += 1
+
+        similarity_sets.write(path=os.path.join(self.work_dir, SIMILARITY_STATISTICS))
+
+        distances = Distances(similarity_sets=similarity_sets)
+        distances.create_mega(path=os.path.join(self.work_dir, DISTANCES))

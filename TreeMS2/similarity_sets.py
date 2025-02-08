@@ -12,22 +12,19 @@ logger = get_logger(__name__)
 
 
 class SimilaritySets:
-    def __init__(self, similarity_matrix: SimilarityMatrix, groups: Groups, vector_store: VectorStore):
-        self.similarity_matrix = similarity_matrix
+    def __init__(self, groups: Groups, vector_store: VectorStore):
         self.groups = groups
         self.vector_store = vector_store
-        self.similarity_sets: npt.NDArray[np.uint64] = self._compute_similarity_sets()
+        self.similarity_sets: npt.NDArray[np.uint64] = np.zeros((self.groups.get_size(), self.groups.get_size()),
+                                                                dtype=np.uint64)
 
-    def _compute_similarity_sets(self) -> npt.NDArray[np.uint64]:
-        nr_groups = self.groups.get_size()
-        s = np.zeros((nr_groups, nr_groups), dtype=np.uint64)
-
-        rows, cols = self.similarity_matrix.matrix.nonzero()
+    def update_similarity_sets(self, similarity_matrix: SimilarityMatrix):
+        rows, cols = similarity_matrix.matrix.nonzero()
         total_spectra = self.groups.total_spectra
 
         row_ids = self.vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
         col_ids = self.vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
-        m = csr_matrix((self.similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
+        m = csr_matrix((similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
                        dtype=np.bool_)
 
         # loop over groups representing the rows in s
@@ -41,22 +38,17 @@ class SimilaritySets:
                 col_group_id = col_group.get_id()
                 # nr of similar spectra group A has to A equals the number of spectra in A
                 if row_group_id == col_group_id:
-                    s[row_group_id, col_group_id] = row_group.total_spectra
+                    self.similarity_sets[row_group_id, col_group_id] = row_group.total_spectra
                     continue
                 # retrieve id of first and last spectrum in group
                 col_begin = col_group.begin
                 col_end = col_group.end
                 # count the number of spectra in group A that have at least one similar in group B
-                counter = 0
-                for spec_id in range(row_begin, row_end + 1):
-                    # check if there is at least one spectrum in the other group marked as similar
-                    nr_similarities = m[spec_id, col_begin:col_end].nnz
-                    if nr_similarities > 0:
-                        counter += 1
-                # entry S(A,B) = number of spectra A has that have at least one similar spectrum in B
-                s[row_group_id, col_group_id] = counter
-        # return s to calculate global distance matrix
-        return s
+                # m[row_begin:row_end + 1, col_begin:col_end] extracts the relevant submatrix
+                # .getnnz(axis=1) counts the number of nonzero entries per row
+                # > 0 converts it into a boolean array where True means the row has at least one nonzero value
+                self.similarity_sets[row_group_id, col_group_id] += (
+                        m[row_begin:row_end + 1, col_begin:col_end].getnnz(axis=1) > 0).sum()
 
     def write(self, path: str):
         s = self.similarity_sets

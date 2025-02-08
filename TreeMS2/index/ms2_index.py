@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Iterator
 
 import faiss
 import numpy as np
@@ -143,17 +143,17 @@ class MS2Index:
         logger.debug(f"Loaded index from {path}")
 
     def range_search(self, similarity_threshold: float, vector_store: VectorStore,
-                     batch_size: int) -> SimilarityMatrix:
+                     batch_size: int) -> Iterator[SimilarityMatrix]:
         """
-        Perform a range search on the FAISS index for every vector in the vector store in batches. Capture result in Distances object.
+        Perform a range search on the FAISS index for every vector in the vector store in batches.
+        Capture result in a SimilarityMatrix for each batch and yield it.
 
         :param similarity_threshold: (float), Search radius.
         :param vector_store: a VectorStore instance to retrieve the vector data
         :param batch_size: the number of vectors in a batch
 
-        :return: Distances
+        :yield: SimilarityMatrix for each batch
         """
-        similarity_matrix = SimilarityMatrix(self.total_valid_spectra, similarity_threshold=similarity_threshold)
 
         logger.info("Querying the index for similar spectra ...")
         # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
@@ -162,13 +162,17 @@ class MS2Index:
         with tqdm(desc="Spectra queried", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
             for query_vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
 
+                similarity_matrix = SimilarityMatrix(self.total_valid_spectra,
+                                                     similarity_threshold=similarity_threshold)
+
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
 
                 # nr of similar vectors found
                 total_results = lims[-1]
                 if total_results == 0:
-                    continue  # Skip processing if no results found
+                    yield similarity_matrix  # Yield empty matrix for consistency
+                    continue
 
                 # preallocate arrays
                 data = np.full(total_results, True, dtype=bool)
@@ -185,9 +189,9 @@ class MS2Index:
                         cols[start:end] = i[start:end]
 
                 similarity_matrix.update(data=data, rows=rows, cols=cols)
+                yield similarity_matrix
                 pbar.update(nr_vectors)
         logger.info("Finished querying.")
-        return similarity_matrix
 
     def __repr__(self):
         return (f"MS2Index(d={self.d}, "
