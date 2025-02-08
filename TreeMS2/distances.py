@@ -12,11 +12,10 @@ class Distances:
     def __init__(self, similarity_sets: SimilaritySets):
         self.similarity_sets = similarity_sets
         self.groups = self.similarity_sets.groups
-        self.similarity_threshold = similarity_sets.similarity_matrix.similarity_threshold
 
-    def create_mega(self, path: str):
+    def create_mega(self, path: str, similarity_threshold: float):
         lines: List[str] = ["#mega",
-                            f"TITLE: {self.groups.filename} (similarity_threshold={self.similarity_threshold}))",
+                            f"TITLE: {self.groups.filename} (similarity_threshold={similarity_threshold}))",
                             ""]
         for group in self.groups.get_groups():
             lines.append(f"#{group.get_group_name()}")

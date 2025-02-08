@@ -85,4 +85,5 @@ class QueryIndexState(State):
         similarity_sets.write(path=os.path.join(self.work_dir, SIMILARITY_STATISTICS))
 
         distances = Distances(similarity_sets=similarity_sets)
-        distances.create_mega(path=os.path.join(self.work_dir, DISTANCES))
+        distances.create_mega(path=os.path.join(self.work_dir, DISTANCES),
+                              similarity_threshold=self.similarity_threshold)
