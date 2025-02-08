@@ -15,8 +15,7 @@ class MaskFilter(ABC):
         :param similarity_matrix: the similarity matrix to which the mask filter is applied
         :return:
         """
-        if self.mask is None:
-            self.mask = self.construct_mask(similarity_matrix)
+        self.mask = self.construct_mask(similarity_matrix)
         similarity_matrix.subtract(self.mask)
 
     @abstractmethod
