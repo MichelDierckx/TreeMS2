@@ -1,5 +1,5 @@
+import multiprocessing
 import os
-import threading
 from datetime import timedelta
 from typing import List, Dict, Tuple
 
@@ -36,7 +36,7 @@ class VectorStore:
                 pa.field("vector", pa.list_(pa.float32())),
             ]
         )
-        self.lock = threading.Lock()  # locking mechanism per dataset
+        self.lock = multiprocessing.Lock()  # locking mechanism per dataset
         self.has_data: bool = False
 
     def cleanup(self):
