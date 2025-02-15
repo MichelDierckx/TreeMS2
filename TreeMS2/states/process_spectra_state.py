@@ -1,9 +1,7 @@
 import multiprocessing
 import os
-import queue
-from typing import Optional, Tuple
-
-import joblib
+from functools import partial
+from typing import Tuple, List
 
 from TreeMS2.groups.groups import Groups
 from TreeMS2.groups.peak_file.peak_file import PeakFile
@@ -106,6 +104,30 @@ class ProcessSpectraState(State):
         spectrum_vectorizer = SpectrumVectorizer(binner=binner, reducer=reducer)
         return spectrum_vectorizer
 
+    @staticmethod
+    def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
+                      vector_store: VectorStore) -> PeakFile:
+        buffer: List[GroupSpectrum] = []
+
+        def vectorize_batch():
+            spectra = [spec.spectrum for spec in buffer]
+            return vectorizer.vectorize(spectra)
+
+        def write_batch(vectors):
+            dict_list = [
+                {**spec.to_dict(), "vector": vector}
+                for spec, vector in zip(buffer, vectors)
+            ]
+            vector_store.write(dict_list)
+
+        for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
+            buffer.append(processed_spectrum)
+            if len(buffer) >= 1_000:
+                write_batch(vectorize_batch())
+        if buffer:
+            write_batch(vectorize_batch())
+        return file
+
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
                                   vectorizer: SpectrumVectorizer, vector_store: VectorStore):
         """
@@ -113,17 +135,6 @@ class ProcessSpectraState(State):
         """
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
-        spectra_queue = queue.Queue(maxsize=ProcessSpectraState.MAX_SPECTRA_IN_MEM)
-
-        vector_store_writer = multiprocessing.pool.ThreadPool(
-            max_file_workers,
-            self._vectorize_and_write_spectra,
-            (spectra_queue, vectorizer, vector_store)
-        )
-
-        low_quality_counter = 0
-        failed_to_parse_counter = 0
-        total_spectra_counter = 0
 
         # Flatten the list of all peak files across groups for processing.
         all_files = [
@@ -132,94 +143,40 @@ class ProcessSpectraState(State):
             for file in group.get_peak_files()
         ]
 
+        process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
+                                       vectorizer=vectorizer, vector_store=vector_store)
+
         logger.info(f"Processing spectra from {len(all_files)} files ...")
 
-        # Process spectra in parallel for each file using joblib.
-        for result in joblib.Parallel(n_jobs=max_file_workers)(
-                joblib.delayed(ProcessSpectraState._read_spectra)(file, processing_pipeline)
-                for file in all_files):
-            file_spectra, file_filtered, file_failed_parsed, file_failed_processed, file_total_spectra, file_id, file_group_id = result
-            group = groups.get_group(file_group_id)
-            group.failed_parsed += file_failed_parsed
-            group.failed_processed += file_failed_processed
-            group.total_spectra += file_total_spectra
-            peak_file = group.get_peak_file(file_id)
-            peak_file.filtered = file_filtered
-            peak_file.failed_parsed = file_failed_parsed
-            peak_file.failed_processed = file_failed_processed
-            peak_file.total_spectra = file_total_spectra
-            groups.failed_parsed += file_failed_parsed
-            groups.failed_processed += file_failed_processed
-            groups.total_spectra += file_total_spectra
+        with multiprocessing.Pool(processes=max_file_workers) as pool:
+            results = pool.map(process_file_partial, all_files)  # Process files in parallel
 
-            # Update counters for logging.
-            low_quality_counter += file_failed_processed
-            failed_to_parse_counter += file_failed_parsed
-            total_spectra_counter += file_total_spectra
+        for file in results:
+            groups.failed_parsed += file.failed_parsed
+            groups.failed_processed += file.failed_processed
+            groups.total_spectra += file.total_spectra
 
-            # Queue spectra for writing.
-            for spec in file_spectra:
-                spectra_queue.put(spec)
+            group = groups.get_group(file.get_group_id())
+            group.failed_parsed += file.failed_parsed
+            group.failed_processed += file.failed_processed
+            group.total_spectra += file.total_spectra
 
-        # Signal writer threads to stop by adding sentinel values to the queue.
-        for _ in range(max_file_workers):
-            spectra_queue.put(None)
-
-        vector_store_writer.close()
-        vector_store_writer.join()
-
-        vector_store.cleanup()
+            peak_file = group.get_peak_file(file.get_id())
+            peak_file.filtered = file.filtered
+            peak_file.failed_parsed = file.failed_parsed
+            peak_file.failed_processed = file.failed_processed
+            peak_file.total_spectra = file.total_spectra
 
         # Log final processing statistics.
         logger.info(
-            f"Processed {total_spectra_counter} spectra from {len(all_files)} files:\n"
-            f"\t- {low_quality_counter} spectra were filtered out as low quality.\n"
-            f"\t- {failed_to_parse_counter} spectra could not be parsed.\n"
-            f"\t- {total_spectra_counter - low_quality_counter - failed_to_parse_counter} spectra were successfully written to the dataset."
+            f"Processed {groups.total_spectra} spectra from {len(all_files)} files:\n"
+            f"\t- {groups.failed_processed} spectra were filtered out as low quality.\n"
+            f"\t- {groups.failed_parsed} spectra could not be parsed.\n"
+            f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
         )
 
+        vector_store.cleanup()
         # create global ordering of spectra based on (group, file and spectrum position in file)
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
         vector_store.add_global_ids(groups=groups)
-
-    @staticmethod
-    def _read_spectra(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline):
-        # Extract spectra from the file using the provided processing pipeline.
-        spectra = list(file.get_spectra(processing_pipeline))
-        return spectra, file.filtered, file.failed_parsed, file.failed_processed, file.total_spectra, file.get_id(), file.get_group_id()
-
-    @staticmethod
-    def _vectorize_and_write_spectra(spectra_queue: queue.Queue[Optional[GroupSpectrum]],
-                                     vectorizer: SpectrumVectorizer, vector_store: VectorStore):
-        """
-        Consumes spectra, vectorizes, and writes them to the dataset.
-        """
-        spec_to_write = []
-
-        def _process_batch():
-            """Process and write the collected spectra."""
-
-            spectra = [spec.spectrum for spec in spec_to_write]
-            vectors = vectorizer.vectorize(spectra)
-            dict_list = [
-                {**spec.to_dict(), "vector": vector}
-                for spec, vector in zip(spec_to_write, vectors)
-            ]
-            vector_store.write(dict_list)
-            spec_to_write.clear()
-
-        while True:
-            spectrum = spectra_queue.get()
-            if spectrum is None:
-                # Signal to finish processing
-                if spec_to_write:
-                    _process_batch()
-                break
-
-            # Group spectra by group_id
-            spec_to_write.append(spectrum)
-
-            # Process batch if size limit is reached
-            if len(spec_to_write) >= 10_000:
-                _process_batch()

@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Any, List
 
-import spectrum_utils.spectrum as sus
-
+from ...spectrum.group_spectrum import GroupSpectrum
 from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 
@@ -21,7 +20,7 @@ class PeakFile(ABC):
         self.filtered: List[int] = []
 
     @abstractmethod
-    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[sus.MsmsSpectrum]:
+    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[GroupSpectrum]:
         """
         Abstract method to read spectra from the file.
         Each subclass must implement this method.
