@@ -124,8 +124,10 @@ class ProcessSpectraState(State):
             buffer.append(processed_spectrum)
             if len(buffer) >= 1_000:
                 write_batch(vectorize_batch())
+                buffer.clear()
         if buffer:
             write_batch(vectorize_batch())
+            buffer.clear()
         return file
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
