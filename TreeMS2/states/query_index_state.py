@@ -21,7 +21,7 @@ DISTANCES = "analysis/distances.meg"
 
 
 class QueryIndexState(State):
-    MAX_VECTORS_IN_MEM = 1_000
+    MAX_VECTORS_IN_MEM = 10_000
 
     def __init__(self, context: Context, groups: Groups, vector_store: VectorStore, index: MS2Index):
         super().__init__(context)
