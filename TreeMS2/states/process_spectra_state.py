@@ -88,7 +88,6 @@ class ProcessSpectraState(State):
         groups = Groups.from_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
         # init vector store
         vector_store = VectorStore(path=os.path.join(self.work_dir, VECTOR_STORE_DIR))
-        vector_store.has_data = True
         return groups, vector_store
 
     def _is_output_generated(self) -> bool:
@@ -106,8 +105,9 @@ class ProcessSpectraState(State):
 
     @staticmethod
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
-                      vector_store: VectorStore) -> PeakFile:
+                      vector_store: VectorStore, l: multiprocessing.Lock, overwrite: multiprocessing.Value) -> PeakFile:
         buffer: List[GroupSpectrum] = []
+        print(f"Process {os.getpid()} started processing file: {file.file_path}.")
 
         def vectorize_batch():
             spectra = [spec.spectrum for spec in buffer]
@@ -118,16 +118,22 @@ class ProcessSpectraState(State):
                 {**spec.to_dict(), "vector": vector}
                 for spec, vector in zip(buffer, vectors)
             ]
-            vector_store.write(dict_list)
+            if overwrite.value:
+                overwrite.value = False
+                vector_store.write(dict_list, l, overwrite=True)
+            else:
+                vector_store.write(dict_list, l, overwrite=False)
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
             buffer.append(processed_spectrum)
-            if len(buffer) >= 1_000:
+            if len(buffer) >= 200:
                 write_batch(vectorize_batch())
                 buffer.clear()
+                print(f"Process {os.getpid()} has processed a batch.")
         if buffer:
             write_batch(vectorize_batch())
             buffer.clear()
+        print(f"Process {os.getpid()} finished processing file: {file.file_path}.")
         return file
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
@@ -135,9 +141,6 @@ class ProcessSpectraState(State):
         """
         Main function to orchestrate producers and consumers using queues.
         """
-        # Use multiple worker processes to read the peak files.
-        max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
-
         # Flatten the list of all peak files across groups for processing.
         all_files = [
             file
@@ -145,8 +148,15 @@ class ProcessSpectraState(State):
             for file in group.get_peak_files()
         ]
 
+        # Use multiple worker processes to read the peak files.
+        max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
+
+        m = multiprocessing.Manager()
+        l = m.Lock()
+        overwrite = m.Value("b", True)
+
         process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
-                                       vectorizer=vectorizer, vector_store=vector_store)
+                                       vectorizer=vectorizer, vector_store=vector_store, l=l, overwrite=overwrite)
 
         logger.info(f"Processing spectra from {len(all_files)} files ...")
 
@@ -182,3 +192,4 @@ class ProcessSpectraState(State):
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
         vector_store.add_global_ids(groups=groups)
+        print(f"dataset_counter = {vector_store.count_spectra()}")

@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 from datetime import timedelta
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import lance
 import numpy as np
@@ -36,8 +36,6 @@ class VectorStore:
                 pa.field("vector", pa.list_(pa.float32())),
             ]
         )
-        self.lock = multiprocessing.Lock()  # locking mechanism per dataset
-        self.has_data: bool = False
 
     def cleanup(self):
         try:
@@ -47,21 +45,21 @@ class VectorStore:
         except ValueError:
             return
 
-    def write(self, entries_to_write: List[Dict]):
-        """Write data to a specific group's dataset."""
-        os.makedirs(self.base_path, exist_ok=True)
+    def write(self, entries_to_write: List[Dict], multiprocessing_lock: Optional[multiprocessing.Lock],
+              overwrite: bool):
+        """Writes entries to the vector store."""
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
-        with self.lock:
-            if self.has_data:
-                lance.write_dataset(new_rows, self.base_path, mode="append")
-            else:
+
+        with multiprocessing_lock:
+            if overwrite:
                 lance.write_dataset(
                     new_rows,
                     self.base_path,
                     mode="overwrite",
                     data_storage_version="stable",
                 )
-                self.has_data = True
+            else:
+                lance.write_dataset(new_rows, self.base_path, mode="append")
 
     def sample(self, n: int):
         ds = lance.dataset(self.base_path)
