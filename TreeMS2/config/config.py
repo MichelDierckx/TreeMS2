@@ -14,7 +14,6 @@ class Config:
     def __init__(self):
         self._parser = configargparse.ArgParser(
             description="TreeMS2: An efficient tool for phylogenetic analysis of MS/MS spectra using ANN indexing.",
-            default_config_files=["config.ini"],
             args_for_setting_config_path=["-c", "--config"],
             formatter_class=configargparse.ArgumentDefaultsHelpFormatter,
         )
