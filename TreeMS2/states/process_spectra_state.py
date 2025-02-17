@@ -3,6 +3,8 @@ import os
 from functools import partial
 from typing import Tuple, List
 
+from tqdm import tqdm
+
 from TreeMS2.groups.groups import Groups
 from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.logger_config import get_logger
@@ -107,7 +109,6 @@ class ProcessSpectraState(State):
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
                       vector_store: VectorStore, l: multiprocessing.Lock, overwrite: multiprocessing.Value) -> PeakFile:
         buffer: List[GroupSpectrum] = []
-        print(f"Process {os.getpid()} started processing file: {file.file_path}.")
 
         def vectorize_batch():
             spectra = [spec.spectrum for spec in buffer]
@@ -126,14 +127,12 @@ class ProcessSpectraState(State):
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
             buffer.append(processed_spectrum)
-            if len(buffer) >= 200:
+            if len(buffer) >= 1_000:
                 write_batch(vectorize_batch())
                 buffer.clear()
-                print(f"Process {os.getpid()} has processed a batch.")
         if buffer:
             write_batch(vectorize_batch())
             buffer.clear()
-        print(f"Process {os.getpid()} finished processing file: {file.file_path}.")
         return file
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
@@ -151,17 +150,20 @@ class ProcessSpectraState(State):
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
 
-        m = multiprocessing.Manager()
-        l = m.Lock()
-        overwrite = m.Value("b", True)
-
-        process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
-                                       vectorizer=vectorizer, vector_store=vector_store, l=l, overwrite=overwrite)
-
         logger.info(f"Processing spectra from {len(all_files)} files ...")
 
-        with multiprocessing.Pool(processes=max_file_workers) as pool:
-            results = pool.map(process_file_partial, all_files)  # Process files in parallel
+        with multiprocessing.Manager() as m:
+            l = m.Lock()
+            overwrite = m.Value("b", True)
+
+            process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
+                                           vectorizer=vectorizer, vector_store=vector_store, l=l, overwrite=overwrite)
+
+            logger.info(f"Processing spectra from {len(all_files)} files ...")
+
+            with multiprocessing.Pool(processes=max_file_workers) as pool:
+                results = list(tqdm(pool.imap(process_file_partial, all_files),
+                                    desc="Processing Files", unit="file", total=len(all_files), position=0, leave=True))
 
         for file in results:
             groups.failed_parsed += file.failed_parsed
@@ -186,10 +188,9 @@ class ProcessSpectraState(State):
             f"\t- {groups.failed_parsed} spectra could not be parsed.\n"
             f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
         )
-
+        # cleanup old versions to compact dataset
         vector_store.cleanup()
         # create global ordering of spectra based on (group, file and spectrum position in file)
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
         vector_store.add_global_ids(groups=groups)
-        print(f"dataset_counter = {vector_store.count_spectra()}")
