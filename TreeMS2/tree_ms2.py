@@ -1,3 +1,5 @@
+import time
+
 from TreeMS2.config.config import Config
 from .logger_config import get_logger
 from .states.context import Context
@@ -13,6 +15,7 @@ class TreeMS2:
         self.context = Context(config=config)
 
     def run(self):
+        start_time = time.time()  # record start time
         self.context.push_state(state=ProcessSpectraState(context=self.context))
         loop_nr = 0
         while self.context.states:
@@ -21,3 +24,5 @@ class TreeMS2:
                 break
             self.context.get_state().run(overwrite=self.context.config.overwrite)
             loop_nr += 1
+        execution_time = time.time() - start_time  # calculate execution time
+        logger.info(f"TreeMS2 finished in {execution_time:.2f} seconds")
