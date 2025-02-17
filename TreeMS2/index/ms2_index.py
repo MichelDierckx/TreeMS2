@@ -90,8 +90,9 @@ class MS2Index:
             index_type = "IVF16K,Flat"
         elif n_spectra <= 10 ** 8:
             nlist = min(64 * 2 ** 10, n_spectra // 39)
+            quantizer = faiss.IndexHNSWFlat(d, 32)
             index = faiss.IndexIVFFlat(
-                faiss.IndexHNSWFlat(d), d, nlist, faiss.METRIC_INNER_PRODUCT
+                quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT
             )
             index_type = "IVF64K,HNSW"
         else:
