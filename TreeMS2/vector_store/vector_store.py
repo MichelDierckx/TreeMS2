@@ -63,9 +63,8 @@ class VectorStore:
 
     def sample(self, n: int):
         ds = lance.dataset(self.base_path)
-        df = ds.sample(num_rows=n, columns=["vector"]).to_pandas()
-        samples = np.stack(df["vector"].to_numpy())
-        return samples
+        # df = ds.sample(n, columns=["vector"])["vector"].combine_chunks().flatten().to_numpy().reshape(n, 400)
+        return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
 
     def to_vector_batches(self, batch_size: int) -> Tuple[ndarray, ndarray, int]:
         """
