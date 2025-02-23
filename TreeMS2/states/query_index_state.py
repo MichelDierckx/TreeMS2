@@ -1,7 +1,10 @@
 import os
 
+import numpy as np
+
 from TreeMS2.distances import Distances
 from TreeMS2.groups.groups import Groups
+from TreeMS2.histogram import HitHistogram, SimilarityHistogram
 from TreeMS2.index.ms2_index import MS2Index
 from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
 from TreeMS2.similarity_sets import SimilaritySets
@@ -18,6 +21,8 @@ SIMILARITY_MATRICES_POST_FILTERING_DATASET_COORDS = "similarity_matrices/post_fi
 ANALYSIS_DIR = "analysis"
 SIMILARITY_STATISTICS = "analysis/similarity_statistics.txt"
 DISTANCES = "analysis/distances.meg"
+HIT_HISTOGRAM = "analysis/hit_histogram.png"
+SIMILARITY_HISTOGRAM = "analysis/similarity_histogram.png"
 
 
 class QueryIndexState(State):
@@ -59,12 +64,16 @@ class QueryIndexState(State):
         pipeline = SimilarityMatrixPipelineFactory.create_pipeline(groups=self.groups,
                                                                    vector_store=self.vector_store,
                                                                    precursor_mz_window=self.precursor_mz_window)
+        hit_histogram = HitHistogram(bin_edges=np.array([0, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000]))
+        similarity_histogram = SimilarityHistogram(bin_edges=np.linspace(self.similarity_threshold, 1, 21))
 
         # query index
         batch_nr = 0
         for similarity_matrix in self.index.range_search(similarity_threshold=self.similarity_threshold,
                                                          vector_store=self.vector_store,
-                                                         batch_size=QueryIndexState.MAX_VECTORS_IN_MEM):
+                                                         batch_size=QueryIndexState.MAX_VECTORS_IN_MEM,
+                                                         hit_histogram=hit_histogram,
+                                                         similarity_histogram=similarity_histogram):
             # filter similarity matrix
             similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix,
                                                  total_spectra=self.groups.total_spectra,
@@ -81,6 +90,9 @@ class QueryIndexState(State):
 
             # update batch nr
             batch_nr += 1
+
+        hit_histogram.plot(path=os.path.join(self.work_dir, HIT_HISTOGRAM))
+        similarity_histogram.plot(path=os.path.join(self.work_dir, SIMILARITY_HISTOGRAM))
 
         similarity_sets.write(path=os.path.join(self.work_dir, SIMILARITY_STATISTICS))
 

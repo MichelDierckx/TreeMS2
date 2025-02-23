@@ -5,6 +5,7 @@ import faiss
 import numpy as np
 from tqdm import tqdm
 
+from ..histogram import SimilarityHistogram, HitHistogram
 from ..logger_config import get_logger
 from ..similarity_matrix.similarity_matrix import SimilarityMatrix
 from ..vector_store.vector_store import VectorStore
@@ -144,7 +145,8 @@ class MS2Index:
         logger.debug(f"Loaded index from {path}")
 
     def range_search(self, similarity_threshold: float, vector_store: VectorStore,
-                     batch_size: int) -> Iterator[SimilarityMatrix]:
+                     batch_size: int, hit_histogram: HitHistogram, similarity_histogram: SimilarityHistogram) -> \
+            Iterator[SimilarityMatrix]:
         """
         Perform a range search on the FAISS index for every vector in the vector store in batches.
         Capture result in a SimilarityMatrix for each batch and yield it.
@@ -160,6 +162,7 @@ class MS2Index:
         # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
         # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
         # params = faiss.SearchParameters(sel=sel)
+
         with tqdm(desc="Spectra queried", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
             for query_vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
 
@@ -168,6 +171,9 @@ class MS2Index:
 
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
+
+                hit_histogram.update(lims=lims)
+                similarity_histogram.update(d=d)
 
                 # nr of similar vectors found
                 total_results = lims[-1]

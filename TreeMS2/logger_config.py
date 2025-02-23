@@ -28,6 +28,7 @@ def setup_logging():
     # Disable dependency non-critical log messages.
     logging.getLogger("numba").setLevel(logging.WARNING)
     logging.getLogger("numexpr").setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)  # Set to WARNING to suppress INFO and DEBUG messages
 
 
 def get_logger(module_name: str) -> logging.Logger:
