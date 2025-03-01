@@ -64,7 +64,20 @@ class QueryIndexState(State):
         pipeline = SimilarityMatrixPipelineFactory.create_pipeline(groups=self.groups,
                                                                    vector_store=self.vector_store,
                                                                    precursor_mz_window=self.precursor_mz_window)
-        hit_histogram = HitHistogram(bin_edges=np.array([0, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000]))
+
+        def construct_bin_edges(max_hits):
+            """Constructs bin edges up to the nearest power of 10 above max_hits, ensuring the first bin is [1, 2)."""
+            bins = [1, 2]  # ensure the first bin is [1, 2)
+            last_bin = 2
+            power = 1
+            while last_bin < max_hits:
+                next_bin = 10 ** power
+                bins.append(next_bin)
+                last_bin = next_bin
+                power += 1
+            return np.array(bins)
+
+        hit_histogram = HitHistogram(bin_edges=construct_bin_edges(self.groups.total_valid_spectra()))
         similarity_histogram = SimilarityHistogram(bin_edges=np.linspace(self.similarity_threshold, 1, 21))
 
         # query index
