@@ -35,7 +35,7 @@ class HitHistogram:
         # Add relative frequency labels on top of bars
         for i, rel_freq in enumerate(relative_frequencies):
             if rel_freq > 0:  # Avoid labeling zero-height bars
-                plt.text(i + 0.5, rel_freq, f"{rel_freq:.2}", ha="center", va="bottom", fontsize=8)
+                plt.text(i + 0.5, rel_freq, f"{rel_freq:.2%}", ha="center", va="bottom", fontsize=8)
 
         plt.xlabel("Number of Similar Spectra Found (Hits)")
         plt.ylabel("Proportion of Queried Spectra")
