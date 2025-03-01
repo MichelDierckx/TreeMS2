@@ -188,6 +188,14 @@ class Config:
             dest="similarity",
         )
 
+        # Whether to use GPU for training
+        self._parser.add_argument(
+            "--use_gpu",
+            help="Whether to use GPU for training (default: False).",
+            action="store_true",
+            dest="use_gpu",
+        )
+
         # Post-processing search results
         self._parser.add_argument(
             "--precursor_mz_window",
