@@ -42,24 +42,34 @@ class IndexingTooLargeError(Exception):
 
 
 class MS2Index:
-    def __init__(self, total_valid_spectra: int, d: int):
+    def __init__(self, total_valid_spectra: int, d: int, use_gpu: bool):
         """
         Index for fast ms/ms spectrum similarity search.
         :param total_valid_spectra: the total number of valid spectra
         :param d: the dimension of the spectra to be indexed
+        :param use_gpu: whether to use GPU or not for training
         """
 
         self.total_valid_spectra = total_valid_spectra
         self.d = d
 
-        self.index, self.index_type, self.nlist = self._initialize_index(total_valid_spectra, d)
+        if use_gpu:
+            if faiss.get_num_gpus():
+                self.use_gpu = True
+                print(faiss.get_num_gpus())
+            else:
+                logger.warning("No GPU found. Using CPU for index training.")
+                self.use_gpu = False
+        self.use_gpu = use_gpu
+
+        self.index, self.index_type, self.nlist = self._initialize_index(total_valid_spectra, d, use_gpu)
 
         self.metric = faiss.METRIC_INNER_PRODUCT
 
         logger.info(f"Created index {self}")
 
     @classmethod
-    def _initialize_index(cls, n_spectra: int, d: int) -> Tuple[faiss.Index, str, Optional[int]]:
+    def _initialize_index(cls, n_spectra: int, d: int, use_gpu: bool) -> Tuple[faiss.Index, str, Optional[int]]:
         """
         Create and initialize the appropriate index structure.
         :param n_spectra: The number of spectra to be indexed
@@ -85,27 +95,54 @@ class MS2Index:
             index_type = "Flat"
         elif n_spectra <= 10 ** 6:
             nlist = min(16 * 2 ** 10, n_spectra // 39)
-            index = faiss.IndexIVFFlat(
-                faiss.IndexFlatIP(d), d, nlist, faiss.METRIC_INNER_PRODUCT
-            )
-            index_type = "IVF16K,Flat"
-        elif n_spectra <= 10 ** 8:
+            if use_gpu:
+                index_type = f"IVF{nlist},SQ8"
+                index = faiss.index_factory(d, index_type, faiss.METRIC_INNER_PRODUCT)
+            else:
+                index_type = f"IVF{nlist},Flat"
+                index = faiss.IndexIVFFlat(
+                    faiss.IndexFlatIP(d), d, nlist, faiss.METRIC_INNER_PRODUCT
+                )
+        elif n_spectra <= 10 ** 7:
             nlist = min(64 * 2 ** 10, n_spectra // 39)
-            quantizer = faiss.IndexHNSWFlat(d, 32)
-            index = faiss.IndexIVFFlat(
-                quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT
-            )
-            index_type = "IVF64K,HNSW"
+            if use_gpu:
+                index_type = f"IVF{nlist},SQ8"
+                index = faiss.index_factory(d, index_type, faiss.METRIC_INNER_PRODUCT)
+            else:
+                index_type = f"IVF{nlist},HNSW"
+                quantizer = faiss.IndexHNSWFlat(d, 32)
+                index = faiss.IndexIVFFlat(
+                    quantizer, d, nlist, faiss.METRIC_INNER_PRODUCT
+                )
+        elif n_spectra <= 50 ** 7:
+            nlist = min(128 * 2 ** 10, n_spectra // 39)
+            if use_gpu:
+                index_type = f"IVF{nlist},SQ8"
+                index = faiss.index_factory(d, index_type, faiss.METRIC_INNER_PRODUCT)
+            else:
+                index_type = f"IVF{nlist},SQ8"
+                index = faiss.IndexIVFFlat(
+                    faiss.IndexFlatIP(d), d, nlist, faiss.METRIC_INNER_PRODUCT
+                )
         else:
             # the number of spectra exceeds the allowed limit
-            max_spectra = 10 ** 8  # The largest number of spectra allowed
+            max_spectra = 50 ** 7  # The largest number of spectra allowed
             raise IndexingTooLargeError(n_spectra, max_spectra)
         return index, index_type, nlist
 
     def train(self, vector_store: VectorStore):
         if not self.index.is_trained:
             if not self.nlist is None:
-                sample_size = min(50 * self.nlist, self.total_valid_spectra)
+                if self.use_gpu:
+                    cloner_options = faiss.GpuMultipleClonerOptions()
+                    cloner_options.useFloat16 = True  # Enable 16-bit floating point precision
+
+                    # extract the clustering index and move to GPU
+                    index_ivf = faiss.extract_index_ivf(self.index)
+                    clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatIP(index_ivf.d), cloner_options)
+                    index_ivf.clustering_index = clustering_index
+
+                sample_size = min(39 * self.nlist, self.total_valid_spectra)
                 training_data = vector_store.sample(sample_size)
                 logger.info(f"Training index on {sample_size} samples.")
                 train_time_start = time.time()

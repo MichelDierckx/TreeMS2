@@ -77,7 +77,7 @@ class VectorStore:
         for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size):
             df = batch.to_pandas()
             vectors = np.stack(df["vector"].to_numpy())
-            ids = np.arange(start=first, stop=first + batch.num_rows, dtype=np.uint64)
+            ids = np.arange(start=first, stop=first + batch.num_rows, dtype=np.int64)
             first += batch.num_rows
             yield vectors, ids, batch.num_rows
 

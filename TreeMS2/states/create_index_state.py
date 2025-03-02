@@ -20,6 +20,7 @@ class CreateIndexState(State):
 
         # create index
         self.low_dim: int = context.config.low_dim
+        self.use_gpu: bool = context.config.use_gpu
 
         # data generated from reading/processing spectra
         self.groups: Groups = groups
@@ -39,7 +40,7 @@ class CreateIndexState(State):
 
     def _generate(self) -> MS2Index:
         # create an index
-        index = MS2Index(total_valid_spectra=self.groups.total_valid_spectra(), d=self.low_dim)
+        index = MS2Index(total_valid_spectra=self.groups.total_valid_spectra(), d=self.low_dim, use_gpu=self.use_gpu)
         # train the index
         index.train(vector_store=self.vector_store)
         # index the spectra for the groups
@@ -50,7 +51,7 @@ class CreateIndexState(State):
 
     def _load(self) -> MS2Index:
         # TODO: properly load index from disk
-        index = MS2Index(total_valid_spectra=self.groups.total_valid_spectra(), d=self.low_dim)
+        index = MS2Index(total_valid_spectra=self.groups.total_valid_spectra(), d=self.low_dim, use_gpu=False)
         index.load_index(path=os.path.join(self.work_dir, INDEX_FILE))
         return index
 
