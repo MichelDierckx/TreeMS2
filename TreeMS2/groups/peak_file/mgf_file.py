@@ -7,6 +7,10 @@ from .peak_file import PeakFile
 from ...spectrum.group_spectrum import GroupSpectrum
 from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
+from TreeMS2.logger_config import get_logger
+
+logger = get_logger(__name__)
+
 
 class MgfFile(PeakFile):
     def __init__(self, file_path: str):
@@ -20,8 +24,9 @@ class MgfFile(PeakFile):
                 try:
                     # Parse the spectrum into an MsmsSpectrum instance
                     msms_spectrum = MgfFile._parse_spectrum(spectrum_dict)
-                except (ValueError, KeyError):
+                except (ValueError, KeyError) as e:
                     # If parsing fails, increment failed parsing counter and skip this spectrum
+                    logger.warning(f"Error parsing spectrum {spectrum_i}: {e}")
                     self.failed_parsed += 1
                     self.filtered.append(spectrum_i)
                     continue
@@ -52,15 +57,15 @@ class MgfFile(PeakFile):
 
         return sus.MsmsSpectrum(
             # A unique identifier or title for the spectrum (often representing the filename or a descriptor of the experiment).
-            identifier,
+            identifier=identifier,
             # The mass-to-charge ratio (m/z) of the precursor ion (the peptide ion before fragmentation).
-            precursor_mz,
+            precursor_mz=precursor_mz,
             # The charge state of the precursor ion (usually represented as a positive integer).
-            precursor_charge,
+            precursor_charge=precursor_charge,
             # Peak data (column 1) : The m/z values, which represent the mass-to-charge ratio of the detected ions (peptide fragments).
-            mz_array,
+            mz=mz_array,
             # Peak data (column 2) The intensity values, which represent the relative abundance or intensity of the corresponding ion.
-            intensity_array,
+            intensity=intensity_array,
             # the retention time of the precursor ion in the chromatographic separation step before mass spectrometry analysis
-            retention_time,
+            retention_time=retention_time,
         )
