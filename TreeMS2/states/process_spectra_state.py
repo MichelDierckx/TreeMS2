@@ -119,11 +119,7 @@ class ProcessSpectraState(State):
                 {**spec.to_dict(), "vector": vector}
                 for spec, vector in zip(buffer, vectors)
             ]
-            if overwrite.value:
-                overwrite.value = False
-                vector_store.write(dict_list, l, overwrite=True)
-            else:
-                vector_store.write(dict_list, l, overwrite=False)
+            vector_store.write(dict_list, l, overwrite=overwrite)
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
             buffer.append(processed_spectrum)

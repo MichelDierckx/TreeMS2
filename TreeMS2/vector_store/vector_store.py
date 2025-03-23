@@ -46,18 +46,19 @@ class VectorStore:
             return
 
     def write(self, entries_to_write: List[Dict], multiprocessing_lock: Optional[multiprocessing.Lock],
-              overwrite: bool):
+              overwrite: multiprocessing.Value):
         """Writes entries to the vector store."""
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
 
         with multiprocessing_lock:
-            if overwrite:
+            if overwrite.value:
                 lance.write_dataset(
                     new_rows,
                     self.base_path,
                     mode="overwrite",
                     data_storage_version="stable",
                 )
+                overwrite.value = False
             else:
                 lance.write_dataset(new_rows, self.base_path, mode="append")
 
