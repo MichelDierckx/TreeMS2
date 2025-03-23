@@ -106,7 +106,7 @@ class MS2Index:
         elif n_spectra <= 10 ** 7:
             nlist = min(64 * 2 ** 10, n_spectra // 39)
             if use_gpu:
-                index_type = f"IVF{nlist},SQ8"
+                index_type = f"IVF{nlist}_HNSW32,SQ8"
                 index = faiss.index_factory(d, index_type, faiss.METRIC_INNER_PRODUCT)
             else:
                 index_type = f"IVF{nlist},HNSW"
@@ -117,7 +117,7 @@ class MS2Index:
         elif n_spectra <= 50 ** 7:
             nlist = min(128 * 2 ** 10, n_spectra // 39)
             if use_gpu:
-                index_type = f"IVF{nlist},SQ8"
+                index_type = f"IVF{nlist}_HNSW32,SQ8"
                 index = faiss.index_factory(d, index_type, faiss.METRIC_INNER_PRODUCT)
             else:
                 index_type = f"IVF{nlist},SQ8"
@@ -134,12 +134,9 @@ class MS2Index:
         if not self.index.is_trained:
             if not self.nlist is None:
                 if self.use_gpu:
-                    cloner_options = faiss.GpuMultipleClonerOptions()
-                    cloner_options.useFloat16 = True  # Enable 16-bit floating point precision
-
                     # extract the clustering index and move to GPU
                     index_ivf = faiss.extract_index_ivf(self.index)
-                    clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatIP(index_ivf.d), cloner_options)
+                    clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatIP(index_ivf.d))
                     index_ivf.clustering_index = clustering_index
 
                 sample_size = min(39 * self.nlist, self.total_valid_spectra)
