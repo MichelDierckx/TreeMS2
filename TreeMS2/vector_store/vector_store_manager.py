@@ -44,8 +44,9 @@ class VectorStoreManager:
     def get_data(self, vector_store_name: str, rows: List[int], columns: List[str]) -> pd.DataFrame:
         return self.vector_stores[vector_store_name].get_data(rows=rows, columns=columns)
 
-    def add_global_ids(self, vector_store_name: str, groups: Groups):
-        return self.vector_stores[vector_store_name].add_global_ids(groups=groups)
+    def add_global_ids(self, groups: Groups):
+        for vector_store_name in self.vector_stores:
+            self.vector_stores[vector_store_name].add_global_ids(groups)
 
     def count_spectra_vector_store(self, vector_store_name: str):
         return self.vector_stores[vector_store_name].count_spectra()

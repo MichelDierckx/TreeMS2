@@ -1,7 +1,8 @@
 import multiprocessing
 import os
 from functools import partial
-from typing import Tuple, List
+from typing import Tuple, List, Optional, Dict
+from collections import defaultdict
 
 from tqdm import tqdm
 
@@ -17,12 +18,25 @@ from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import Spectrum
 from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
-from TreeMS2.vector_store.vector_store import VectorStore
+from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
 
 logger = get_logger(__name__)
 
 GROUPS_SUMMARY_FILE = "groups.json"
-VECTOR_STORE_DIR = "spectra.lance"
+VECTOR_STORES_DIR = "spectra.lance"
+
+
+def categorize_charge(charge: Optional[int]) -> str:
+    """Categorizes precursor charge into predefined charge groups."""
+    if charge == 1:
+        return "charge_1"
+    elif charge == 2:
+        return "charge_2"
+    elif charge == 3:
+        return "charge_3"
+    elif charge is not None and charge >= 4:
+        return "charge_4plus"
+    return "charge_unknown"  # Covers cases where charge is None or not recognized
 
 
 class ProcessSpectraState(State):
@@ -54,19 +68,21 @@ class ProcessSpectraState(State):
     def run(self, overwrite: bool):
         if overwrite or not self._is_output_generated():
             # generate the required output
-            groups, vector_store = self._generate()
+            groups, vector_store_manager = self._generate()
         else:
             # load the required output
-            groups, vector_store = self._load()
+            groups, vector_store_manager = self._load()
         # move to the create index state
         self.context.replace_state(
-            state=CreateIndexState(context=self.context, groups=groups, vector_store=vector_store))
+            state=CreateIndexState(context=self.context, groups=groups, vector_store=vector_store_manager))
 
-    def _generate(self) -> Tuple[Groups, VectorStore]:
+    def _generate(self) -> Tuple[Groups, VectorStoreManager]:
         # parse sample to group file
         groups = Groups.read(self.sample_to_group_file)
-        # create vector store instance
-        vector_store = VectorStore(path=os.path.join(self.work_dir, VECTOR_STORE_DIR))
+        # create vector store manager instance
+        vector_store_manager = VectorStoreManager(base_path=os.path.join(self.work_dir, VECTOR_STORES_DIR),
+                                                  vector_store_names={"charge_1", "charge_2", "charge_3",
+                                                                      "charge_4plus", "charge_unknown"})
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
         # create spectrum preprocessor instance (preprocesses the spectra)
@@ -80,20 +96,22 @@ class ProcessSpectraState(State):
                                                                        max_mz=vectorizer.binner.max_mz)
         # read, preprocess, vectorize and store spectra
         self._read_and_process_spectra(groups=groups, processing_pipeline=spectrum_processor, vectorizer=vectorizer,
-                                       vector_store=vector_store)
+                                       vector_store_manager=vector_store_manager)
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
-        return groups, vector_store
+        return groups, vector_store_manager
 
-    def _load(self) -> Tuple[Groups, VectorStore]:
+    def _load(self) -> Tuple[Groups, VectorStoreManager]:
         # load groups from file
         groups = Groups.from_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
         # init vector store
-        vector_store = VectorStore(path=os.path.join(self.work_dir, VECTOR_STORE_DIR))
-        return groups, vector_store
+        vector_store_manager = VectorStoreManager(base_path=os.path.join(self.work_dir, VECTOR_STORES_DIR),
+                                                  vector_store_names={"charge_1", "charge_2", "charge_3",
+                                                                      "charge_4plus", "charge_unknown"})
+        return groups, vector_store_manager
 
     def _is_output_generated(self) -> bool:
-        if not os.path.isdir(os.path.join(self.work_dir, VECTOR_STORE_DIR)):
+        if not os.path.isdir(os.path.join(self.work_dir, VECTOR_STORES_DIR)):
             return False
         if not os.path.isfile(os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)):
             return False
@@ -107,32 +125,38 @@ class ProcessSpectraState(State):
 
     @staticmethod
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
-                      vector_store: VectorStore, l: multiprocessing.Lock, overwrite: multiprocessing.Value) -> PeakFile:
-        buffer: List[GroupSpectrum] = []
+                      vector_store_manager: VectorStoreManager,
+                      locks_and_flags: Dict[str, multiprocessing.Lock | multiprocessing.Value]) -> PeakFile:
+        buffers: defaultdict[str, List[GroupSpectrum]] = defaultdict(list)
 
-        def vectorize_batch():
+        def vectorize_batch(buffer: List[GroupSpectrum]):
             spectra = [spec.spectrum for spec in buffer]
             return vectorizer.vectorize(spectra)
 
-        def write_batch(vectors):
-            dict_list = [
-                {**spec.to_dict(), "vector": vector}
-                for spec, vector in zip(buffer, vectors)
-            ]
-            vector_store.write(dict_list, l, overwrite=overwrite)
+        def write_batch(vector_store_name: str, buffer: List[GroupSpectrum]):
+            """Writes a batch of spectra to the correct vector store."""
+            vectors = vectorize_batch(buffer)
+            dict_list = [{**spec.to_dict(), "vector": vector} for spec, vector in zip(buffer, vectors)]
+            vector_store_manager.write(vector_store_name=vector_store_name, entries_to_write=dict_list,
+                                       multiprocessing_lock=locks_and_flags[vector_store_name]["lock"],
+                                       overwrite=locks_and_flags[vector_store_name]["overwrite"])
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
-            buffer.append(processed_spectrum)
-            if len(buffer) >= 1_000:
-                write_batch(vectorize_batch())
+            charge_category = categorize_charge(processed_spectrum.spectrum.precursor_charge)
+            buffers[charge_category].append(processed_spectrum)
+            if len(buffers[charge_category]) >= 1_000:
+                write_batch(charge_category, buffers[charge_category])
+                buffers[charge_category].clear()
+
+        # Write remaining spectra in each buffer
+        for store_name, buffer in buffers.items():
+            if buffer:
+                write_batch(store_name, buffer)
                 buffer.clear()
-        if buffer:
-            write_batch(vectorize_batch())
-            buffer.clear()
         return file
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
-                                  vectorizer: SpectrumVectorizer, vector_store: VectorStore):
+                                  vectorizer: SpectrumVectorizer, vector_store_manager: VectorStoreManager):
         """
         Main function to orchestrate producers and consumers using queues.
         """
@@ -149,11 +173,11 @@ class ProcessSpectraState(State):
         logger.info(f"Processing spectra from {len(all_files)} files ...")
 
         with multiprocessing.Manager() as m:
-            l = m.Lock()
-            overwrite = m.Value("b", True)
+            locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
 
             process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
-                                           vectorizer=vectorizer, vector_store=vector_store, l=l, overwrite=overwrite)
+                                           vectorizer=vectorizer, vector_store=vector_store_manager,
+                                           locks_and_flags=locks_and_flags)
 
             logger.info(f"Processing spectra from {len(all_files)} files ...")
 
@@ -185,8 +209,8 @@ class ProcessSpectraState(State):
             f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
         )
         # cleanup old versions to compact dataset
-        vector_store.cleanup()
+        vector_store_manager.cleanup()
         # create global ordering of spectra based on (group, file and spectrum position in file)
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
-        vector_store.add_global_ids(groups=groups)
+        vector_store_manager.add_global_ids(groups=groups)
