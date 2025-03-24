@@ -17,11 +17,11 @@ logger = get_logger(__name__)
 
 
 class VectorStore:
-    def __init__(self, path: str):
-        self.base_path = path
+    def __init__(self, base_path: str, name: str):
+        self.path = os.path.join(base_path, name)
         # Check if the directory exists, if not, create it
-        if not os.path.exists(self.base_path):
-            os.makedirs(self.base_path)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
         self.schema = pa.schema(
             [
                 pa.field("spectrum_id", pa.uint16()),
@@ -39,7 +39,7 @@ class VectorStore:
 
     def cleanup(self):
         try:
-            ds = lance.dataset(self.base_path)
+            ds = lance.dataset(self.path)
             time_delta = timedelta(microseconds=1)
             ds.cleanup_old_versions(older_than=time_delta)
         except ValueError:
@@ -54,16 +54,16 @@ class VectorStore:
             if overwrite.value:
                 lance.write_dataset(
                     new_rows,
-                    self.base_path,
+                    self.path,
                     mode="overwrite",
                     data_storage_version="stable",
                 )
                 overwrite.value = False
             else:
-                lance.write_dataset(new_rows, self.base_path, mode="append")
+                lance.write_dataset(new_rows, self.path, mode="append")
 
     def sample(self, n: int):
-        ds = lance.dataset(self.base_path)
+        ds = lance.dataset(self.path)
         # df = ds.sample(n, columns=["vector"])["vector"].combine_chunks().flatten().to_numpy().reshape(n, 400)
         return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
 
@@ -73,7 +73,7 @@ class VectorStore:
         :param batch_size: the maximum number of vectors in the batch
         :return: A triplet: (vectors, vector_ids, number_of_vectors)
         """
-        dataset = lance.dataset(self.base_path)
+        dataset = lance.dataset(self.path)
         first = 0
         for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size):
             df = batch.to_pandas()
@@ -83,7 +83,7 @@ class VectorStore:
             yield vectors, ids, batch.num_rows
 
     def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
-        ds = lance.dataset(self.base_path)
+        ds = lance.dataset(self.path)
         df = ds.take(indices=rows, columns=columns).to_pandas()
         return df
 
@@ -98,9 +98,9 @@ class VectorStore:
             global_ids = batch.to_pandas().apply(compute_global_id, axis=1).astype(np.int32)
             return pd.DataFrame({"global_id": global_ids}, dtype=np.int32)
 
-        ds = lance.dataset(self.base_path)
+        ds = lance.dataset(self.path)
         ds.add_columns(add_global_ids_batch)
 
     def count_spectra(self):
-        ds = lance.dataset(self.base_path)
+        ds = lance.dataset(self.path)
         return ds.count_rows()
