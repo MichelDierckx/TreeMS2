@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 
 class SimilaritySets:
-    def __init__(self, groups: Groups, vector_store: VectorStore):
+    def __init__(self, groups: Groups, vector_store: Optional[VectorStore]):
         self.groups = groups
         self.vector_store = vector_store
         self.similarity_sets: npt.NDArray[np.uint64] = np.zeros((self.groups.get_size(), self.groups.get_size()),
@@ -68,7 +68,7 @@ class SimilaritySets:
         return s
 
     @staticmethod
-    def load(path: str, groups: Groups, vector_store: VectorStore) -> Optional["SimilaritySets"]:
+    def load(path: str, groups: Groups, vector_store: Optional[VectorStore]) -> Optional["SimilaritySets"]:
         """
         Load a SimilaritySets object from a file. If loading fails, return None.
         """

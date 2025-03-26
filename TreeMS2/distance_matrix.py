@@ -8,27 +8,25 @@ from TreeMS2.similarity_sets import SimilaritySets
 logger = get_logger(__name__)
 
 
-class Distances:
-    def __init__(self, similarity_sets: SimilaritySets):
-        self.similarity_sets = similarity_sets
-        self.groups = self.similarity_sets.groups
-
-    def create_mega(self, path: str, similarity_threshold: float):
+class DistanceMatrix:
+    @staticmethod
+    def create_mega(path: str, similarity_threshold: float, precursor_mz_window: float,
+                    similarity_sets: SimilaritySets):
         lines: List[str] = ["#mega",
-                            f"TITLE: {self.groups.filename} (similarity_threshold={similarity_threshold}))",
+                            f"TITLE: {similarity_sets.groups.filename} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
                             ""]
-        for group in self.groups.get_groups():
+        for group in similarity_sets.groups.get_groups():
             lines.append(f"#{group.get_group_name()}")
         lines.extend(["", ""])
 
         # construct Lower-left triangular matrix
-        for j in range(1, self.groups.get_size()):
+        for j in range(1, similarity_sets.groups.get_size()):
             distances = []
-            b = self.groups.get_group(j).total_spectra
+            b = similarity_sets.groups.get_group(j).total_spectra
             for i in range(j):
-                a = self.groups.get_group(i).total_spectra
-                s_a = self.similarity_sets.similarity_sets.item((i, j))
-                s_b = self.similarity_sets.similarity_sets.item((j, i))
+                a = similarity_sets.groups.get_group(i).total_spectra
+                s_a = similarity_sets.similarity_sets.item((i, j))
+                s_b = similarity_sets.similarity_sets.item((j, i))
                 global_similarity = _global_similarity(a, b, s_a, s_b)
                 global_distance = _global_distance(a, b, global_similarity)
                 distances.append(global_distance)

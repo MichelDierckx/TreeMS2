@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 
-from TreeMS2.distances import Distances
 from TreeMS2.histogram import HitHistogram, SimilarityHistogram
 from TreeMS2.index.ms2_index import MS2Index
 from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
@@ -10,10 +9,6 @@ from TreeMS2.similarity_sets import SimilaritySets
 from TreeMS2.states.context import Context
 from TreeMS2.states.state import State
 from TreeMS2.vector_store.vector_store import VectorStore
-
-DISTANCES = "analysis/distances.meg"
-HIT_HISTOGRAM = "hit_frequency_distribution.png"
-SIMILARITY_HISTOGRAM = "similarity_distribution.png"
 
 
 class QueryIndexState(State):
