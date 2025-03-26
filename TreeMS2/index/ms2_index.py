@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Tuple, Optional, Iterator
 
@@ -169,14 +170,22 @@ class MS2Index:
         faiss.write_index(self.index, path)
         logger.debug(f"Saved index to {path}")
 
-    def load_index(self, path):
+    @staticmethod
+    def load(path: str, total_valid_spectra: int, d: int, use_gpu: bool) -> Optional["MS2Index"]:
         """
-        Load a FAISS index from a file.
-        :param path: str, path to the saved the index.
-        :return:
+        Load a FAISS index from a specified file.
+
+        Returns an MS2Index instance if successful, otherwise None.
         """
-        self.index = faiss.read_index(path)
-        logger.debug(f"Loaded index from {path}")
+        if not os.path.exists(path):
+            return None
+        try:
+            ms2_index = MS2Index(total_valid_spectra=total_valid_spectra, d=d, use_gpu=use_gpu)
+            index = faiss.read_index(path)  # Attempt to load the index
+            ms2_index.index = index
+            return ms2_index
+        except Exception:  # Catch all exceptions silently
+            return None  # Return None if loading fails
 
     def range_search(self, similarity_threshold: float, vector_store: VectorStore,
                      batch_size: int, hit_histogram: HitHistogram, similarity_histogram: SimilarityHistogram) -> \

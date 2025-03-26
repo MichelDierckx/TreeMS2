@@ -1,7 +1,8 @@
 import csv
 import json
+import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .group import Group
 from .peak_file.peak_file_factory import PeakFileFactory
@@ -161,24 +162,30 @@ class Groups:
             json.dump(self.to_dict(), json_file, indent=4)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Groups":
-        groups = cls()
-        groups.filename = data["filename"]
-        groups.total_spectra = data["total_spectra"]
-        groups.failed_parsed = data["failed_parsed"]
-        groups.failed_processed = data["failed_processed"]
-        groups.begin = data["begin"]
-        groups.end = data["end"]
-
-        groups._groups = [Group.from_dict(group) for group in data["groups"]]
-        return groups
+    def from_dict(cls, data: Dict[str, Any]) -> Optional["Groups"]:
+        try:
+            groups = cls()
+            groups.filename = data["filename"]
+            groups.total_spectra = data["total_spectra"]
+            groups.failed_parsed = data["failed_parsed"]
+            groups.failed_processed = data["failed_processed"]
+            groups.begin = data["begin"]
+            groups.end = data["end"]
+            groups._groups = [Group.from_dict(group) for group in data["groups"]]
+            return groups
+        except (KeyError, TypeError, AttributeError):
+            return None  # Return None if the data structure is incorrect
 
     @classmethod
-    def from_file(cls, path: str) -> "Groups":
-        logger.info(f"Loading group statistics from '{path}'.")
-        with open(path, "r") as json_file:
-            data = json.load(json_file)
-        return cls.from_dict(data)
+    def load(cls, path: str) -> Optional["Groups"]:
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, "r") as json_file:
+                data = json.load(json_file)
+            return cls.from_dict(data)
+        except (json.JSONDecodeError, OSError, PermissionError):
+            return None  # Return None if the file is unreadable or corrupted
 
     def __repr__(self) -> str:
         groups_repr = "\n\t".join([repr(group) for group in self._groups])

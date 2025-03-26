@@ -23,7 +23,7 @@ from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
 logger = get_logger(__name__)
 
 GROUPS_SUMMARY_FILE = "groups.json"
-VECTOR_STORES_DIR = "spectra.lance"
+VECTOR_STORES = {"charge_1", "charge_2", "charge_3", "charge_4plus", "charge_unknown"}
 
 
 def categorize_charge(charge: Optional[int]) -> str:
@@ -65,24 +65,35 @@ class ProcessSpectraState(State):
         self.fragment_tol: float = context.config.fragment_tol
         self.low_dim: int = context.config.low_dim
 
-    def run(self, overwrite: bool):
-        if overwrite or not self._is_output_generated():
-            # generate the required output
-            groups, vector_store_manager = self._generate()
-        else:
-            # load the required output
-            groups, vector_store_manager = self._load()
-        # move to the create index state
-        self.context.replace_state(
-            state=CreateIndexState(context=self.context, groups=groups, vector_store=vector_store_manager))
+    def run(self):
+        # Try loading existing data if overwrite is not enabled
+        if not self.context.config.overwrite:
+            self.context.groups = Groups.load(self.context.config.groups_path)
+            self.context.vector_store_manager = VectorStoreManager.load(self.work_dir, VECTOR_STORES)
+
+            if self.context.groups and self.context.vector_store_manager:
+                self._enqueue_create_index_states()
+                return  # Exit early if loading was successful
+
+        # If loading failed or overwrite is enabled, generate fresh data
+        self.context.groups, self.context.vector_store_manager = self._generate()
+
+        # Proceed to indexing
+        self._enqueue_create_index_states()
+
+    def _enqueue_create_index_states(self):
+        """Adds 'CreateIndexState' for each vector store with spectra."""
+        self.context.pop_state()
+        for vector_store in self.context.vector_store_manager.vector_stores.values():
+            if vector_store.count_spectra() > 0:
+                self.context.push_state(CreateIndexState(self.context, vector_store))
 
     def _generate(self) -> Tuple[Groups, VectorStoreManager]:
         # parse sample to group file
         groups = Groups.read(self.sample_to_group_file)
         # create vector store manager instance
-        vector_store_manager = VectorStoreManager(base_path=os.path.join(self.work_dir, VECTOR_STORES_DIR),
-                                                  vector_store_names={"charge_1", "charge_2", "charge_3",
-                                                                      "charge_4plus", "charge_unknown"})
+        vector_store_manager = VectorStoreManager(path=self.work_dir,
+                                                  vector_store_names=VECTOR_STORES)
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
         # create spectrum preprocessor instance (preprocesses the spectra)
@@ -100,22 +111,6 @@ class ProcessSpectraState(State):
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
         return groups, vector_store_manager
-
-    def _load(self) -> Tuple[Groups, VectorStoreManager]:
-        # load groups from file
-        groups = Groups.from_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
-        # init vector store
-        vector_store_manager = VectorStoreManager(base_path=os.path.join(self.work_dir, VECTOR_STORES_DIR),
-                                                  vector_store_names={"charge_1", "charge_2", "charge_3",
-                                                                      "charge_4plus", "charge_unknown"})
-        return groups, vector_store_manager
-
-    def _is_output_generated(self) -> bool:
-        if not os.path.isdir(os.path.join(self.work_dir, VECTOR_STORES_DIR)):
-            return False
-        if not os.path.isfile(os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)):
-            return False
-        return True
 
     def _setup_vectorizer(self) -> SpectrumVectorizer:
         binner = SpectrumBinner(min_mz=self.min_mz, max_mz=self.max_mz, bin_size=self.fragment_tol)

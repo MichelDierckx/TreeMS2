@@ -1,3 +1,6 @@
+import os
+from typing import Optional
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -63,3 +66,22 @@ class SimilaritySets:
             f.write(df_string)
         # return s to calculate global distance matrix
         return s
+
+    @staticmethod
+    def load(path: str, groups: Groups, vector_store: VectorStore) -> Optional["SimilaritySets"]:
+        """
+        Load a SimilaritySets object from a file. If loading fails, return None.
+        """
+        if not os.path.exists(path):
+            return None
+        try:
+            df = pd.read_csv(path, index_col=0, sep=r"\s+")
+            expected_groups = [group.get_group_name() for group in groups.get_groups()]
+            if list(df.index) != expected_groups or list(df.columns) != expected_groups:
+                return None
+            similarity_sets = df.to_numpy(dtype=np.uint64)
+            similarity_set_obj = SimilaritySets(groups=groups, vector_store=vector_store)
+            similarity_set_obj.similarity_sets = similarity_sets
+            return similarity_set_obj
+        except Exception:
+            return None

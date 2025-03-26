@@ -1,5 +1,10 @@
+from typing import Optional, Dict
+
 from .state import State
 from ..config.config import Config
+from ..groups.groups import Groups
+from ..similarity_sets import SimilaritySets
+from ..vector_store.vector_store_manager import VectorStoreManager
 
 
 class Context:
@@ -11,11 +16,17 @@ class Context:
 
     def __init__(self, config: Config) -> None:
         self.states = []
-        self.config = config
 
-    def get_state(self) -> State:
-        assert self.states
-        return self.states[-1]
+        # shared data across states
+        self.config = config
+        self.groups: Optional[Groups] = None
+        self.vector_store_manager: Optional[VectorStoreManager] = None
+        self.similarity_sets: Dict[str, SimilaritySets] = {}
+
+    def next(self):
+        if self.states:
+            self.states[-1].run()
+        return
 
     def pop_state(self) -> State:
         if self.states:

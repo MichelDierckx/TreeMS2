@@ -25,5 +25,5 @@ class State(ABC):
         self._context = context
 
     @abstractmethod
-    def run(self, overwrite: bool) -> None:
+    def run(self) -> None:
         pass

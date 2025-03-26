@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 from typing import Optional, Set, Dict, List
 
 import pandas as pd
@@ -11,12 +12,29 @@ logger = get_logger(__name__)
 
 
 class VectorStoreManager:
-    def __init__(self, base_path: str, vector_store_names: Set[str]):
-        self.base_path = base_path
+    def __init__(self, path: str, vector_store_names: Set[str]):
+        self.path = path
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
         self.vector_stores = {
-            vector_store_name: VectorStore(base_path=base_path, name=vector_store_name)
+            vector_store_name: VectorStore(base_path=path, name=vector_store_name)
             for vector_store_name in vector_store_names
         }
+
+    @staticmethod
+    def load(path: str, vector_store_names: Set[str]) -> Optional["VectorStoreManager"]:
+        """Loads a previously created VectorStoreManager if possible, otherwise return None"""
+        if not os.path.exists(path) or not os.path.isdir(path):
+            return None
+        vector_stores = {}
+        for vector_store_name in vector_store_names:
+            vector_store = VectorStore.load(path, vector_store_name)
+            if vector_store is None:
+                return None
+            vector_stores[vector_store_name] = vector_store
+        vector_store_manager = VectorStoreManager(path, set())
+        vector_store_manager.vector_stores = vector_stores
+        return vector_store_manager
 
     def create_locks_and_flags(self, manager: multiprocessing.Manager) -> Dict[
         str, Dict[str, multiprocessing.Lock | multiprocessing.Value]]:
