@@ -74,3 +74,7 @@ class VectorStoreManager:
         for vector_store in self.vector_stores.values():
             count += vector_store.count_spectra()
         return count
+
+    def clear(self):
+        for vector_store in self.vector_stores.values():
+            vector_store.clear()
