@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import time
 from datetime import timedelta
 from typing import List, Dict, Tuple, Optional
 
@@ -50,9 +51,15 @@ class VectorStore:
     def cleanup(self):
         try:
             ds = lance.dataset(self.dataset_path)
+        except ValueError:
+            return
+        try:
+            ds.optimize.compact_files(target_rows_per_fragment=1024 * 1024)
+            time.sleep(0.1)
             time_delta = timedelta(microseconds=1)
             ds.cleanup_old_versions(older_than=time_delta)
-        except ValueError:
+        except ValueError as e:
+            logger.warning(f"Could not cleanup lance dataset at '{self.dataset_path}': error: {e}")
             return
 
     def write(self, entries_to_write: List[Dict], multiprocessing_lock: Optional[multiprocessing.Lock],
@@ -114,3 +121,11 @@ class VectorStore:
     def count_spectra(self):
         ds = lance.dataset(self.dataset_path)
         return ds.count_rows()
+
+    def is_empty(self):
+        ds = lance.dataset(self.dataset_path)
+        return ds.count_rows() == 0
+
+    def clear(self):
+        ds = lance.dataset(self.dataset_path)
+        ds.delete("TRUE")
