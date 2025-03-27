@@ -15,9 +15,11 @@ from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
+from TreeMS2.states.compute_distances_state import ComputeDistancesState
 from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
+from TreeMS2.states.state_type import StateType
 from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
 
 logger = get_logger(__name__)
@@ -40,7 +42,8 @@ def categorize_charge(charge: Optional[int]) -> str:
 
 
 class ProcessSpectraState(State):
-    MAX_SPECTRA_IN_MEM = 1_000_000
+    STATE_TYPE = StateType.PROCESS_SPECTRA
+    MAX_SPECTRA_IN_MEM = 1_000_00
 
     def __init__(self, context: Context):
         super().__init__(context)
@@ -72,20 +75,23 @@ class ProcessSpectraState(State):
             self.context.vector_store_manager = VectorStoreManager.load(self.work_dir, VECTOR_STORES)
 
             if self.context.groups and self.context.vector_store_manager:
-                self._enqueue_create_index_states()
+                self.transition()
                 return  # Exit early if loading was successful
 
         # If loading failed or overwrite is enabled, generate fresh data
         self.context.groups, self.context.vector_store_manager = self._generate()
 
         # Proceed to indexing
-        self._enqueue_create_index_states()
+        self.transition()
 
-    def _enqueue_create_index_states(self):
-        """Adds 'CreateIndexState' for each vector store with spectra."""
+    def transition(self):
+        """
+        Adds create index states for every non-empty vector store and a compute_distances_state
+        :return:
+        """
         self.context.pop_state()
         for vector_store in self.context.vector_store_manager.vector_stores.values():
-            if vector_store.count_spectra() > 0:
+            if not vector_store.is_empty():
                 self.context.push_state(CreateIndexState(self.context, vector_store))
 
     def _generate(self) -> Tuple[Groups, VectorStoreManager]:
@@ -94,6 +100,7 @@ class ProcessSpectraState(State):
         # create vector store manager instance
         vector_store_manager = VectorStoreManager(path=self.work_dir,
                                                   vector_store_names=VECTOR_STORES)
+        vector_store_manager.clear()
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
         # create spectrum preprocessor instance (preprocesses the spectra)
@@ -108,6 +115,12 @@ class ProcessSpectraState(State):
         # read, preprocess, vectorize and store spectra
         self._read_and_process_spectra(groups=groups, processing_pipeline=spectrum_processor, vectorizer=vectorizer,
                                        vector_store_manager=vector_store_manager)
+        # cleanup old versions to compact dataset
+        vector_store_manager.cleanup()
+        # create global ordering of spectra based on (group, file and spectrum position in file)
+        groups.update()
+        # add global identifier (based on total ordering) to each spectrum in the vector store
+        vector_store_manager.add_global_ids(groups=groups)
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
         return groups, vector_store_manager
@@ -203,9 +216,3 @@ class ProcessSpectraState(State):
             f"\t- {groups.failed_parsed} spectra could not be parsed.\n"
             f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
         )
-        # cleanup old versions to compact dataset
-        vector_store_manager.cleanup()
-        # create global ordering of spectra based on (group, file and spectrum position in file)
-        groups.update()
-        # add global identifier (based on total ordering) to each spectrum in the vector store
-        vector_store_manager.add_global_ids(groups=groups)

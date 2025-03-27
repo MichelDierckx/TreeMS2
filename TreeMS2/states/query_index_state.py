@@ -6,12 +6,15 @@ from TreeMS2.histogram import HitHistogram, SimilarityHistogram
 from TreeMS2.index.ms2_index import MS2Index
 from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
 from TreeMS2.similarity_sets import SimilaritySets
+from TreeMS2.states.compute_distances_state import ComputeDistancesState
 from TreeMS2.states.context import Context
 from TreeMS2.states.state import State
+from TreeMS2.states.state_type import StateType
 from TreeMS2.vector_store.vector_store import VectorStore
 
 
 class QueryIndexState(State):
+    STATE_NAME = StateType.QUERY_INDEX
     MAX_VECTORS_IN_MEM = 10_000
 
     def __init__(self, context: Context, vector_store: VectorStore, index: MS2Index):
@@ -40,7 +43,11 @@ class QueryIndexState(State):
                 self.context.similarity_sets[self.vector_store.name] = s
                 self.context.pop_state()
         self.context.similarity_sets[self.vector_store.name] = self._generate()
+
+        # if all indexes have been created and queried, transition to computing the distance matrix
         self.context.pop_state()
+        if not self.context.contains_states([StateType.CREATE_INDEX, StateType.QUERY_INDEX]):
+            self.context.push_state(ComputeDistancesState(self.context))
 
     def _generate(self) -> SimilaritySets:
 

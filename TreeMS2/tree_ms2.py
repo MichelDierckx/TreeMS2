@@ -7,7 +7,7 @@ from .states.process_spectra_state import ProcessSpectraState
 
 logger = get_logger(__name__)
 
-LOOP_LIMIT = 1000
+LOOP_LIMIT = 999
 
 
 class TreeMS2:
@@ -22,7 +22,7 @@ class TreeMS2:
             if loop_nr > LOOP_LIMIT:
                 logger.error("Program exited with pending tasks.")
                 break
-            self.context.get_state().run(overwrite=self.context.config.overwrite)
+            self.context.next()
             loop_nr += 1
         execution_time = time.time() - start_time  # calculate execution time
         logger.info(f"TreeMS2 finished in {execution_time:.2f} seconds")

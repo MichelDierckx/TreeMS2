@@ -1,6 +1,7 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from .state import State
+from .state_type import StateType
 from ..config.config import Config
 from ..groups.groups import Groups
 from ..similarity_sets import SimilaritySets
@@ -38,3 +39,7 @@ class Context:
     def replace_state(self, state: State):
         if self.states:
             self.states[-1] = state
+
+    def contains_states(self, state_types: List[StateType]) -> bool:
+        """Check if any of the specified state types exist in the queue."""
+        return any(state.state_type in state_types for state in self.states)

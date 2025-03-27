@@ -4,9 +4,11 @@ from TreeMS2.similarity_sets import SimilaritySets
 from TreeMS2.states.context import Context
 from TreeMS2.states.state import State
 from TreeMS2.distance_matrix import DistanceMatrix
+from TreeMS2.states.state_type import StateType
 
 
 class ComputeDistancesState(State):
+    STATE_TYPE = StateType.COMPUTE_DISTANCES
 
     def __init__(self, context: Context):
         super().__init__(context)

@@ -4,10 +4,12 @@ from TreeMS2.index.ms2_index import MS2Index
 from TreeMS2.states.context import Context
 from TreeMS2.states.query_index_state import QueryIndexState
 from TreeMS2.states.state import State
+from TreeMS2.states.state_type import StateType
 from TreeMS2.vector_store.vector_store import VectorStore
 
 
 class CreateIndexState(State):
+    STATE_TYPE = StateType.CREATE_INDEX
     MAX_VECTORS_IN_MEM = 1_000
 
     def __init__(self, context: Context, vector_store: VectorStore):
