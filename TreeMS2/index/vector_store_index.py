@@ -6,9 +6,7 @@ import faiss
 import numpy as np
 from tqdm import tqdm
 
-from ..histogram import SimilarityHistogram, HitHistogram
 from ..logger_config import get_logger
-from ..similarity_matrix.similarity_matrix import SimilarityMatrix
 from ..vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
@@ -42,17 +40,12 @@ class IndexingTooLargeError(Exception):
         self.max_spectra = max_spectra
 
 
-class MS2Index:
-    def __init__(self, total_valid_spectra: int, d: int, use_gpu: bool):
+class VectorStoreIndex:
+    def __init__(self, vector_store: VectorStore, use_gpu: bool):
         """
         Index for fast ms/ms spectrum similarity search.
-        :param total_valid_spectra: the total number of valid spectra
-        :param d: the dimension of the spectra to be indexed
-        :param use_gpu: whether to use GPU or not for training
         """
-
-        self.total_valid_spectra = total_valid_spectra
-        self.d = d
+        self.vector_store = vector_store
 
         if use_gpu:
             if faiss.get_num_gpus():
@@ -63,7 +56,8 @@ class MS2Index:
                 self.use_gpu = False
         self.use_gpu = use_gpu
 
-        self.index, self.index_type, self.nlist = self._initialize_index(total_valid_spectra, d, use_gpu)
+        self.index, self.index_type, self.nlist = self._initialize_index(self.vector_store.vector_count,
+                                                                         self.vector_store.vector_count, use_gpu)
 
         self.metric = faiss.METRIC_INNER_PRODUCT
 
@@ -131,7 +125,7 @@ class MS2Index:
             raise IndexingTooLargeError(n_spectra, max_spectra)
         return index, index_type, nlist
 
-    def train(self, vector_store: VectorStore):
+    def train(self):
         if not self.index.is_trained:
             if not self.nlist is None:
                 if self.use_gpu:
@@ -140,23 +134,22 @@ class MS2Index:
                     clustering_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatIP(index_ivf.d))
                     index_ivf.clustering_index = clustering_index
 
-                sample_size = min(39 * self.nlist, self.total_valid_spectra)
-                training_data = vector_store.sample(sample_size)
+                sample_size = min(39 * self.nlist, self.vector_store.vector_count)
+                training_data = self.vector_store.sample(sample_size)
                 logger.info(f"Training index on {sample_size} samples.")
                 train_time_start = time.time()
                 self.index.train(training_data)
                 logger.info(f"Finished training index in {time.time() - train_time_start:.3f} seconds.")
 
-    def add(self, vector_store: VectorStore, batch_size: int):
+    def add(self, batch_size: int):
         """
         Add vectors present in the vector store to the FAISS index in batch.
         :param batch_size: the number of vectors in a batch
-        :param vector_store: a VectorStore instance to retrieve the vector data
         :return:
         """
         logger.info("Adding spectra to the index...")
-        with tqdm(desc="Spectra added to index", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
-            for vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
+        with tqdm(desc="Spectra added to index", unit=f" spectrum", total=self.vector_store.count_vectors()) as pbar:
+            for vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 self.index.add_with_ids(vectors, ids)
                 pbar.update(nr_vectors)
         logger.info("Added all spectra to the index.")
@@ -171,7 +164,7 @@ class MS2Index:
         logger.debug(f"Saved index to {path}")
 
     @staticmethod
-    def load(path: str, total_valid_spectra: int, d: int, use_gpu: bool) -> Optional["MS2Index"]:
+    def load(path: str, vector_store: VectorStore, use_gpu: bool) -> Optional["VectorStoreIndex"]:
         """
         Load a FAISS index from a specified file.
 
@@ -180,71 +173,35 @@ class MS2Index:
         if not os.path.exists(path):
             return None
         try:
-            ms2_index = MS2Index(total_valid_spectra=total_valid_spectra, d=d, use_gpu=use_gpu)
+            vector_store_index = VectorStoreIndex(vector_store, use_gpu=use_gpu)
             index = faiss.read_index(path)  # Attempt to load the index
-            ms2_index.index = index
-            return ms2_index
+            vector_store_index.index = index
+            return vector_store_index
         except Exception:  # Catch all exceptions silently
             return None  # Return None if loading fails
 
-    def range_search(self, similarity_threshold: float, vector_store: VectorStore,
-                     batch_size: int, hit_histogram: HitHistogram, similarity_histogram: SimilarityHistogram) -> \
-            Iterator[SimilarityMatrix]:
+    def range_search(self, similarity_threshold: float,
+                     batch_size: int) -> \
+            Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         """
         Perform a range search on the FAISS index for every vector in the vector store in batches.
-        Capture result in a SimilarityMatrix for each batch and yield it.
 
         :param similarity_threshold: (float), Search radius.
-        :param vector_store: a VectorStore instance to retrieve the vector data
         :param batch_size: the number of vectors in a batch
 
-        :yield: SimilarityMatrix for each batch
+        :yield:
+
+        A tuple containing:
+            - lims (np.ndarray): The boundaries of search results for each query.
+            - d (np.ndarray): The similarity distances for each result.
+            - i (np.ndarray): The indices of the nearest neighbors.
         """
 
         logger.info("Querying the index for similar spectra ...")
-        # https://github.com/facebookresearch/faiss/wiki/FAQ#is-it-possible-to-dynamically-exclude-vectors-based-on-some-criterion
-        # sel = faiss.IDSelectorNot(faiss.IDSelectorRange(group.begin, group.end + 1))
-        # params = faiss.SearchParameters(sel=sel)
-
-        with tqdm(desc="Spectra queried", unit=f" spectrum", total=vector_store.count_spectra()) as pbar:
-            for query_vectors, ids, nr_vectors in vector_store.to_vector_batches(batch_size=batch_size):
-
-                similarity_matrix = SimilarityMatrix(self.total_valid_spectra,
-                                                     similarity_threshold=similarity_threshold)
-
+        with tqdm(desc="Spectra queried", unit=f" spectrum", total=self.vector_store.vector_count) as pbar:
+            for query_vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
                 lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
-
-                hit_histogram.update(lims=lims)
-                similarity_histogram.update(d=d)
-
-                # nr of similar vectors found
-                total_results = lims[-1]
-                if total_results == 0:
-                    yield similarity_matrix  # Yield empty matrix for consistency
-                    continue
-
-                # preallocate arrays
-                data = np.full(total_results, True, dtype=bool)
-                rows = np.empty(total_results, dtype=np.int64)
-                cols = np.empty(total_results, dtype=np.int64)
-
-                # Populate rows and cols
-                for query_idx in range(query_vectors.shape[0]):
-                    start = lims[query_idx]
-                    end = lims[query_idx + 1]
-                    # Fill only if there are results
-                    if start < end:
-                        rows[start:end] = ids[query_idx]
-                        cols[start:end] = i[start:end]
-
-                similarity_matrix.update(data=data, rows=rows, cols=cols)
-                yield similarity_matrix
+                yield lims, d, i
                 pbar.update(nr_vectors)
         logger.info("Finished querying.")
-
-    def __repr__(self):
-        return (f"MS2Index(d={self.d}, "
-                f"index_type={self.index_type}, "
-                f"metric={'INNER_PRODUCT' if self.metric == faiss.METRIC_INNER_PRODUCT else 'L2'}, "
-                f"nlist={self.nlist})")

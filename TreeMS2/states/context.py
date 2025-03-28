@@ -4,6 +4,7 @@ from .state import State
 from .state_type import StateType
 from ..config.config import Config
 from ..groups.groups import Groups
+from ..histogram import HitHistogram, SimilarityHistogram
 from ..similarity_sets import SimilaritySets
 from ..vector_store.vector_store_manager import VectorStoreManager
 
@@ -23,6 +24,8 @@ class Context:
         self.groups: Optional[Groups] = None
         self.vector_store_manager: Optional[VectorStoreManager] = None
         self.similarity_sets: Dict[str, SimilaritySets] = {}
+        self.hit_histogram_global: Optional[HitHistogram] = None
+        self.similarity_histogram_global: Optional[SimilarityHistogram] = None
 
     def next(self):
         if self.states:

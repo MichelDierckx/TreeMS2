@@ -12,28 +12,31 @@ logger = get_logger(__name__)
 
 
 class VectorStoreManager:
-    def __init__(self, path: str, vector_store_names: Set[str]):
+    def __init__(self, path: str, vector_store_names: Set[str], vector_dim: int):
         self.path = path
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         self.vector_stores = {
-            vector_store_name: VectorStore(base_path=path, name=vector_store_name)
+            vector_store_name: VectorStore(base_path=path, name=vector_store_name, vector_dim=vector_dim)
             for vector_store_name in vector_store_names
         }
+        self.vector_count = 0
 
     @staticmethod
-    def load(path: str, vector_store_names: Set[str]) -> Optional["VectorStoreManager"]:
+    def load(path: str, vector_store_names: Set[str], vector_dim: int) -> Optional["VectorStoreManager"]:
         """Loads a previously created VectorStoreManager if possible, otherwise return None"""
         if not os.path.exists(path) or not os.path.isdir(path):
             return None
         vector_stores = {}
         for vector_store_name in vector_store_names:
-            vector_store = VectorStore.load(path, vector_store_name)
+            vector_store = VectorStore.load(path, vector_store_name, vector_dim)
             if vector_store is None:
                 return None
             vector_stores[vector_store_name] = vector_store
-        vector_store_manager = VectorStoreManager(path, set())
+        vector_store_manager = VectorStoreManager(path, set(), vector_dim)
         vector_store_manager.vector_stores = vector_stores
+        for vector_store in vector_stores.values():
+            vector_store_manager.vector_count += vector_store.vector_count
         return vector_store_manager
 
     def create_locks_and_flags(self, manager: multiprocessing.Manager) -> Dict[
@@ -67,13 +70,18 @@ class VectorStoreManager:
             self.vector_stores[vector_store_name].add_global_ids(groups)
 
     def count_spectra_vector_store(self, vector_store_name: str):
-        return self.vector_stores[vector_store_name].count_spectra()
+        return self.vector_stores[vector_store_name].count_vectors()
 
     def count_spectra(self):
         count = 0
         for vector_store in self.vector_stores.values():
-            count += vector_store.count_spectra()
+            count += vector_store.count_vectors()
         return count
+
+    def update_vector_count(self):
+        for vector_store in self.vector_stores.values():
+            self.vector_count += vector_store.update_vector_count()
+        return self.vector_count
 
     def clear(self):
         for vector_store in self.vector_stores.values():

@@ -15,7 +15,6 @@ from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor
 from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
-from TreeMS2.states.compute_distances_state import ComputeDistancesState
 from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
@@ -72,7 +71,9 @@ class ProcessSpectraState(State):
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
             self.context.groups = Groups.load(self.context.config.groups_path)
-            self.context.vector_store_manager = VectorStoreManager.load(self.work_dir, VECTOR_STORES)
+            self.context.vector_store_manager = VectorStoreManager.load(path=self.work_dir,
+                                                                        vector_store_names=VECTOR_STORES,
+                                                                        vector_dim=self.low_dim)
 
             if self.context.groups and self.context.vector_store_manager:
                 self.transition()
@@ -99,7 +100,7 @@ class ProcessSpectraState(State):
         groups = Groups.read(self.sample_to_group_file)
         # create vector store manager instance
         vector_store_manager = VectorStoreManager(path=self.work_dir,
-                                                  vector_store_names=VECTOR_STORES)
+                                                  vector_store_names=VECTOR_STORES, vector_dim=self.low_dim)
         vector_store_manager.clear()
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
@@ -117,6 +118,7 @@ class ProcessSpectraState(State):
                                        vector_store_manager=vector_store_manager)
         # cleanup old versions to compact dataset
         vector_store_manager.cleanup()
+        vector_store_manager.update_vector_count()
         # create global ordering of spectra based on (group, file and spectrum position in file)
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store

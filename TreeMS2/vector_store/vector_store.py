@@ -18,10 +18,12 @@ logger = get_logger(__name__)
 
 
 class VectorStore:
-    def __init__(self, base_path: str, name: str):
+    def __init__(self, base_path: str, name: str, vector_dim: int):
         self.dataset_path = os.path.join(base_path, name, "spectra.lance")
         self.directory = os.path.join(base_path, name)
         self.name = name
+        self.vector_dim = vector_dim
+        self.vector_count = 0
         # Check if the directory exists, if not, create it
         if not os.path.exists(self.dataset_path):
             os.makedirs(self.dataset_path)
@@ -41,12 +43,14 @@ class VectorStore:
         )
 
     @staticmethod
-    def load(base_path: str, name: str) -> Optional["VectorStore"]:
+    def load(base_path: str, name: str, vector_dim: int) -> Optional["VectorStore"]:
         """Loads a VectorStore if possible, otherwise returns None."""
         dataset_path = os.path.join(base_path, name, "spectra.lance")
         if not os.path.exists(dataset_path) or not os.path.isdir(dataset_path):
             return None
-        return VectorStore(base_path, name)
+        vector_store = VectorStore(base_path, name, vector_dim)
+        vector_store.update_vector_count()
+        return vector_store
 
     def cleanup(self):
         try:
@@ -118,9 +122,13 @@ class VectorStore:
         ds = lance.dataset(self.dataset_path)
         ds.add_columns(add_global_ids_batch)
 
-    def count_spectra(self):
+    def count_vectors(self) -> int:
         ds = lance.dataset(self.dataset_path)
         return ds.count_rows()
+
+    def update_vector_count(self) -> int:
+        self.vector_count = self.count_vectors()
+        return self.vector_count
 
     def is_empty(self):
         ds = lance.dataset(self.dataset_path)
