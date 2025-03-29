@@ -1,9 +1,11 @@
+import math
 import os
 import time
 from typing import Tuple, Optional, Iterator
 
 import faiss
 import numpy as np
+import psutil
 from tqdm import tqdm
 
 from ..logger_config import get_logger
@@ -12,32 +14,8 @@ from ..vector_store.vector_store import VectorStore
 logger = get_logger(__name__)
 
 
-class IndexingMemoryError(Exception):
-    """Custom exception raised when there is not enough memory to index the spectra."""
-
-    def __init__(self, total_valid_spectra, d, memory_budget_gigabytes, memory_required):
-        message = (
-            f"Not enough memory to index {total_valid_spectra} spectra with dimensions {d}. "
-            f"Memory required: {memory_required} bytes, but only {memory_budget_gigabytes} GB available."
-        )
-        super().__init__(message)
-        self.total_valid_spectra = total_valid_spectra
-        self.d = d
-        self.memory_budget_gigabytes = memory_budget_gigabytes
-        self.memory_required = memory_required
-
-
-class IndexingTooLargeError(Exception):
-    """Custom exception raised when the number of spectra is too large for the current indexing method."""
-
-    def __init__(self, total_valid_spectra, max_spectra):
-        message = (
-            f"The number of spectra ({total_valid_spectra}) exceeds the maximum supported limit "
-            f"for the current indexing method. The limit is {max_spectra} spectra."
-        )
-        super().__init__(message)
-        self.total_valid_spectra = total_valid_spectra
-        self.max_spectra = max_spectra
+class IndexConstructionError(Exception):
+    pass
 
 
 class VectorStoreIndex:
@@ -62,6 +40,61 @@ class VectorStoreIndex:
         self.metric = faiss.METRIC_INNER_PRODUCT
 
         logger.info(f"Created index {self}")
+
+    @staticmethod
+    def _create_factory_string(vector_count: int, vector_dim: int) -> str:
+        # determine the type of index (and number of clusters if applicable)
+        if vector_count < 10_000:
+            factory_string = "IDMap,Flat"
+        elif vector_count < 10 ** 6:
+            nlist = min(math.floor(16 * math.sqrt(vector_count)),
+                        math.floor(vector_count / 39))  # need a minimum of 39 training points per cluster
+            factory_string = f"IVF{nlist}"
+        elif vector_count < 10 ** 7:
+            nlist = min(math.floor(20 * math.sqrt(vector_count)), math.floor(vector_count / 39))
+            factory_string = f"IVF{nlist}_HNSW32"
+        elif vector_count < 10 ** 8:
+            nlist = min(math.floor(26 * math.sqrt(vector_count)), math.floor(vector_count / 39))
+            factory_string = f"IVF{nlist}_HNSW32"
+        elif vector_count <= 10 ** 9:
+            nlist = min(math.floor(33 * math.sqrt(vector_count)), math.floor(vector_count / 39))
+            factory_string = f"IVF{nlist}_HNSW32"
+        else:
+            raise IndexConstructionError(
+                f"An index can be constructed for a maximum of 1B vectors, but got {vector_count} vectors.")
+
+        # determine compression
+        if vector_count >= 10 ** 6:
+            system_total_ram = psutil.virtual_memory().total
+            current_process_ram_usage = psutil.Process().memory_info().rss
+
+            # calculate the amount of RAM that will be reserved for the OS
+            giga_byte = 1024 ** 3
+            ram_reserved_for_os = 2 * giga_byte  # initial RAM reserved
+            if system_total_ram > 4 * giga_byte:
+                ram_reserved_for_os += ((min(system_total_ram, 16) - 4) // 4) * giga_byte  # +1GB per 4GB (up to 16GB)
+            if system_total_ram > 16 * giga_byte:
+                ram_reserved_for_os += ((system_total_ram - 16) // 8) * giga_byte  # +1GB per 8GB above 16GB
+
+            memory_budget = system_total_ram - current_process_ram_usage - ram_reserved_for_os
+            memory_budget_per_vector = math.floor(memory_budget / vector_count)
+            m = memory_budget_per_vector - 16
+            if m < 64:
+                raise IndexConstructionError(
+                    f"Not enough memory available for indexing {vector_dim} vectors. Index requires at least {(64 + 16) * vector_count} bytes, but only an estimated {memory_budget} bytes of memory available.")
+            if m > vector_dim:
+                if m > 4 * vector_dim:
+                    factory_string += ",Flat"
+                elif m > 2 * vector_dim:
+                    factory_string += ",SQfp16"
+                elif m >= vector_dim:
+                    factory_string += ",SQ8"
+            else:
+                if 4 * m <= vector_dim:
+                    factory_string = f"OPQ{m}_{4 * m}," + factory_string + f",PQ{m}"
+                else:
+                    factory_string = f"OPQ{m}," + factory_string + f",PQ{m}"
+        return factory_string
 
     @classmethod
     def _initialize_index(cls, n_spectra: int, d: int, use_gpu: bool) -> Tuple[faiss.Index, str, Optional[int]]:
