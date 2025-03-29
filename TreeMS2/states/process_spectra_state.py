@@ -2,12 +2,13 @@ import multiprocessing
 import os
 from functools import partial
 from typing import Tuple, List, Optional, Dict
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from tqdm import tqdm
 
 from TreeMS2.groups.groups import Groups
 from TreeMS2.groups.peak_file.peak_file import PeakFile
+from TreeMS2.histogram import PrecursorChargeHistogram
 from TreeMS2.logger_config import get_logger
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
 from TreeMS2.spectrum.spectrum_processing.pipeline import ProcessingPipelineFactory, SpectrumProcessingPipeline
@@ -27,8 +28,8 @@ GROUPS_SUMMARY_FILE = "groups.json"
 VECTOR_STORES = {"charge_1", "charge_2", "charge_3", "charge_4plus", "charge_unknown"}
 
 
-def categorize_charge(charge: Optional[int]) -> str:
-    """Categorizes precursor charge into predefined charge groups."""
+def map_charge_to_vector_store(charge: Optional[int]) -> str:
+    """Maps precursor charge to the name of the corresponding vector store."""
     if charge == 1:
         return "charge_1"
     elif charge == 2:
@@ -114,8 +115,11 @@ class ProcessSpectraState(State):
                                                                        min_mz=vectorizer.binner.min_mz,
                                                                        max_mz=vectorizer.binner.max_mz)
         # read, preprocess, vectorize and store spectra
-        self._read_and_process_spectra(groups=groups, processing_pipeline=spectrum_processor, vectorizer=vectorizer,
-                                       vector_store_manager=vector_store_manager)
+        precursor_charge_histogram = self._read_and_process_spectra(groups=groups,
+                                                                    processing_pipeline=spectrum_processor,
+                                                                    vectorizer=vectorizer,
+                                                                    vector_store_manager=vector_store_manager)
+        precursor_charge_histogram.plot(path=os.path.join(self.work_dir, "precursor_charge_distribution.png"))
         # cleanup old versions to compact dataset
         vector_store_manager.cleanup()
         vector_store_manager.update_vector_count()
@@ -136,8 +140,10 @@ class ProcessSpectraState(State):
     @staticmethod
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
                       vector_store_manager: VectorStoreManager,
-                      locks_and_flags: Dict[str, multiprocessing.Lock | multiprocessing.Value]) -> PeakFile:
+                      locks_and_flags: Dict[str, multiprocessing.Lock | multiprocessing.Value]) -> Tuple[
+        PeakFile, Counter]:
         buffers: defaultdict[str, List[GroupSpectrum]] = defaultdict(list)
+        nr_spectra_per_precursor_charge = Counter()  # Store counts per charge
 
         def vectorize_batch(buffer: List[GroupSpectrum]):
             spectra = [spec.spectrum for spec in buffer]
@@ -152,8 +158,9 @@ class ProcessSpectraState(State):
                                        overwrite=locks_and_flags[vector_store_name]["overwrite"])
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
-            charge_category = categorize_charge(processed_spectrum.spectrum.precursor_charge)
+            charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
             buffers[charge_category].append(processed_spectrum)
+            nr_spectra_per_precursor_charge[processed_spectrum.spectrum.precursor_charge] += 1
             if len(buffers[charge_category]) >= 1_000:
                 write_batch(charge_category, buffers[charge_category])
                 buffers[charge_category].clear()
@@ -163,13 +170,16 @@ class ProcessSpectraState(State):
             if buffer:
                 write_batch(store_name, buffer)
                 buffer.clear()
-        return file
+        return file, nr_spectra_per_precursor_charge
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
-                                  vectorizer: SpectrumVectorizer, vector_store_manager: VectorStoreManager):
+                                  vectorizer: SpectrumVectorizer,
+                                  vector_store_manager: VectorStoreManager) -> PrecursorChargeHistogram:
         """
         Main function to orchestrate producers and consumers using queues.
         """
+        precursor_charge_histogram = PrecursorChargeHistogram()
+
         # Flatten the list of all peak files across groups for processing.
         all_files = [
             file
@@ -195,7 +205,7 @@ class ProcessSpectraState(State):
                 results = list(tqdm(pool.imap(process_file_partial, all_files),
                                     desc="Processing Files", unit="file", total=len(all_files), position=0, leave=True))
 
-        for file in results:
+        for file, nr_spectra_per_precursor_charge in results:
             groups.failed_parsed += file.failed_parsed
             groups.failed_processed += file.failed_processed
             groups.total_spectra += file.total_spectra
@@ -211,6 +221,8 @@ class ProcessSpectraState(State):
             peak_file.failed_processed = file.failed_processed
             peak_file.total_spectra = file.total_spectra
 
+            precursor_charge_histogram.update(nr_spectra_per_precursor_charge)
+
         # Log final processing statistics.
         logger.info(
             f"Processed {groups.total_spectra} spectra from {len(all_files)} files:\n"
@@ -218,3 +230,4 @@ class ProcessSpectraState(State):
             f"\t- {groups.failed_parsed} spectra could not be parsed.\n"
             f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
         )
+        return precursor_charge_histogram
