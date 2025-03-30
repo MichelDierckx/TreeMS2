@@ -119,7 +119,10 @@ class VectorStore:
             global_ids = batch.to_pandas().apply(compute_global_id, axis=1).astype(np.int32)
             return pd.DataFrame({"global_id": global_ids}, dtype=np.int32)
 
-        ds = lance.dataset(self.dataset_path)
+        try:
+            ds = lance.dataset(self.dataset_path)
+        except ValueError:
+            return
         ds.add_columns(add_global_ids_batch)
 
     def count_vectors(self) -> int:
