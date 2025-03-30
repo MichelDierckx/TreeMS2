@@ -71,7 +71,7 @@ class ProcessSpectraState(State):
     def run(self):
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
-            self.context.groups = Groups.load(self.sample_to_group_file)
+            self.context.groups = Groups.load(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
             self.context.vector_store_manager = VectorStoreManager.load(path=self.work_dir,
                                                                         vector_store_names=VECTOR_STORES,
                                                                         vector_dim=self.low_dim)
