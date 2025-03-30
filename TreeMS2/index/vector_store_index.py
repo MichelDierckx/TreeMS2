@@ -39,7 +39,7 @@ class VectorStoreIndex:
         # determine the type of index (and number of clusters if applicable)
         if vector_count < 10_000:  # N < 10k
             nlist = 0
-            factory_string = "IDMap,Flat"
+            factory_string = "IDMap"
         elif vector_count < 10 ** 6:  # N < 1M
             nlist = min(math.floor(16 * math.sqrt(vector_count)),
                         math.floor(vector_count / 39))  # need a minimum of 39 training points per cluster
@@ -90,6 +90,8 @@ class VectorStoreIndex:
                     factory_string = f"OPQ{m}_{4 * m}," + factory_string + f",PQ{m}"
                 else:
                     factory_string = f"OPQ{m}," + factory_string + f",PQ{m}"
+        else:
+            factory_string += ",Flat"
         return factory_string, nlist
 
     def _load_training_data(self) -> Tuple[int, np.ndarray]:

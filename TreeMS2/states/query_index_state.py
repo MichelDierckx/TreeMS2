@@ -14,7 +14,7 @@ from TreeMS2.states.state_type import StateType
 
 
 class QueryIndexState(State):
-    STATE_NAME = StateType.QUERY_INDEX
+    STATE_TYPE = StateType.QUERY_INDEX
     MAX_VECTORS_IN_MEM = 10_000
 
     def __init__(self, context: Context, index: VectorStoreIndex):
@@ -47,10 +47,10 @@ class QueryIndexState(State):
         self.context.pop_state()
         if not self.context.contains_states([StateType.CREATE_INDEX, StateType.QUERY_INDEX]):
             self.context.hit_histogram_global.plot(
-                path=os.path.join(self.index.vector_store.directory,
+                path=os.path.join(self.work_dir,
                                   "hit_frequency_distribution.png"))
             self.context.similarity_histogram_global.plot(
-                path=os.path.join(self.index.vector_store.directory,
+                path=os.path.join(self.work_dir,
                                   "similarity_distribution.png"))
             self.context.push_state(ComputeDistancesState(self.context))
 
@@ -95,8 +95,8 @@ class QueryIndexState(State):
             self.context.similarity_histogram_global.update(d=d)
 
             num_queries = len(lims) - 1
-            row_indices = np.repeat(np.arange(num_queries), np.diff(lims))
-            col_indices = i
+            row_indices = np.repeat(np.arange(num_queries, dtype=np.int64), np.diff(lims).astype(np.int64))
+            col_indices = i.astype(np.int64)
             data = np.ones_like(i, dtype=np.bool_)
 
             similarity_matrix = SimilarityMatrix(self.context.groups.total_valid_spectra(),

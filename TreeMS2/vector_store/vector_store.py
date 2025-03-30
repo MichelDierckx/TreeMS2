@@ -123,7 +123,10 @@ class VectorStore:
         ds.add_columns(add_global_ids_batch)
 
     def count_vectors(self) -> int:
-        ds = lance.dataset(self.dataset_path)
+        try:
+            ds = lance.dataset(self.dataset_path)
+        except ValueError:
+            return 0
         return ds.count_rows()
 
     def update_vector_count(self) -> int:
@@ -131,9 +134,11 @@ class VectorStore:
         return self.vector_count
 
     def is_empty(self):
-        ds = lance.dataset(self.dataset_path)
-        return ds.count_rows() == 0
+        return self.count_vectors() == 0
 
     def clear(self):
-        ds = lance.dataset(self.dataset_path)
+        try:
+            ds = lance.dataset(self.dataset_path)
+        except ValueError:
+            return
         ds.delete("TRUE")

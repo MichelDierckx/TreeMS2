@@ -45,4 +45,4 @@ class Context:
 
     def contains_states(self, state_types: List[StateType]) -> bool:
         """Check if any of the specified state types exist in the queue."""
-        return any(state.state_type in state_types for state in self.states)
+        return any(state.STATE_TYPE in state_types for state in self.states)
