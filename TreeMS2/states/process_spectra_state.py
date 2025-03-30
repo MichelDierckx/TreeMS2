@@ -1,7 +1,7 @@
 import multiprocessing
 import os
 from functools import partial
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict, Union
 from collections import defaultdict, Counter
 
 from tqdm import tqdm
@@ -71,7 +71,7 @@ class ProcessSpectraState(State):
     def run(self):
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
-            self.context.groups = Groups.load(self.context.config.groups_path)
+            self.context.groups = Groups.load(self.sample_to_group_file)
             self.context.vector_store_manager = VectorStoreManager.load(path=self.work_dir,
                                                                         vector_store_names=VECTOR_STORES,
                                                                         vector_dim=self.low_dim)
@@ -140,7 +140,7 @@ class ProcessSpectraState(State):
     @staticmethod
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
                       vector_store_manager: VectorStoreManager,
-                      locks_and_flags: Dict[str, multiprocessing.Lock | multiprocessing.Value]) -> Tuple[
+                      locks_and_flags: Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]) -> Tuple[
         PeakFile, Counter]:
         buffers: defaultdict[str, List[GroupSpectrum]] = defaultdict(list)
         nr_spectra_per_precursor_charge = Counter()  # Store counts per charge
@@ -178,6 +178,8 @@ class ProcessSpectraState(State):
         """
         Main function to orchestrate producers and consumers using queues.
         """
+        multiprocessing.set_start_method('spawn')  # lance does not work with FORK method
+
         precursor_charge_histogram = PrecursorChargeHistogram()
 
         # Flatten the list of all peak files across groups for processing.
@@ -196,7 +198,7 @@ class ProcessSpectraState(State):
             locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
 
             process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
-                                           vectorizer=vectorizer, vector_store=vector_store_manager,
+                                           vectorizer=vectorizer, vector_store_manager=vector_store_manager,
                                            locks_and_flags=locks_and_flags)
 
             logger.info(f"Processing spectra from {len(all_files)} files ...")

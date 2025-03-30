@@ -82,8 +82,8 @@ class QueryIndexState(State):
             self.context.similarity_histogram_global = SimilarityHistogram(
                 bin_edges=np.linspace(self.similarity_threshold, 1, 21))
         if self.context.hit_histogram_global is None:
-            self.context.hit_similarity_histogram_global = HitHistogram(
-                bin_edges=construct_bin_edges(self.context.groups.total_valid_spectra))
+            self.context.hit_histogram_global = HitHistogram(
+                bin_edges=construct_bin_edges(self.context.groups.total_valid_spectra()))
 
         # query index
         batch_nr = 0
@@ -99,7 +99,7 @@ class QueryIndexState(State):
             col_indices = i
             data = np.ones_like(i, dtype=np.bool_)
 
-            similarity_matrix = SimilarityMatrix(self.context.groups.total_valid_spectra,
+            similarity_matrix = SimilarityMatrix(self.context.groups.total_valid_spectra(),
                                                  similarity_threshold=self.similarity_threshold)
             similarity_matrix.update(data=data, rows=row_indices, cols=col_indices)
 

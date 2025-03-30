@@ -1,6 +1,6 @@
 import multiprocessing
 import os
-from typing import Optional, Set, Dict, List
+from typing import Optional, Set, Dict, List, Union
 
 import pandas as pd
 
@@ -40,7 +40,7 @@ class VectorStoreManager:
         return vector_store_manager
 
     def create_locks_and_flags(self, manager: multiprocessing.Manager) -> Dict[
-        str, Dict[str, multiprocessing.Lock | multiprocessing.Value]]:
+        str, Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]]:
         """Returns a dictionary containing locks and overwrite flags for each vector store."""
         return {
             name: {
