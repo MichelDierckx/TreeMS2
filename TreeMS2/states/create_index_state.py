@@ -27,8 +27,7 @@ class CreateIndexState(State):
         if not self.context.config.overwrite:
             index = VectorStoreIndex.load(
                 path=os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index"),
-                vector_store=self.vector_store,
-                use_gpu=self.use_gpu)
+                vector_store=self.vector_store)
             if index is not None:
                 self.context.replace_state(
                     state=QueryIndexState(context=self.context,
@@ -41,10 +40,9 @@ class CreateIndexState(State):
 
     def _generate(self) -> VectorStoreIndex:
         # create an index
-        index = VectorStoreIndex(vector_store=self.vector_store,
-                                 use_gpu=self.use_gpu)
+        index = VectorStoreIndex(vector_store=self.vector_store)
         # train the index
-        index.train()
+        index.train(use_gpu=self.use_gpu)
         # index the spectra for the groups
         index.add(batch_size=CreateIndexState.MAX_VECTORS_IN_MEM)
         # save the index to disk
