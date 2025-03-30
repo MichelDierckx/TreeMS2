@@ -115,7 +115,7 @@ class PrecursorChargeHistogram:
 
         # Extract charge categories and counts
         charges, counts = zip(*sorted(self.charge_counts.items()))  # Sort for better visualization
-
+        charges = [str(c) for c in charges]  # convert into categories to prevent x-axis scaling
         # Create plot
         plt.figure(figsize=(10, 5))
         plt.bar(charges, counts, edgecolor="black")
