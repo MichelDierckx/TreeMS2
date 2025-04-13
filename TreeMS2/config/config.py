@@ -59,7 +59,6 @@ class Config:
         self._validate_positive_number("low_dim", True)
         self._validate_number_range("similarity", min_value=0.0, max_value=1.0)
         self._validate_positive_number("precursor_mz_window", True)
-        self._log_parameters()
 
     def _define_arguments(self) -> None:
         """
@@ -205,13 +204,18 @@ class Config:
             dest="precursor_mz_window",
         )
 
-    def _validate_choice(self, param: str, valid_options: list) -> None:
-        """
-        Validate that the value of a configuration parameter is in the list of valid options.
-        """
-        value = self.get(param)
-        if value not in valid_options:
-            raise ValueError(f"--{param}: Invalid value '{value}'. Valid options are: {', '.join(valid_options)}")
+        # Logging
+        self._parser.add_argument(
+            "--log_level",
+            default="INFO",
+            type=str,
+            choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            help=(
+                "Set the logging level for console output "
+                "(default: %(default)s). Log file will always capture all levels."
+            ),
+            dest="log_level",
+        )
 
     def _validate_directory_path(self, param: str, required_extensions: Optional[list] = None) -> None:
         """
@@ -285,7 +289,7 @@ class Config:
         if value > max_value:
             raise ValueError(f"--{param}: value can not be greater than {max_value:.4f}. Got {value:.4f}.")
 
-    def _log_parameters(self) -> None:
+    def log_parameters(self) -> None:
         """Log all chosen parameters."""
         for key, value in self._namespace.items():
             logger.debug(f"  {key}: {value}")

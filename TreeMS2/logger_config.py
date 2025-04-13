@@ -2,33 +2,48 @@ import logging
 
 LOG_FILE = "logs/app.log"
 
+# ANSI escape codes for colors
+LOG_COLORS = {
+    "DEBUG": "\033[36m",  # Cyan
+    "INFO": "\033[32m",  # Green
+    "WARNING": "\033[33m",  # Yellow
+    "ERROR": "\033[31m",  # Red
+    "CRITICAL": "\033[41m",  # Red background
+    "RESET": "\033[0m",  # Reset color
+}
 
-def setup_logging():
-    # Create a rotating file handler (logs to file with size limit and backups)
+
+class ColorFormatter(logging.Formatter):
+    def format(self, record):
+        color = LOG_COLORS.get(record.levelname, LOG_COLORS["RESET"])
+        reset = LOG_COLORS["RESET"]
+        record.levelname = f"{color}{record.levelname}{reset}"
+        return super().format(record)
+
+
+def setup_logging(console_level: str):
+    # File handler (no colors here)
     file_handler = logging.FileHandler(filename=LOG_FILE, mode='w')
     file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
 
-    # Create a console handler
+    # Console handler (with color)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(console_level)
+    color_formatter = ColorFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(color_formatter)
 
-    # Set up a formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    # Add formatter to the handlers
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-
-    # Configure the root logger
+    # Root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
     root_logger.addHandler(file_handler)
     root_logger.addHandler(console_handler)
 
-    # Disable dependency non-critical log messages.
+    # Optional: reduce noise from dependencies
     logging.getLogger("numba").setLevel(logging.WARNING)
     logging.getLogger("numexpr").setLevel(logging.WARNING)
-    logging.getLogger("matplotlib").setLevel(logging.WARNING)  # Set to WARNING to suppress INFO and DEBUG messages
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 
 def get_logger(module_name: str) -> logging.Logger:
