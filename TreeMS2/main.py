@@ -10,7 +10,7 @@ def main(args: Union[str, List[str]] = None) -> int:
     config.parse(args)  # Parse arguments from config file or command-line
 
     console_level = config.log_level
-    setup_logging(console_level)
+    setup_logging(work_dir=config.work_dir, console_level=console_level)
 
     config.log_parameters()
 

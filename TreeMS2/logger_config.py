@@ -1,6 +1,6 @@
 import logging
-
-LOG_FILE = "logs/app.log"
+import os
+from datetime import datetime
 
 # ANSI escape codes for colors
 LOG_COLORS = {
@@ -21,9 +21,17 @@ class ColorFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging(console_level: str):
+def setup_logging(work_dir: str, console_level: str):
+    # Create a "logs" subdirectory inside the working directory
+    log_dir = os.path.join(work_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)  # Create it if it doesn't exist
+
+    # Create a timestamped log filename
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_file = os.path.join(log_dir, f"{timestamp}.log")
+
     # File handler (no colors here)
-    file_handler = logging.FileHandler(filename=LOG_FILE, mode='w')
+    file_handler = logging.FileHandler(filename=log_file, mode='w')
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler.setFormatter(file_formatter)
