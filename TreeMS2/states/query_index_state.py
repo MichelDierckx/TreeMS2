@@ -87,15 +87,14 @@ class QueryIndexState(State):
 
         # query index
         batch_nr = 0
-        for lims, d, i in self.index.range_search(similarity_threshold=self.similarity_threshold,
-                                                  batch_size=QueryIndexState.MAX_VECTORS_IN_MEM):
+        for lims, d, i, query_ids in self.index.range_search(similarity_threshold=self.similarity_threshold,
+                                                             batch_size=QueryIndexState.MAX_VECTORS_IN_MEM):
             hit_histogram_local.update(lims=lims)
             similarity_histogram_local.update(d=d)
             self.context.hit_histogram_global.update(lims=lims)
             self.context.similarity_histogram_global.update(d=d)
 
-            num_queries = len(lims) - 1
-            row_indices = np.repeat(np.arange(num_queries, dtype=np.int64), np.diff(lims).astype(np.int64))
+            row_indices = np.repeat(query_ids, np.diff(lims).astype(np.int64))
             col_indices = i.astype(np.int64)
             data = np.ones_like(i, dtype=np.bool_)
 

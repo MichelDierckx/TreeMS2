@@ -178,23 +178,21 @@ class VectorStoreIndex:
 
     def range_search(self, similarity_threshold: float,
                      batch_size: int) -> \
-            Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+            Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
         """
         Perform a range search on the FAISS index for every vector in the vector store in batches.
 
-        :param similarity_threshold: (float), Search radius.
-        :param batch_size: the number of vectors in a batch
+        :param similarity_threshold: (float) Threshold distance or similarity radius for matches.
+        :param batch_size: (int) Number of query vectors to process per batch.
 
-        :yield:
-
-        A tuple containing:
-            - lims (np.ndarray): The boundaries of search results for each query.
-            - d (np.ndarray): The similarity distances for each result.
-            - i (np.ndarray): The indices of the nearest neighbors.
+        :yield: A tuple containing:
+            - lims (np.ndarray): Array of offsets that define result boundaries per query.
+            - d (np.ndarray): Flattened array of similarity scores or distances for each match.
+            - i (np.ndarray): Flattened array of matched vector indices (from the dataset).
+            - query_ids (np.ndarray): Array of IDs corresponding to each query vector in the batch.
         """
-        with tqdm(desc="Vectors queried", unit=f" vector", total=self.vector_store.vector_count) as pbar:
-            for query_vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
-                # https://github.com/facebookresearch/faiss/wiki/Special-operations-on-indexes
+        with tqdm(desc="Vectors queried", unit=" vector", total=self.vector_store.vector_count) as pbar:
+            for query_vectors, query_ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
-                yield lims, d, i
+                yield lims, d, i, query_ids
                 pbar.update(nr_vectors)
