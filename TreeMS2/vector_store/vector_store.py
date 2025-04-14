@@ -155,7 +155,7 @@ class VectorStore:
         try:
             vector_store = cls(name=data["name"], directory=data["directory"], vector_dim=data["vector_dim"])
             vector_store.vector_count = data["vector_count"]
-            group_counts = {int(k): v for k, v in data["group_counts"]}  # convert str keys back to integers
+            group_counts = {int(k): v for k, v in data["group_counts"].items()}  # convert str keys back to integers
             vector_store.group_counts = defaultdict(int, group_counts)
             return vector_store
         except (KeyError, TypeError, AttributeError):
