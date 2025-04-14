@@ -40,7 +40,7 @@ def setup_logging(work_dir: str, console_level: str):
     # Console handler (with color)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
-    color_formatter = ColorFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    color_formatter = ColorFormatter('%(asctime)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(color_formatter)
 
     # Root logger
