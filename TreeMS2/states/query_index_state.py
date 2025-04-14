@@ -39,20 +39,27 @@ class QueryIndexState(State):
                 groups=self.context.groups, vector_store=self.index.vector_store)
             if s is not None:
                 self.context.similarity_sets[self.index.vector_store.name] = s
-                self.context.pop_state()
+                self._transition()
                 return
 
         self.context.similarity_sets[self.index.vector_store.name] = self._generate()
+        self._transition()
+
+
+    def _transition(self):
         # if all indexes have been created and queried, transition to computing the distance matrix
         self.context.pop_state()
         if not self.context.contains_states([StateType.CREATE_INDEX, StateType.QUERY_INDEX]):
-            self.context.hit_histogram_global.plot(
-                path=os.path.join(self.work_dir,
-                                  "hit_frequency_distribution.png"))
-            self.context.similarity_histogram_global.plot(
-                path=os.path.join(self.work_dir,
-                                  "similarity_distribution.png"))
+            if self.context.hit_histogram_global is not None:
+                self.context.hit_histogram_global.plot(
+                    path=os.path.join(self.work_dir,
+                                      "hit_frequency_distribution.png"))
+            if self.context.similarity_histogram_global is not None:
+                self.context.similarity_histogram_global.plot(
+                    path=os.path.join(self.work_dir,
+                                      "similarity_distribution.png"))
             self.context.push_state(ComputeDistancesState(self.context))
+
 
     def _generate(self) -> SimilaritySets:
 
