@@ -78,16 +78,16 @@ class ProcessSpectraState(State):
                 path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
 
             if self.context.groups and self.context.vector_store_manager:
-                self.transition()
+                self._transition()
                 return  # Exit early if loading was successful
 
         # If loading failed or overwrite is enabled, generate fresh data
         self.context.groups, self.context.vector_store_manager = self._generate()
 
         # Proceed to indexing
-        self.transition()
+        self._transition()
 
-    def transition(self):
+    def _transition(self):
         """
         Adds create index states for every non-empty vector store and a compute_distances_state
         :return:
