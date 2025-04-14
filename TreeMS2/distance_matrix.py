@@ -22,9 +22,9 @@ class DistanceMatrix:
         # construct Lower-left triangular matrix
         for j in range(1, similarity_sets.groups.get_size()):
             distances = []
-            b = similarity_sets.groups.get_group(j).total_spectra
+            b = similarity_sets.groups.get_group(j).total_valid_spectra()
             for i in range(j):
-                a = similarity_sets.groups.get_group(i).total_spectra
+                a = similarity_sets.groups.get_group(i).total_valid_spectra()
                 s_a = similarity_sets.similarity_sets.item((i, j))
                 s_b = similarity_sets.similarity_sets.item((j, i))
                 global_similarity = _global_similarity(a, b, s_a, s_b)
