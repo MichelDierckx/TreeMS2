@@ -9,6 +9,7 @@ LOG_COLORS = {
     "WARNING": "\033[33m",  # Yellow
     "ERROR": "\033[31m",  # Red
     "CRITICAL": "\033[41m",  # Red background
+    "SECTION": "\033[35m",  # Magenta for section titles
     "RESET": "\033[0m",  # Reset color
 }
 
@@ -60,3 +61,15 @@ def get_logger(module_name: str) -> logging.Logger:
     Each logger is prefixed with the module's name for clarity.
     """
     return logging.getLogger(module_name)
+
+
+def log_section_title(logger: logging.Logger, title: str, symbol: str = "=", width: int = 80):
+    """
+    Logs a section title, making it more visually distinct with a specific color (magenta).
+    """
+    section_color = LOG_COLORS["SECTION"]
+    reset_color = LOG_COLORS["RESET"]
+
+    section_title = f"{section_color}{symbol * ((width - len(title) - 2) // 2)} {title} {symbol * ((width - len(title) - 2) // 2)}{reset_color}"
+
+    logger.info(section_title)

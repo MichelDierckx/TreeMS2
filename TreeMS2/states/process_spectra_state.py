@@ -9,7 +9,7 @@ from tqdm import tqdm
 from TreeMS2.groups.groups import Groups
 from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.histogram import PrecursorChargeHistogram
-from TreeMS2.logger_config import get_logger
+from TreeMS2.logger_config import get_logger, log_section_title
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
 from TreeMS2.spectrum.spectrum_processing.pipeline import ProcessingPipelineFactory, SpectrumProcessingPipeline
 from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
@@ -71,6 +71,7 @@ class ProcessSpectraState(State):
         self.low_dim: int = context.config.low_dim
 
     def run(self):
+        log_section_title(logger=logger, title="[ Processing Peak Files ]")
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
             self.context.groups = Groups.load(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
@@ -78,6 +79,8 @@ class ProcessSpectraState(State):
                 path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
 
             if self.context.groups and self.context.vector_store_manager:
+                logger.info(
+                    f"Found existing results ('{os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)}', '{os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'). Skipping processing and loading results from disk.")
                 self._transition()
                 return  # Exit early if loading was successful
 
@@ -100,6 +103,8 @@ class ProcessSpectraState(State):
     def _generate(self) -> Tuple[Groups, VectorStoreManager]:
         # parse sample to group file
         groups = Groups.read(self.sample_to_group_file)
+        logger.info(
+            f"Loaded group mapping from '{self.sample_to_group_file}': {groups.get_size()} groups across {groups.get_nr_files()} peak files.")
         # create vector store manager instance
         vector_store_manager = VectorStoreManager(vector_stores={
             name: VectorStore(name=name, directory=os.path.join(self.work_dir, name), vector_dim=self.low_dim)
@@ -124,16 +129,24 @@ class ProcessSpectraState(State):
                                                                     vectorizer=vectorizer,
                                                                     vector_store_manager=vector_store_manager)
         precursor_charge_histogram.plot(path=os.path.join(self.work_dir, "precursor_charge_distribution.png"))
+        logger.info(
+            f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.work_dir, "precursor_charge_distribution.png")}'.")
         # cleanup old versions to compact dataset
+        logger.info("Compacting dataset(s)...")
         vector_store_manager.cleanup()
         vector_store_manager.update_vector_count()
+        logger.info(
+            "Creating total ordering for the vectors based on the corresponding group identifier, file identifier and spectrum position within file...")
         # create global ordering of spectra based on (group, file and spectrum position in file)
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
         vector_store_manager.add_global_ids(groups=groups)
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
+        logger.info(f"Saved detailed processing summary to '{os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)}'.")
         vector_store_manager.save(path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
+        logger.info(
+            f"For additional information per lance dataset, refer to '{os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'")
         return groups, vector_store_manager
 
     def _setup_vectorizer(self) -> SpectrumVectorizer:
@@ -199,7 +212,7 @@ class ProcessSpectraState(State):
         # Use multiple worker processes to read the peak files.
         max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
 
-        logger.info(f"Processing spectra from {len(all_files)} files ...")
+        logger.info(f"Processing spectra from {len(all_files)} peak files...")
 
         with multiprocessing.Manager() as m:
             locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
@@ -239,9 +252,9 @@ class ProcessSpectraState(State):
 
         # Log final processing statistics.
         logger.info(
-            f"Processed {groups.total_spectra} spectra from {len(all_files)} files:\n"
-            f"\t- {groups.failed_processed} spectra were filtered out as low quality.\n"
+            f"Processed {groups.total_spectra} spectra from {len(all_files)} peak files:\n"
             f"\t- {groups.failed_parsed} spectra could not be parsed.\n"
-            f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully written to the dataset."
+            f"\t- {groups.failed_processed} spectra were filtered out as low quality.\n"
+            f"\t- {groups.total_spectra - groups.failed_processed - groups.failed_parsed} spectra were successfully processed, vectorized and written to the lance dataset(s)."
         )
         return precursor_charge_histogram

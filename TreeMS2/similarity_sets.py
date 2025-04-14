@@ -61,7 +61,6 @@ class SimilaritySets:
         df = pd.DataFrame(s, index=group_names, columns=group_names)
 
         # write S to a file in human-readable format
-        logger.info(f"Writing similarity statistics to '{path}'.")
         with open(path, 'w') as f:
             df_string = df.to_string()
             f.write(df_string)

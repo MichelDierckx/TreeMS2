@@ -31,8 +31,6 @@ class VectorStoreIndex:
         self.index = faiss.index_factory(vector_store.vector_dim, factory_string, faiss.METRIC_INNER_PRODUCT)
         self.factory_string = factory_string
         self.nlist = nlist
-        logger.info(
-            f"Creating FAISS index with factory string '{factory_string}' for vector store '{self.vector_store.name}'.")
 
     @staticmethod
     def _create_factory_string(vector_count: int, vector_dim: int) -> Tuple[str, int]:
@@ -159,7 +157,6 @@ class VectorStoreIndex:
         :return:
         """
         faiss.write_index(self.index, path)
-        logger.debug(f"Saved index to {path}")
 
     @staticmethod
     def load(path: str, vector_store: VectorStore) -> Optional["VectorStoreIndex"]:

@@ -34,7 +34,6 @@ class DistanceMatrix:
             lines.append(line)
         text = "\r\n".join(lines)
 
-        logger.info(f"Writing distance matrix to '{path}'.")
         with open(path, 'w') as f:
             f.write(text)
         return

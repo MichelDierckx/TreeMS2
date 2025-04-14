@@ -83,7 +83,6 @@ class Groups:
             case _:
                 raise ValueError(
                     f"Unsupported file type: {file_extension}. Supported types: {', '.join(valid_extensions)}")
-        logger.info(f"Found {groups.get_size()} groups and {groups.get_nr_files()} files in '{file_path}'")
         return groups
 
     @staticmethod
@@ -157,7 +156,6 @@ class Groups:
         :param path: The path to which the JSON file will be written.
         :return:
         """
-        logger.info(f"Writing group statistics to '{path}'.")
         with open(path, "w") as json_file:
             json.dump(self.to_dict(), json_file, indent=4)
 
