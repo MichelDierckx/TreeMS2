@@ -40,10 +40,9 @@ class SimilaritySets:
             for col_group in self.groups.get_groups():
                 col_group_id = col_group.get_id()
 
-                # TODO: diagonal should contain the number of vectors for the group in the vector store being analyzed
-                # nr of similar spectra group A has to A equals the number of spectra in A
+                # diagonal should contain the number of vectors for the group in the vector store being analyzed
                 if row_group_id == col_group_id:
-                    self.similarity_sets[row_group_id, col_group_id] = row_group.total_spectra
+                    self.similarity_sets[row_group_id, col_group_id] = self.vector_store.group_counts[row_group_id]
                     continue
                 # retrieve id of first and last spectrum in group
                 col_begin = col_group.begin
