@@ -98,7 +98,7 @@ class QueryIndexState(State):
             col_indices = i.astype(np.int64)
             data = np.ones_like(i, dtype=np.bool_)
 
-            similarity_matrix = SimilarityMatrix(self.context.groups.total_valid_spectra(),
+            similarity_matrix = SimilarityMatrix(self.context.groups.total_spectra,
                                                  similarity_threshold=self.similarity_threshold)
             similarity_matrix.update(data=data, rows=row_indices, cols=col_indices)
 
