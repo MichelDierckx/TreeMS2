@@ -23,7 +23,10 @@ class ComputeDistancesState(State):
 
     def run(self):
         if not self.context.config.overwrite:
-            if os.path.isfile(os.path.join(self.work_dir, "distance_matrix.meg")):
+            if os.path.isfile(os.path.join(self.work_dir, "distance_matrix.meg")) and SimilaritySets.load(
+                    path=os.path.join(self.work_dir, "similarity_sets.txt"),
+                    groups=self.context.groups, vector_store=None):
+                self.context.pop_state()
                 return
         self._generate()
         self.context.pop_state()
