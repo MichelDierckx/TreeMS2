@@ -147,7 +147,7 @@ class VectorStoreIndex:
         :param batch_size: the number of vectors in a batch
         :return:
         """
-        with tqdm(desc="Vectors added to index", unit=f" vector", total=self.vector_store.count_vectors()) as pbar:
+        with tqdm(desc="Vectors added to index", unit=f" vector", total=self.vector_store.vector_count) as pbar:
             for vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 self.index.add_with_ids(vectors, ids)
                 pbar.update(nr_vectors)

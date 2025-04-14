@@ -1,6 +1,7 @@
+import json
 import multiprocessing
 import os
-from typing import Optional, Set, Dict, List, Union
+from typing import Optional, Dict, List, Union, Any
 
 import pandas as pd
 
@@ -12,32 +13,14 @@ logger = get_logger(__name__)
 
 
 class VectorStoreManager:
-    def __init__(self, path: str, vector_store_names: Set[str], vector_dim: int):
-        self.path = path
-        if not os.path.exists(self.path):
-            os.makedirs(self.path)
-        self.vector_stores = {
-            vector_store_name: VectorStore(base_path=path, name=vector_store_name, vector_dim=vector_dim)
-            for vector_store_name in vector_store_names
-        }
-        self.vector_count = 0
+    def __init__(self, vector_stores: Dict[str, VectorStore]):
 
-    @staticmethod
-    def load(path: str, vector_store_names: Set[str], vector_dim: int) -> Optional["VectorStoreManager"]:
-        """Loads a previously created VectorStoreManager if possible, otherwise return None"""
-        if not os.path.exists(path) or not os.path.isdir(path):
-            return None
-        vector_stores = {}
-        for vector_store_name in vector_store_names:
-            vector_store = VectorStore.load(path, vector_store_name, vector_dim)
-            if vector_store is None:
-                return None
-            vector_stores[vector_store_name] = vector_store
-        vector_store_manager = VectorStoreManager(path, set(), vector_dim)
-        vector_store_manager.vector_stores = vector_stores
-        for vector_store in vector_stores.values():
-            vector_store_manager.vector_count += vector_store.vector_count
-        return vector_store_manager
+        # self.vector_stores = {
+        #     name: VectorStore(name=name, directory=os.path.join(path, name), vector_dim=vector_dim)
+        #     for name in vector_store_names
+        # }
+        self.vector_stores = vector_stores
+        self.vector_count = 0
 
     def create_locks_and_flags(self, manager: multiprocessing.Manager) -> Dict[
         str, Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]]:
@@ -69,20 +52,63 @@ class VectorStoreManager:
         for vector_store_name in self.vector_stores:
             self.vector_stores[vector_store_name].add_global_ids(groups)
 
-    def count_spectra_vector_store(self, vector_store_name: str):
-        return self.vector_stores[vector_store_name].count_vectors()
-
-    def count_spectra(self):
-        count = 0
-        for vector_store in self.vector_stores.values():
-            count += vector_store.count_vectors()
-        return count
-
     def update_vector_count(self):
         for vector_store in self.vector_stores.values():
             self.vector_count += vector_store.update_vector_count()
         return self.vector_count
 
+    def update_group_count(self, vector_store_name: str, group_id: int, nr_vectors: int):
+        self.vector_stores[vector_store_name].update_group_count(group_id, nr_vectors)
+
     def clear(self):
         for vector_store in self.vector_stores.values():
             vector_store.clear()
+
+    def save(self, path: str):
+        """
+        Write the metadata for the vector store to a JSON-file.
+        :param path: The path to which the JSON file will be written.
+        :return:
+        """
+        d = {
+            "vector_count": self.vector_count,
+            "vector_stores": {
+                name: store.save(os.path.join(store.directory, "vector_store_metadata.json"))
+                for name, store in self.vector_stores.items()
+            },
+        }
+        with open(path, "w") as json_file:
+            json.dump(d, json_file, indent=4)
+
+    @classmethod
+    def _from_dict(cls, data: Dict[str, Any]) -> Optional["VectorStoreManager"]:
+        try:
+            vector_stores = {}
+            for name, uri in data["vector_stores"].items():
+                vector_store = VectorStore.load(path=uri)
+                if vector_store is not None:
+                    vector_stores[name] = vector_store
+                else:
+                    return None
+
+            vector_store_manager = cls(vector_stores=vector_stores)
+            vector_store_manager.vector_count = data["vector_count"]
+            return vector_store_manager
+        except (KeyError, TypeError, AttributeError):
+            return None  # Return None if the data structure is incorrect
+
+    @classmethod
+    def load(cls, path: str) -> Optional["VectorStoreManager"]:
+        """
+        Loads a vector store manager from a JSON-file.
+        :param path: The path to the JSON-file.
+        :return: a vector store manager if it can be loaded correctly from the JSON-file, None otherwise.
+        """
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, "r") as json_file:
+                data = json.load(json_file)
+            return cls._from_dict(data)
+        except (json.JSONDecodeError, OSError, PermissionError):
+            return None  # Return None if the file is unreadable or corrupted

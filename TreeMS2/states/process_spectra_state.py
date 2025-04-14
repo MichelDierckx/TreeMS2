@@ -20,12 +20,14 @@ from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
 from TreeMS2.states.state_type import StateType
+from TreeMS2.vector_store.vector_store import VectorStore
 from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
 
 logger = get_logger(__name__)
 
 GROUPS_SUMMARY_FILE = "groups.json"
 VECTOR_STORES = {"charge_1", "charge_2", "charge_3", "charge_4plus", "charge_unknown"}
+VECTOR_STORE_MANAGER_SAVE_FILE = "vector_stores.json"
 
 
 def map_charge_to_vector_store(charge: Optional[int]) -> str:
@@ -72,9 +74,8 @@ class ProcessSpectraState(State):
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
             self.context.groups = Groups.load(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
-            self.context.vector_store_manager = VectorStoreManager.load(path=self.work_dir,
-                                                                        vector_store_names=VECTOR_STORES,
-                                                                        vector_dim=self.low_dim)
+            self.context.vector_store_manager = VectorStoreManager.load(
+                path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
 
             if self.context.groups and self.context.vector_store_manager:
                 self.transition()
@@ -100,8 +101,11 @@ class ProcessSpectraState(State):
         # parse sample to group file
         groups = Groups.read(self.sample_to_group_file)
         # create vector store manager instance
-        vector_store_manager = VectorStoreManager(path=self.work_dir,
-                                                  vector_store_names=VECTOR_STORES, vector_dim=self.low_dim)
+        vector_store_manager = VectorStoreManager(vector_stores={
+            name: VectorStore(name=name, directory=os.path.join(self.work_dir, name), vector_dim=self.low_dim)
+            for name in VECTOR_STORES
+        })
+
         vector_store_manager.clear()
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
@@ -129,6 +133,7 @@ class ProcessSpectraState(State):
         vector_store_manager.add_global_ids(groups=groups)
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
+        vector_store_manager.save(path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
         return groups, vector_store_manager
 
     def _setup_vectorizer(self) -> SpectrumVectorizer:
@@ -141,9 +146,10 @@ class ProcessSpectraState(State):
     def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
                       vector_store_manager: VectorStoreManager,
                       locks_and_flags: Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]) -> Tuple[
-        PeakFile, Counter]:
+        PeakFile, Counter, Counter]:
         buffers: defaultdict[str, List[GroupSpectrum]] = defaultdict(list)
         nr_spectra_per_precursor_charge = Counter()  # Store counts per charge
+        nr_vectors_per_store = Counter()
 
         def vectorize_batch(buffer: List[GroupSpectrum]):
             spectra = [spec.spectrum for spec in buffer]
@@ -156,6 +162,7 @@ class ProcessSpectraState(State):
             vector_store_manager.write(vector_store_name=vector_store_name, entries_to_write=dict_list,
                                        multiprocessing_lock=locks_and_flags[vector_store_name]["lock"],
                                        overwrite=locks_and_flags[vector_store_name]["overwrite"])
+            nr_vectors_per_store[vector_store_name] += len(buffer)
 
         for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
             charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
@@ -170,7 +177,7 @@ class ProcessSpectraState(State):
             if buffer:
                 write_batch(store_name, buffer)
                 buffer.clear()
-        return file, nr_spectra_per_precursor_charge
+        return file, nr_spectra_per_precursor_charge, nr_vectors_per_store
 
     def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
                                   vectorizer: SpectrumVectorizer,
@@ -201,13 +208,11 @@ class ProcessSpectraState(State):
                                            vectorizer=vectorizer, vector_store_manager=vector_store_manager,
                                            locks_and_flags=locks_and_flags)
 
-            logger.info(f"Processing spectra from {len(all_files)} files ...")
-
             with multiprocessing.Pool(processes=max_file_workers) as pool:
                 results = list(tqdm(pool.imap(process_file_partial, all_files),
                                     desc="Processing Files", unit="file", total=len(all_files), position=0, leave=True))
 
-        for file, nr_spectra_per_precursor_charge in results:
+        for file, nr_spectra_per_precursor_charge, nr_vectors_per_store in results:
             groups.failed_parsed += file.failed_parsed
             groups.failed_processed += file.failed_processed
             groups.total_spectra += file.total_spectra
@@ -223,7 +228,14 @@ class ProcessSpectraState(State):
             peak_file.failed_processed = file.failed_processed
             peak_file.total_spectra = file.total_spectra
 
+            # update histogram to display charge distribution
             precursor_charge_histogram.update(nr_spectra_per_precursor_charge)
+
+            # update the count of the number of vectors for a group in each vector store
+            for vector_store_name, nr_vectors in nr_vectors_per_store.items():
+                vector_store_manager.update_group_count(vector_store_name=vector_store_name,
+                                                        group_id=file.get_group_id(),
+                                                        nr_vectors=nr_vectors)
 
         # Log final processing statistics.
         logger.info(

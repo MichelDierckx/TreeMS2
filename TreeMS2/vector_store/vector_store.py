@@ -1,14 +1,17 @@
+import json
 import multiprocessing
 import os
 import time
+from collections import defaultdict
 from datetime import timedelta
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Generator, Any
 
 import lance
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 from numpy import ndarray
+from lance import LanceDataset
 
 from ..groups.groups import Groups
 from ..logger_config import get_logger
@@ -18,85 +21,70 @@ logger = get_logger(__name__)
 
 
 class VectorStore:
-    def __init__(self, base_path: str, name: str, vector_dim: int):
-        self.dataset_path = os.path.join(base_path, name, "spectra.lance")
-        self.directory = os.path.join(base_path, name)
-        self.name = name
-        self.vector_dim = vector_dim
-        self.vector_count = 0
-        # Check if the directory exists, if not, create it
+    def __init__(self, name: str, directory: str, vector_dim: int):
+        self.dataset_path: str = os.path.join(directory, "spectra.lance")
+        self.directory: str = directory
+        self.name: str = name
+        self.vector_dim: int = vector_dim
+
+        self.vector_count: int = 0
+        self.group_counts = defaultdict(int)
+
         if not os.path.exists(self.dataset_path):
             os.makedirs(self.dataset_path)
-        self.schema = pa.schema(
-            [
-                pa.field("spectrum_id", pa.uint16()),
-                pa.field("file_id", pa.uint16()),
-                pa.field("group_id", pa.uint16()),
-                pa.field("identifier", pa.string()),
-                pa.field("precursor_mz", pa.float32()),
-                pa.field("precursor_charge", pa.int8()),
-                pa.field("mz", pa.list_(pa.float32())),
-                pa.field("intensity", pa.list_(pa.float32())),
-                pa.field("retention_time", pa.float32()),
-                pa.field("vector", pa.list_(pa.float32())),
-            ]
-        )
 
-    @staticmethod
-    def load(base_path: str, name: str, vector_dim: int) -> Optional["VectorStore"]:
-        """Loads a VectorStore if possible, otherwise returns None."""
-        dataset_path = os.path.join(base_path, name, "spectra.lance")
-        if not os.path.exists(dataset_path) or not os.path.isdir(dataset_path):
-            return None
-        vector_store = VectorStore(base_path, name, vector_dim)
-        vector_store.update_vector_count()
-        return vector_store
+        self.schema: pa.Schema = pa.schema([
+            pa.field("spectrum_id", pa.uint16()),
+            pa.field("file_id", pa.uint16()),
+            pa.field("group_id", pa.uint16()),
+            pa.field("identifier", pa.string()),
+            pa.field("precursor_mz", pa.float32()),
+            pa.field("precursor_charge", pa.int8()),
+            pa.field("mz", pa.list_(pa.float32())),
+            pa.field("intensity", pa.list_(pa.float32())),
+            pa.field("retention_time", pa.float32()),
+            pa.field("vector", pa.list_(pa.float32())),
+        ])
 
-    def cleanup(self):
+    def _get_dataset(self) -> Optional[LanceDataset]:
         try:
-            ds = lance.dataset(self.dataset_path)
-        except ValueError:
+            return lance.dataset(self.dataset_path)
+        except (ValueError, FileNotFoundError):
+            return None
+
+    def cleanup(self) -> None:
+        ds = self._get_dataset()
+        if ds is None:
             return
         try:
             ds.optimize.compact_files(target_rows_per_fragment=1024 * 1024)
             time.sleep(0.1)
-            time_delta = timedelta(microseconds=1)
-            ds.cleanup_old_versions(older_than=time_delta)
+            ds.cleanup_old_versions(older_than=timedelta(microseconds=1))
         except ValueError as e:
-            logger.warning(f"Could not cleanup lance dataset at '{self.dataset_path}': error: {e}")
-            return
+            logger.warning(f"Could not cleanup Lance dataset at '{self.dataset_path}': {e}")
 
     def write(self, entries_to_write: List[Dict], multiprocessing_lock: Optional[multiprocessing.Lock],
-              overwrite: multiprocessing.Value):
-        """Writes entries to the vector store."""
+              overwrite: multiprocessing.Value) -> None:
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
-
         with multiprocessing_lock:
             if overwrite.value:
-                lance.write_dataset(
-                    new_rows,
-                    self.dataset_path,
-                    mode="overwrite",
-                    data_storage_version="stable",
-                )
+                lance.write_dataset(new_rows, self.dataset_path, mode="overwrite", data_storage_version="stable")
                 overwrite.value = False
             else:
                 lance.write_dataset(new_rows, self.dataset_path, mode="append")
 
-    def sample(self, n: int):
-        ds = lance.dataset(self.dataset_path)
-        # df = ds.sample(n, columns=["vector"])["vector"].combine_chunks().flatten().to_numpy().reshape(n, 400)
+    def sample(self, n: int) -> ndarray:
+        ds = self._get_dataset()
+        if ds is None:
+            return np.empty((0, self.vector_dim), dtype=np.float32)
         return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
 
-    def to_vector_batches(self, batch_size: int) -> Tuple[ndarray, ndarray, int]:
-        """
-        Returns vectors in batch, along with their dataset row ids and the number of vectors in the batch.
-        :param batch_size: the maximum number of vectors in the batch
-        :return: A triplet: (vectors, vector_ids, number_of_vectors)
-        """
-        dataset = lance.dataset(self.dataset_path)
+    def to_vector_batches(self, batch_size: int) -> Generator[Tuple[ndarray, ndarray, int], None, None]:
+        ds = self._get_dataset()
+        if ds is None:
+            return
         first = 0
-        for batch in dataset.to_batches(columns=["vector"], batch_size=batch_size):
+        for batch in ds.to_batches(columns=["vector"], batch_size=batch_size):
             df = batch.to_pandas()
             vectors = np.stack(df["vector"].to_numpy())
             ids = np.arange(start=first, stop=first + batch.num_rows, dtype=np.int64)
@@ -104,44 +92,86 @@ class VectorStore:
             yield vectors, ids, batch.num_rows
 
     def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
-        ds = lance.dataset(self.dataset_path)
-        df = ds.take(indices=rows, columns=columns).to_pandas()
-        return df
+        ds = self._get_dataset()
+        if ds is None:
+            return pd.DataFrame(columns=columns)
+        return ds.take(indices=rows, columns=columns).to_pandas()
 
-    def add_global_ids(self, groups: Groups):
-
-        def compute_global_id(row):
+    def add_global_ids(self, groups: Groups) -> None:
+        def compute_global_id(row: pd.Series) -> int:
             offset = groups.get_group(row['group_id']).get_peak_file(row['file_id']).begin
             return offset + row["spectrum_id"]
 
         @lance.batch_udf()
-        def add_global_ids_batch(batch):
+        def add_global_ids_batch(batch: pa.RecordBatch) -> pd.DataFrame:
             global_ids = batch.to_pandas().apply(compute_global_id, axis=1).astype(np.int32)
             return pd.DataFrame({"global_id": global_ids}, dtype=np.int32)
 
-        try:
-            ds = lance.dataset(self.dataset_path)
-        except ValueError:
+        ds = self._get_dataset()
+        if ds is None:
             return
         ds.add_columns(add_global_ids_batch)
 
-    def count_vectors(self) -> int:
-        try:
-            ds = lance.dataset(self.dataset_path)
-        except ValueError:
-            return 0
-        return ds.count_rows()
+    def _count_vectors(self) -> int:
+        ds = self._get_dataset()
+        return ds.count_rows() if ds else 0
 
     def update_vector_count(self) -> int:
-        self.vector_count = self.count_vectors()
+        self.vector_count = self._count_vectors()
         return self.vector_count
 
-    def is_empty(self):
-        return self.count_vectors() == 0
+    def update_group_count(self, group_id: int, nr_vectors: int):
+        self.group_counts[group_id] += nr_vectors
 
-    def clear(self):
+    def is_empty(self) -> bool:
+        return self._count_vectors() == 0
+
+    def clear(self) -> None:
+        ds = self._get_dataset()
+        if ds:
+            ds.delete("TRUE")
+
+    def _to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "directory": self.directory,
+            "vector_dim": self.vector_dim,
+            "vector_count": self.vector_count,
+            "group_counts": dict(self.group_counts),
+        }
+
+    def save(self, path: str) -> str:
+        """
+        Write the metadata for the vector store to a JSON-file.
+        :param path: The path to which the JSON file will be written.
+        :return:
+        """
+        with open(path, "w") as json_file:
+            json.dump(self._to_dict(), json_file, indent=4)
+        return path
+
+    @classmethod
+    def _from_dict(cls, data: Dict[str, Any]) -> Optional["VectorStore"]:
         try:
-            ds = lance.dataset(self.dataset_path)
-        except ValueError:
-            return
-        ds.delete("TRUE")
+            vector_store = cls(name=data["name"], directory=data["directory"], vector_dim=data["vector_dim"])
+            vector_store.vector_count = data["vector_count"]
+            vector_store.group_counts = defaultdict(int, data["group_counts"])
+            return vector_store
+        except (KeyError, TypeError, AttributeError):
+            return None  # Return None if the data structure is incorrect
+
+    @classmethod
+    def load(cls, path: str) -> Optional["VectorStore"]:
+        """
+        Loads a vector store from a JSON-file.
+        :param path: The path to the JSON-file.
+        :return: a vector store if it can be loaded correctly from the JSON-file, None otherwise.
+        """
+        if not os.path.isfile(path):
+            return None
+        try:
+            with open(path, "r") as json_file:
+                data = json.load(json_file)
+            return cls._from_dict(data)
+        except (json.JSONDecodeError, OSError, PermissionError):
+            return None  # Return None if the file is unreadable or corrupted
