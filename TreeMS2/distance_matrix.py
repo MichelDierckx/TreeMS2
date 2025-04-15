@@ -16,7 +16,8 @@ class DistanceMatrix:
                             f"TITLE: {similarity_sets.groups.filename} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
                             ""]
         for group in similarity_sets.groups.get_groups():
-            lines.append(f"#{group.get_group_name()}")
+            group_name = group.get_group_name().replace(" ", "_")
+            lines.append(f"#{group_name}")
         lines.extend(["", ""])
 
         # construct Lower-left triangular matrix
