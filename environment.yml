@@ -1,0 +1,27 @@
+name: TreeMS2
+channels:
+  - conda-forge
+  - defaults
+  - nvidia
+  - pytorch
+  - anaconda
+  - rapidsai
+  - bioconda
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.12
+  - conda-forge::configargparse
+  - numba
+  - conda-forge::tqdm
+  - conda-forge::lancedb
+  - pandas==2.2.3
+  - joblib==1.4.2
+  - scipy==1.15.2
+  - anaconda::scikit-learn
+  - conda-forge::matplotlib
+  - bioconda::pyteomics
+  - spectrum_utils
+  - faiss-gpu-cuvs=1.10.0
+  - libnvjitlink
+  - conda-forge::psutil
