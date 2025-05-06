@@ -22,7 +22,7 @@ def main(args: Union[str, List[str]] = None) -> int:
     # set FAISS number of threads
     faiss.omp_set_num_threads(8)
     logger = get_logger(__name__)
-    logger.debug("FAISS threads:", faiss.omp_get_max_threads())
+    logger.debug(f"FAISS threads: {faiss.omp_get_max_threads()}")
 
     # run application
     app = TreeMS2(config)
