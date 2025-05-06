@@ -1,6 +1,7 @@
 import time
 
 from TreeMS2.config.config import Config
+from TreeMS2.utils.utils import format_execution_time
 from .logger_config import get_logger
 from .states.context import Context
 from .states.process_spectra_state import ProcessSpectraState
@@ -25,4 +26,5 @@ class TreeMS2:
             self.context.next()
             loop_nr += 1
         execution_time = time.time() - start_time  # calculate execution time
-        logger.info(f"TreeMS2 finished in {execution_time:.2f} seconds")
+        formatted_time = format_execution_time(execution_time)
+        logger.info(f"TreeMS2 finished in {formatted_time}")
