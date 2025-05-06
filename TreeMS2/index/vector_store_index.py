@@ -157,10 +157,19 @@ class VectorStoreIndex:
         :param batch_size: the number of vectors in a batch
         :return:
         """
+        # currently used memory
+        process = psutil.Process(os.getpid())
+        base_memory_usage = process.memory_info().rss
+
+        # add vectors to the index
         with tqdm(desc="Vectors added to index", unit=f" vector", total=self.vector_store.vector_count) as pbar:
             for vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 self.index.add_with_ids(vectors, ids)
                 pbar.update(nr_vectors)
+
+        # size of index in memory
+        index_memory_usage_mb = (process.memory_info().rss - base_memory_usage) / 1024 ** 2
+        logger.debug(f"Index takes up {index_memory_usage_mb:.2f} MB in memory.")
 
     def save_index(self, path):
         """
