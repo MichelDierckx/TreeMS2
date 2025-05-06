@@ -10,6 +10,7 @@ import psutil
 from faiss.contrib import clustering
 from tqdm import tqdm
 
+from TreeMS2.utils.utils import format_execution_time
 from ..logger_config import get_logger
 from ..vector_store.vector_store import VectorStore
 
@@ -101,12 +102,18 @@ class VectorStoreIndex:
 
     def _load_training_data(self) -> Tuple[int, np.ndarray]:
         nr_of_training_points = min(39 * self.nlist, self.vector_store.vector_count)
+
         logger.info(f"Loading {nr_of_training_points} training points from disk...")
+        load_training_data_time_start = time.time()
         tracemalloc.start()
+
         training_data = self.vector_store.sample(nr_of_training_points)
+
         current, peak = tracemalloc.get_traced_memory()
         logger.debug(
-            f"Loaded {nr_of_training_points} from disk, taking up {current / 1e6:.2f} MB in memory. Peak: {peak / 1e6:.2f} MB")
+            f"Loaded {nr_of_training_points} from disk, taking up {current / 1e6:.2f} MB in memory. Peak memory usage: {peak / 1e6:.2f} MB")
+        logger.info(
+            f"Loaded all {nr_of_training_points} training points from disk in {format_execution_time(time.time() - load_training_data_time_start)}")
         return nr_of_training_points, training_data
 
     def _train_cpu(self):
@@ -114,7 +121,7 @@ class VectorStoreIndex:
         logger.info(f"Training index on CPU using {nr_of_training_points} training points.")
         train_time_start = time.time()
         self.index.train(training_data)
-        logger.info(f"Finished training index in {time.time() - train_time_start:.3f} seconds.")
+        logger.info(f"Finished training index in {format_execution_time(time.time() - train_time_start)}")
 
     def _train_gpu(self):
         index_ivf = faiss.extract_index_ivf(self.index)
@@ -125,14 +132,14 @@ class VectorStoreIndex:
         logger.info(f"Training index on GPU using {nr_of_training_points} training points.")
         train_time_start = time.time()
         self.index.train(training_data)
-        logger.info(f"Finished training index in {time.time() - train_time_start:.3f} seconds.")
+        logger.info(f"Finished training index in {format_execution_time(time.time() - train_time_start)}")
 
     def _train_cpu_2level(self):
         nr_of_training_points, training_data = self._load_training_data()
         logger.info(f"Training index on CPU (two-level clustering) using {nr_of_training_points} training points.")
         train_time_start = time.time()
         clustering.train_ivf_index_with_2level(self.index, training_data)
-        logger.info(f"Finished training index in {time.time() - train_time_start:.3f} seconds.")
+        logger.info(f"Finished training index in {format_execution_time(time.time() - train_time_start)}")
 
     def train(self, use_gpu: bool = False):
         if self.index.is_trained:
@@ -161,11 +168,15 @@ class VectorStoreIndex:
         process = psutil.Process(os.getpid())
         base_memory_usage = process.memory_info().rss
 
+        add_time_start = time.time()
+
         # add vectors to the index
         with tqdm(desc="Vectors added to index", unit=f" vector", total=self.vector_store.vector_count) as pbar:
             for vectors, ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 self.index.add_with_ids(vectors, ids)
                 pbar.update(nr_vectors)
+
+        logger.info(f"Added all vectors to the index in {format_execution_time(time.time() - add_time_start)}")
 
         # size of index in memory
         index_memory_usage_mb = (process.memory_info().rss - base_memory_usage) / 1024 ** 2
@@ -209,8 +220,10 @@ class VectorStoreIndex:
             - i (np.ndarray): Flattened array of matched vector indices (from the dataset).
             - query_ids (np.ndarray): Array of IDs corresponding to each query vector in the batch.
         """
+        query_time_start = time.time()
         with tqdm(desc="Vectors queried", unit=" vector", total=self.vector_store.vector_count) as pbar:
             for query_vectors, query_ids, nr_vectors in self.vector_store.to_vector_batches(batch_size=batch_size):
                 lims, d, i = self.index.range_search(query_vectors, similarity_threshold)
                 yield lims, d, i, query_ids
                 pbar.update(nr_vectors)
+        logger.info(f"Queried all vectors against the index in {format_execution_time(time.time() - query_time_start)}")
