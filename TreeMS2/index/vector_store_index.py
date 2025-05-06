@@ -71,7 +71,13 @@ class VectorStoreIndex:
                 ram_reserved_for_os += ((system_total_ram_gb - 16) // 8) * giga_byte  # +1GB per 8GB above 16GB
 
             memory_budget = max(system_total_ram - current_process_ram_usage - ram_reserved_for_os, 0)
+            memory_budget = memory_budget/2.0
+            logger.debug(f"System total RAM: {system_total_ram / giga_byte: .2f} GB")
+            logger.debug(f"Current process RAM: {current_process_ram_usage / giga_byte: .2f} GB")
+            logger.debug(f"RAM reserved for OS: {ram_reserved_for_os / giga_byte: .2f} GB")
+            logger.debug(f"Memory budget: {memory_budget / giga_byte: .2f} GB")
             memory_budget_per_vector = math.floor(memory_budget / vector_count)
+            logger.debug(f"Memory budget per vector: {memory_budget_per_vector: .2f} B")
             m = max(memory_budget_per_vector - 16, 0)
             if m < 64:
                 raise IndexConstructionError(
