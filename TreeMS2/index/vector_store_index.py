@@ -1,12 +1,13 @@
 import math
 import os
 import time
+import tracemalloc
 from typing import Tuple, Optional, Iterator
 
 import faiss
-from faiss.contrib import clustering
 import numpy as np
 import psutil
+from faiss.contrib import clustering
 from tqdm import tqdm
 
 from ..logger_config import get_logger
@@ -71,7 +72,7 @@ class VectorStoreIndex:
                 ram_reserved_for_os += ((system_total_ram_gb - 16) // 8) * giga_byte  # +1GB per 8GB above 16GB
 
             memory_budget = max(system_total_ram - current_process_ram_usage - ram_reserved_for_os, 0)
-            memory_budget = memory_budget/2.0
+            memory_budget = memory_budget / 2.0
             logger.debug(f"System total RAM: {system_total_ram / giga_byte: .2f} GB")
             logger.debug(f"Current process RAM: {current_process_ram_usage / giga_byte: .2f} GB")
             logger.debug(f"RAM reserved for OS: {ram_reserved_for_os / giga_byte: .2f} GB")
@@ -100,7 +101,12 @@ class VectorStoreIndex:
 
     def _load_training_data(self) -> Tuple[int, np.ndarray]:
         nr_of_training_points = min(39 * self.nlist, self.vector_store.vector_count)
+        logger.info(f"Loading {nr_of_training_points} training points from disk...")
+        tracemalloc.start()
         training_data = self.vector_store.sample(nr_of_training_points)
+        current, peak = tracemalloc.get_traced_memory()
+        logger.debug(
+            f"Loaded {nr_of_training_points} from disk, taking up {current / 1e6:.2f} MB in memory. Peak: {peak / 1e6:.2f} MB")
         return nr_of_training_points, training_data
 
     def _train_cpu(self):
