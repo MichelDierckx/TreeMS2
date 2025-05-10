@@ -35,6 +35,44 @@ class VectorStoreIndex:
         self.nlist = nlist
 
     @staticmethod
+    def _estimate_memory_budget():
+        system_total_ram = psutil.virtual_memory().total
+        current_process_ram_usage = psutil.Process().memory_info().rss
+
+        # calculate the amount of RAM that will be reserved for the OS
+        giga_byte = 1024 ** 3
+        system_total_ram_gb = system_total_ram // giga_byte
+        ram_reserved_for_os = 2 * giga_byte  # initial RAM reserved
+        if system_total_ram > 4 * giga_byte:
+            ram_reserved_for_os += ((min(system_total_ram_gb,
+                                         16) - 4) // 4) * giga_byte  # +1GB per 4GB (up to 16GB)
+        if system_total_ram > 16 * giga_byte:
+            ram_reserved_for_os += ((system_total_ram_gb - 16) // 8) * giga_byte  # +1GB per 8GB above 16GB
+
+        memory_budget = max(system_total_ram - current_process_ram_usage - ram_reserved_for_os, 0)
+        memory_budget = memory_budget / 2.0
+        logger.debug(f"System total RAM: {system_total_ram / giga_byte: .2f} GB")
+        logger.debug(f"Current process RAM: {current_process_ram_usage / giga_byte: .2f} GB")
+        logger.debug(f"RAM reserved for OS: {ram_reserved_for_os / giga_byte: .2f} GB")
+        logger.debug(f"Memory budget: {memory_budget / giga_byte: .2f} GB")
+        return memory_budget
+
+    @staticmethod
+    def _get_memory_budget():
+        # Check if the environment variables are set
+        num_cpus = os.environ.get('TREEMS2_NUM_CPUS')
+        mem_per_cpu = os.environ.get('TREEMS2_MEM_PER_CPU')
+        if num_cpus and mem_per_cpu:
+            logger.debug(f"Calculating memory budget based on environment variables.")
+            memory_budget = int(num_cpus) * int(mem_per_cpu)
+            memory_budget = memory_budget / 2.0
+            logger.debug(f"Memory budget: {memory_budget: .2f} GB")
+        else:
+            logger.debug(f"Estimating memory budget...")
+            memory_budget = VectorStoreIndex._estimate_memory_budget()
+        return memory_budget
+
+    @staticmethod
     def _create_factory_string(vector_count: int, vector_dim: int) -> Tuple[str, int]:
         # determine the type of index (and number of clusters if applicable)
         if vector_count < 10_000:  # N < 10k
@@ -59,25 +97,7 @@ class VectorStoreIndex:
 
         # determine compression
         if vector_count >= 10 ** 6:
-            system_total_ram = psutil.virtual_memory().total
-            current_process_ram_usage = psutil.Process().memory_info().rss
-
-            # calculate the amount of RAM that will be reserved for the OS
-            giga_byte = 1024 ** 3
-            system_total_ram_gb = system_total_ram // giga_byte
-            ram_reserved_for_os = 2 * giga_byte  # initial RAM reserved
-            if system_total_ram > 4 * giga_byte:
-                ram_reserved_for_os += ((min(system_total_ram_gb,
-                                             16) - 4) // 4) * giga_byte  # +1GB per 4GB (up to 16GB)
-            if system_total_ram > 16 * giga_byte:
-                ram_reserved_for_os += ((system_total_ram_gb - 16) // 8) * giga_byte  # +1GB per 8GB above 16GB
-
-            memory_budget = max(system_total_ram - current_process_ram_usage - ram_reserved_for_os, 0)
-            memory_budget = memory_budget / 2.0
-            logger.debug(f"System total RAM: {system_total_ram / giga_byte: .2f} GB")
-            logger.debug(f"Current process RAM: {current_process_ram_usage / giga_byte: .2f} GB")
-            logger.debug(f"RAM reserved for OS: {ram_reserved_for_os / giga_byte: .2f} GB")
-            logger.debug(f"Memory budget: {memory_budget / giga_byte: .2f} GB")
+            memory_budget = VectorStoreIndex._get_memory_budget()
             memory_budget_per_vector = math.floor(memory_budget / vector_count)
             logger.debug(f"Memory budget per vector: {memory_budget_per_vector: .2f} B")
             m = max(memory_budget_per_vector - 16, 0)

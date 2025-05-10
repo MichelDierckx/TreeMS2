@@ -14,13 +14,23 @@ Install requirements via:
 pip install -r requirements.txt
 ```
 
-### Configuration
+### Configuration and Environment variables
 
 To request an overview of the available parameters:
 
 ```bash
 python3 -m TreeMS2 --help
 ```
+
+Additionally, the following environment variables can be set:
+
+- `TREEMS2_NUM_CPUS`: number of cores/cpus
+- `TREEMS2_MEM_PER_CPU`: memory in GB per core/cpu that TreeMS2 is allowed to use
+
+If not set, the application will determine appropriate settings automatically. The
+environment variables are mainly useful for HPC clusters.
+
+Setting 
 
 ### Running the program
 

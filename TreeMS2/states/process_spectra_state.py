@@ -217,7 +217,9 @@ class ProcessSpectraState(State):
         ]
 
         # Use multiple worker processes to read the peak files.
-        max_file_workers = min(groups.get_nr_files(), multiprocessing.cpu_count())
+        max_file_workers = int(os.environ.get("TREEMS2_NUM_CPUS", multiprocessing.cpu_count()))
+
+        max_file_workers = min(groups.get_nr_files(), max_file_workers)
 
         logger.info(f"Processing spectra from {len(all_files)} peak files...")
 
