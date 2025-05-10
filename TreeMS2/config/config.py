@@ -4,7 +4,7 @@ from typing import Optional, Any, Union
 
 import configargparse
 
-from ..logger_config import get_logger, log_section_title
+from ..logger_config import get_logger, log_section_title, log_parameter
 
 # Create a logger for this module
 logger = get_logger(__name__)
@@ -293,7 +293,7 @@ class Config:
         """Log all chosen parameters."""
         log_section_title(logger=logger, title="[ CONFIGURATION ]")
         for key, value in self._namespace.items():
-            logger.info(f"  {key}: {value}")
+            log_parameter(logger=logger, parameter_name=key, parameter_value=value)
 
     def __getattr__(self, option):
         """

@@ -73,3 +73,8 @@ def log_section_title(logger: logging.Logger, title: str, symbol: str = "=", wid
     section_title = f"{section_color}{symbol * ((width - len(title) - 2) // 2)} {title} {symbol * ((width - len(title) - 2) // 2)}{reset_color}"
 
     logger.info(section_title)
+
+
+def log_parameter(logger: logging.Logger, parameter_name, parameter_value):
+    log_content = f"  {parameter_name}: {parameter_value}"
+    logger.info(log_content)
