@@ -64,9 +64,10 @@ class VectorStoreIndex:
         mem_per_cpu = os.environ.get('TREEMS2_MEM_PER_CPU')
         if num_cpus and mem_per_cpu:
             logger.debug(f"Calculating memory budget based on environment variables.")
-            memory_budget = int(num_cpus) * int(mem_per_cpu)
+            giga_byte = 1024 ** 3
+            memory_budget = int(num_cpus) * int(mem_per_cpu) * giga_byte
             memory_budget = memory_budget / 2.0
-            logger.debug(f"Memory budget: {memory_budget: .2f} GB")
+            logger.debug(f"Memory budget: {memory_budget / giga_byte: .2f} GB")
         else:
             logger.debug(f"Estimating memory budget...")
             memory_budget = VectorStoreIndex._estimate_memory_budget()
