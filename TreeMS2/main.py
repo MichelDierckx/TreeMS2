@@ -19,8 +19,7 @@ def main(args: Union[str, List[str]] = None) -> int:
     # log config parameters
     config.log_parameters()
 
-    # set FAISS number of threads
-    faiss.omp_set_num_threads(8)
+    # get FAISS number of threads
     logger = get_logger(__name__)
     logger.debug(f"FAISS threads: {faiss.omp_get_max_threads()}")
 
