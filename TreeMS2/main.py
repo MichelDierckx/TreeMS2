@@ -1,6 +1,7 @@
 from typing import Union, List
 
 import faiss
+from dotenv import load_dotenv
 
 from TreeMS2.environment_variables import log_environment_variables
 from .config.config import Config
@@ -9,6 +10,7 @@ from .tree_ms2 import TreeMS2
 
 
 def main(args: Union[str, List[str]] = None) -> int:
+    load_dotenv()  # Load environment variables from a .env file
     # setup up config
     config = Config()
     config.parse(args)  # Parse arguments from config file or command-line

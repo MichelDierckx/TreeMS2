@@ -25,3 +25,4 @@ dependencies:
   - faiss-gpu-cuvs=1.10.0
   - libnvjitlink
   - conda-forge::psutil
+  - conda-forge::python-dotenv
