@@ -10,6 +10,7 @@ import psutil
 from faiss.contrib import clustering
 from tqdm import tqdm
 
+from TreeMS2.environment_variables import TREEMS2_NUM_CPUS, TREEMS2_MEM_PER_CPU
 from TreeMS2.utils.utils import format_execution_time
 from ..logger_config import get_logger
 from ..vector_store.vector_store import VectorStore
@@ -60,8 +61,8 @@ class VectorStoreIndex:
     @staticmethod
     def _get_memory_budget():
         # Check if the environment variables are set
-        num_cpus = os.environ.get('TREEMS2_NUM_CPUS')
-        mem_per_cpu = os.environ.get('TREEMS2_MEM_PER_CPU')
+        num_cpus = os.environ.get(TREEMS2_NUM_CPUS)
+        mem_per_cpu = os.environ.get(TREEMS2_MEM_PER_CPU)
         if num_cpus and mem_per_cpu:
             logger.debug(f"Calculating memory budget based on environment variables.")
             giga_byte = 1024 ** 3

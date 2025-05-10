@@ -7,6 +7,7 @@ from typing import Tuple, List, Optional, Dict, Union
 
 from tqdm import tqdm
 
+from TreeMS2.environment_variables import TREEMS2_NUM_CPUS
 from TreeMS2.groups.groups import Groups
 from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.histogram import PrecursorChargeHistogram
@@ -217,7 +218,7 @@ class ProcessSpectraState(State):
         ]
 
         # Use multiple worker processes to read the peak files.
-        max_file_workers = int(os.environ.get("TREEMS2_NUM_CPUS", multiprocessing.cpu_count()))
+        max_file_workers = int(os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count()))
 
         max_file_workers = min(groups.get_nr_files(), max_file_workers)
 
