@@ -2,10 +2,10 @@ import multiprocessing
 import os
 import time
 from collections import defaultdict, Counter
-from functools import partial
-from joblib import Parallel, delayed
 from typing import Tuple, List, Optional, Dict, Union
 
+from joblib import Parallel, delayed
+from joblib.externals.loky import get_reusable_executor
 from tqdm import tqdm
 
 from TreeMS2.environment_variables import TREEMS2_NUM_CPUS
@@ -228,17 +228,16 @@ class ProcessSpectraState(State):
         with multiprocessing.Manager() as m:
             locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
 
-            # process_file_partial = partial(self._process_file, processing_pipeline=processing_pipeline,
-            #                                vectorizer=vectorizer, vector_store_manager=vector_store_manager,
-            #                                locks_and_flags=locks_and_flags)
-
-            with multiprocessing.Pool(processes=max_file_workers) as pool:
-                results = Parallel(n_jobs=max_file_workers, backend="loky")(
-                    delayed(self._process_file)(
-                        file, processing_pipeline, vectorizer, vector_store_manager, locks_and_flags
-                    )
-                    for file in tqdm(all_files, desc="Processing Files", unit="file", position=0, leave=True)
+            results = Parallel(n_jobs=max_file_workers, backend="loky")(
+                delayed(self._process_file)(
+                    file, processing_pipeline, vectorizer, vector_store_manager, locks_and_flags
                 )
+                for file in tqdm(all_files, desc="Processing Files", unit="file", position=0, leave=True)
+            )
+
+        # Explicitly shut down the loky reusable executor to avoid idle lingering processes
+        get_reusable_executor().shutdown(wait=True)
+        logger.debug("Loky worker pool explicitly shut down.")
 
         for file, nr_spectra_per_precursor_charge, nr_vectors_per_store in results:
             groups.failed_parsed += file.failed_parsed
