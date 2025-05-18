@@ -10,8 +10,8 @@ import lance
 import numpy as np
 import pandas as pd
 import pyarrow as pa
-from numpy import ndarray
 from lance import LanceDataset
+from numpy import ndarray
 
 from ..groups.groups import Groups
 from ..logger_config import get_logger
@@ -68,10 +68,26 @@ class VectorStore:
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
         with multiprocessing_lock:
             if overwrite.value:
-                lance.write_dataset(new_rows, self.dataset_path, mode="overwrite", data_storage_version="stable")
+                ds = lance.write_dataset(new_rows, self.dataset_path, mode="overwrite", data_storage_version="stable")
                 overwrite.value = False
             else:
-                lance.write_dataset(new_rows, self.dataset_path, mode="append")
+                ds = lance.write_dataset(new_rows, self.dataset_path, mode="append")
+
+            if VectorStore.should_compact(ds):
+                VectorStore.compact_and_remove_prev_versions(ds)
+
+    @staticmethod
+    def should_compact(lance_ds, fragment_threshold: int = 256, small_file_threshold: int = 256):
+        dataset_stats = lance_ds.stats.dataset_stats()
+        return (
+                dataset_stats["num_fragments"] > fragment_threshold or
+                dataset_stats["num_small_files"] > small_file_threshold
+        )
+
+    @staticmethod
+    def compact_and_remove_prev_versions(lance_ds):
+        lance_ds.optimize.compact_files(target_rows_per_fragment=1024 * 1024)
+        lance_ds.cleanup_old_versions(older_than=timedelta(microseconds=1))
 
     def sample(self, n: int) -> ndarray:
         ds = self._get_dataset()
