@@ -149,6 +149,7 @@ class ProcessSpectraState(State):
         groups.update()
         # add global identifier (based on total ordering) to each spectrum in the vector store
         vector_store_manager.add_global_ids(groups=groups)
+        vector_store_manager.cleanup()
         logger.info(f"Added total ordering in {format_execution_time(time.time() - total_ordering_time_start)}")
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
@@ -190,7 +191,7 @@ class ProcessSpectraState(State):
             charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
             buffers[charge_category].append(processed_spectrum)
             nr_spectra_per_precursor_charge[processed_spectrum.spectrum.precursor_charge] += 1
-            if len(buffers[charge_category]) >= 1_000:
+            if len(buffers[charge_category]) >= 10_000:
                 write_batch(charge_category, buffers[charge_category])
                 buffers[charge_category].clear()
 
