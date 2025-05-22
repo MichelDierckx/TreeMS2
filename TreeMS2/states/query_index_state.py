@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 class QueryIndexState(State):
     STATE_TYPE = StateType.QUERY_INDEX
-    MAX_VECTORS_IN_MEM = 10_000
+    BATCH_SIZE = 10_000
 
     def __init__(self, context: Context, index: VectorStoreIndex):
         super().__init__(context)
@@ -92,7 +92,7 @@ class QueryIndexState(State):
         # query index
         batch_nr = 0
         for lims, d, i, query_ids in self.index.range_search(similarity_threshold=self.similarity_threshold,
-                                                             batch_size=QueryIndexState.MAX_VECTORS_IN_MEM):
+                                                             batch_size=QueryIndexState.BATCH_SIZE):
             hit_histogram_local.update(lims=lims)
             similarity_histogram_local.update(d=d)
             self.context.hit_histogram_global.update(lims=lims)
