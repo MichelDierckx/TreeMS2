@@ -108,9 +108,9 @@ class QueryIndexState(State):
             self.context.hit_histogram_global.update(hits_per_query=hits_per_query)
             self.context.similarity_histogram_global.update(d=filtered_distances)
 
-            # create a hit matrix
-            filtered_indices = i.flatten()[mask]  # flatten and filter indices
-            row_indices = np.repeat(query_ids, i.shape[1])[mask]  # repeat each query_id 'k' times
+            filtered_indices = i[mask]  # flatten and filter indices
+            flat_mask = mask.flatten()  # flatten mask
+            row_indices = np.repeat(query_ids, i.shape[1])[flat_mask]  # repeat query id for each neighbour find
             data = np.ones_like(filtered_indices, dtype=bool)  # store 1's for a hit
             similarity_matrix = SimilarityMatrix(self.context.groups.total_spectra,
                                                  similarity_threshold=self.similarity_threshold)
