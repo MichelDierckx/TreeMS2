@@ -161,7 +161,7 @@ class Config:
         )
         self._parser.add_argument(
             "--scaling",
-            default="off",
+            default="root",
             type=str,
             choices=["off", "root", "log", "rank"],
             help="Peak scaling method used to reduce the influence of very "
