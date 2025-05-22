@@ -13,7 +13,7 @@ logger = get_logger(__name__)
 
 class CreateIndexState(State):
     STATE_TYPE = StateType.CREATE_INDEX
-    BATCH_SIZE = 1_000
+    BATCH_SIZE = 10_000
 
     def __init__(self, context: Context, vector_store: VectorStore):
         super().__init__(context)
