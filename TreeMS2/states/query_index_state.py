@@ -19,6 +19,8 @@ logger = get_logger(__name__)
 class QueryIndexState(State):
     STATE_TYPE = StateType.QUERY_INDEX
     BATCH_SIZE = 10_000
+    NUMBER_OF_NEIGHBOURS = 1024
+    NPROBE = 32  # 128
 
     def __init__(self, context: Context, index: VectorStoreIndex):
         super().__init__(context)
@@ -91,22 +93,30 @@ class QueryIndexState(State):
 
         # query index
         batch_nr = 0
-        for lims, d, i, query_ids in self.index.range_search(similarity_threshold=self.similarity_threshold,
-                                                             batch_size=QueryIndexState.BATCH_SIZE):
-            hit_histogram_local.update(lims=lims)
-            similarity_histogram_local.update(d=d)
-            self.context.hit_histogram_global.update(lims=lims)
-            self.context.similarity_histogram_global.update(d=d)
+        for d, i, query_ids in self.index.knn_search(k=QueryIndexState.NUMBER_OF_NEIGHBOURS,
+                                                     nprobe=QueryIndexState.NPROBE,
+                                                     batch_size=QueryIndexState.BATCH_SIZE):
+            # compute a mask (similarity threshold)
+            mask = d >= self.similarity_threshold
+            # post filter distances using mask
+            filtered_distances = d[mask]
 
-            row_indices = np.repeat(query_ids, np.diff(lims).astype(np.int64))
-            col_indices = i.astype(np.int64)
-            data = np.ones_like(i, dtype=np.bool_)
+            # update histograms
+            hits_per_query = mask.sum(axis=1)  # count retained hits per query
+            hit_histogram_local.update(hits_per_query=hits_per_query)
+            similarity_histogram_local.update(d=filtered_distances)
+            self.context.hit_histogram_global.update(hits_per_query=hits_per_query)
+            self.context.similarity_histogram_global.update(d=filtered_distances)
 
+            # create a hit matrix
+            filtered_indices = i.flatten()[mask]  # flatten and filter indices
+            row_indices = np.repeat(query_ids, i.shape[1])[mask]  # repeat each query_id 'k' times
+            data = np.ones_like(filtered_indices, dtype=bool)  # store 1's for a hit
             similarity_matrix = SimilarityMatrix(self.context.groups.total_spectra,
                                                  similarity_threshold=self.similarity_threshold)
-            similarity_matrix.update(data=data, rows=row_indices, cols=col_indices)
+            similarity_matrix.update(data=data, rows=row_indices, cols=filtered_indices)
 
-            # filter similarity matrix
+            # post filter (precursor mz window)
             similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix,
                                                  total_spectra=self.context.groups.total_spectra,
                                                  target_dir=os.path.join(self.index.vector_store.directory,

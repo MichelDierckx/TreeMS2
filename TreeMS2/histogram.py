@@ -15,15 +15,10 @@ class HitHistogram:
         self.bin_edges = bin_edges
         self.counts = np.zeros(len(bin_edges) - 1, dtype=int)
 
-    def update(self, lims):
-        """Updates the histogram based on FAISS range search results."""
-        hits_per_query = np.diff(lims)  # Compute the number of results per query
-
+    def update(self, hits_per_query: np.ndarray):
+        """Updates histogram using precomputed hit counts per query."""
         binned_hits = np.digitize(hits_per_query, self.bin_edges) - 1
-        # truncate binned_hits so that values exceeding the last specified bin range are removed
         binned_hits = binned_hits[binned_hits <= (len(self.counts) - 1)]
-
-        # Efficiently accumulate counts
         unique, counts = np.unique(binned_hits, return_counts=True)
         np.add.at(self.counts, unique, counts)
 
