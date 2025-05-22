@@ -49,7 +49,7 @@ def map_charge_to_vector_store(charge: Optional[int]) -> str:
 
 class ProcessSpectraState(State):
     STATE_TYPE = StateType.PROCESS_SPECTRA
-    MAX_SPECTRA_IN_MEM = 1_000_00
+    BUFFER_SIZE = 10_000
 
     def __init__(self, context: Context):
         super().__init__(context)
@@ -191,7 +191,7 @@ class ProcessSpectraState(State):
             charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
             buffers[charge_category].append(processed_spectrum)
             nr_spectra_per_precursor_charge[processed_spectrum.spectrum.precursor_charge] += 1
-            if len(buffers[charge_category]) >= 10_000:
+            if len(buffers[charge_category]) >= ProcessSpectraState.BUFFER_SIZE:
                 write_batch(charge_category, buffers[charge_category])
                 buffers[charge_category].clear()
 
