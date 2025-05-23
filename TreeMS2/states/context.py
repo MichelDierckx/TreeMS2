@@ -1,3 +1,4 @@
+import os
 from typing import Optional, Dict, List
 
 from .state import State
@@ -7,6 +8,10 @@ from ..groups.groups import Groups
 from ..histogram import HitHistogram, SimilarityHistogram
 from ..similarity_sets import SimilaritySets
 from ..vector_store.vector_store_manager import VectorStoreManager
+
+RESULTS_DIR_NAME = "results"
+LANCE_DIR_NAME = "lance"
+INDEXES_DIR_NAME = "indexes"
 
 
 class Context:
@@ -26,6 +31,15 @@ class Context:
         self.similarity_sets: Dict[str, SimilaritySets] = {}
         self.hit_histogram_global: Optional[HitHistogram] = None
         self.similarity_histogram_global: Optional[SimilarityHistogram] = None
+
+        self.results_dir = os.path.join(self.config.work_dir, RESULTS_DIR_NAME)
+        self.lance_dir = os.path.join(self.config.work_dir, LANCE_DIR_NAME)
+        self.indexes_dir = os.path.join(self.config.work_dir, INDEXES_DIR_NAME)
+
+        # Ensure directories exist
+        os.makedirs(self.results_dir, exist_ok=True)
+        os.makedirs(self.lance_dir, exist_ok=True)
+        os.makedirs(self.indexes_dir, exist_ok=True)
 
     def next(self):
         if self.states:

@@ -65,20 +65,21 @@ class VectorStoreManager:
         for vector_store in self.vector_stores.values():
             vector_store.clear()
 
-    def save(self, path: str):
+    def save(self, parent_dir: str, filename: str):
         """
         Write the metadata for the vector store to a JSON-file.
-        :param path: The path to which the JSON file will be written.
+        :param filename: The name of the file to which the metadata is written.
+        :param parent_dir: The directory in which the JSON file will be written.
         :return:
         """
         d = {
             "vector_count": self.vector_count,
             "vector_stores": {
-                name: store.save(os.path.join(store.directory, "vector_store_metadata.json"))
+                name: store.save(os.path.join(parent_dir, f"vector_store_{name}.json"))
                 for name, store in self.vector_stores.items()
             },
         }
-        with open(path, "w") as json_file:
+        with open(os.path.join(parent_dir, filename), "w") as json_file:
             json.dump(d, json_file, indent=4)
 
     @classmethod

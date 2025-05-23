@@ -53,9 +53,6 @@ class ProcessSpectraState(State):
     def __init__(self, context: Context):
         super().__init__(context)
 
-        # work directory
-        self.work_dir: str = context.config.work_dir
-
         # group file
         self.sample_to_group_file: str = context.config.sample_to_group_file
 
@@ -80,13 +77,13 @@ class ProcessSpectraState(State):
         log_section_title(logger=logger, title="[ Processing Peak Files ]")
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
-            self.context.groups = Groups.load(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
+            self.context.groups = Groups.load(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
             self.context.vector_store_manager = VectorStoreManager.load(
-                path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
+                path=os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
 
             if self.context.groups and self.context.vector_store_manager:
                 logger.info(
-                    f"Found existing results ('{os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)}', '{os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'). Skipping processing and loading results from disk.")
+                    f"Found existing results ('{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}', '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'). Skipping processing and loading results from disk.")
                 self._transition()
                 return  # Exit early if loading was successful
 
@@ -113,7 +110,7 @@ class ProcessSpectraState(State):
             f"Loaded group mapping from '{self.sample_to_group_file}': {groups.get_size()} groups across {groups.get_nr_files()} peak files.")
         # create vector store manager instance
         vector_store_manager = VectorStoreManager(vector_stores={
-            name: VectorStore(name=name, directory=os.path.join(self.work_dir, name), vector_dim=self.low_dim)
+            name: VectorStore(name=name, directory=os.path.join(self.context.lance_dir, name), vector_dim=self.low_dim)
             for name in VECTOR_STORES
         })
 
@@ -134,9 +131,10 @@ class ProcessSpectraState(State):
                                                                     processing_pipeline=spectrum_processor,
                                                                     vectorizer=vectorizer,
                                                                     vector_store_manager=vector_store_manager)
-        precursor_charge_histogram.plot(path=os.path.join(self.work_dir, "precursor_charge_distribution.png"))
+        precursor_charge_histogram.plot(
+            path=os.path.join(self.context.results_dir, "precursor_charge_distribution.png"))
         logger.info(
-            f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.work_dir, "precursor_charge_distribution.png")}'.")
+            f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.context.results_dir, "precursor_charge_distribution.png")}'.")
         # cleanup old versions to compact dataset
         logger.info("Compacting dataset(s)...")
         compacting_time_start = time.time()
@@ -154,11 +152,12 @@ class ProcessSpectraState(State):
         vector_store_manager.cleanup()
         logger.info(f"Added total ordering in {format_execution_time(time.time() - total_ordering_time_start)}")
         # write groups summary and reading/processing statistics to file
-        groups.write_to_file(path=os.path.join(self.work_dir, GROUPS_SUMMARY_FILE))
-        logger.info(f"Saved detailed processing summary to '{os.path.join(self.work_dir, GROUPS_SUMMARY_FILE)}'.")
-        vector_store_manager.save(path=os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
+        groups.write_to_file(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
         logger.info(
-            f"For additional information per lance dataset, refer to '{os.path.join(self.work_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'")
+            f"Saved detailed processing summary to '{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}'.")
+        vector_store_manager.save(parent_dir=self.context.results_dir, filename=VECTOR_STORE_MANAGER_SAVE_FILE)
+        logger.info(
+            f"For additional information per lance dataset, refer to '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'")
         return groups, vector_store_manager
 
     def _setup_vectorizer(self) -> SpectrumVectorizer:

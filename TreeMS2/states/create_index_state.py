@@ -16,8 +16,6 @@ class CreateIndexState(State):
 
     def __init__(self, context: Context, vector_store: VectorStore):
         super().__init__(context)
-        # work directory
-        self.work_dir: str = context.config.work_dir
 
         # create index
         self.use_gpu: bool = context.config.use_gpu
@@ -30,11 +28,11 @@ class CreateIndexState(State):
         log_section_title(logger=logger, title=f"[ Building Lance Index ({self.vector_store.name}) ]")
         if not self.context.config.overwrite:
             index = VectorStoreIndex.load(
-                path=os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index"),
+                path=os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index"),
                 vector_store=self.vector_store)
             if index is not None:
                 logger.info(
-                    f"Found existing index ('{os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index")}'). Skipping processing and loading index from disk.")
+                    f"Found existing index ('{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'). Skipping processing and loading index from disk.")
                 self.context.replace_state(
                     state=QueryIndexState(context=self.context,
                                           index=index))
@@ -54,6 +52,6 @@ class CreateIndexState(State):
         # index the spectra for the groups
         index.add(batch_size=self.batch_size)
         # save the index to disk
-        index.save_index(path=os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index"))
-        logger.info(f"Saved index to '{os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index")}'.")
+        index.save_index(path=os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index"))
+        logger.info(f"Saved index to '{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'.")
         return index

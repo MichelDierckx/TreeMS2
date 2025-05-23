@@ -21,8 +21,9 @@ class QueryIndexState(State):
 
     def __init__(self, context: Context, index: VectorStoreIndex):
         super().__init__(context)
-        # work directory
-        self.work_dir: str = context.config.work_dir
+        # query results dir
+        self.query_results_dir: str = os.path.join(context.results_dir, index.vector_store.name)
+        os.makedirs(self.query_results_dir, exist_ok=True)
 
         # the index
         self.index = index
@@ -60,12 +61,12 @@ class QueryIndexState(State):
         log_section_title(logger=logger, title=f"[ Searching Similarities ({self.index.vector_store.name}) ]")
         if not self.context.config.overwrite:
             s = SimilaritySets.load(
-                path=os.path.join(self.index.vector_store.directory,
+                path=os.path.join(self.query_results_dir,
                                   f"{self.index.vector_store.name}_similarity_sets.txt"),
                 groups=self.context.groups, vector_store=self.index.vector_store)
             if s is not None:
                 logger.info(
-                    f"Found existing results ('{os.path.join(self.index.vector_store.directory,
+                    f"Found existing results ('{os.path.join(self.query_results_dir,
                                                              f"{self.index.vector_store.name}_similarity_sets.txt")}'). Skipping processing and loading results from disk.")
                 self.context.similarity_sets[self.index.vector_store.name] = s
                 self._transition()
@@ -139,7 +140,7 @@ class QueryIndexState(State):
             # post filter (precursor mz window)
             similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix,
                                                  total_spectra=self.context.groups.total_spectra,
-                                                 target_dir=os.path.join(self.index.vector_store.directory,
+                                                 target_dir=os.path.join(self.query_results_dir,
                                                                          "filters",
                                                                          f"{batch_nr}_filter.txt"))
 
@@ -150,24 +151,24 @@ class QueryIndexState(State):
             batch_nr += 1
 
         hit_histogram_local.plot(
-            path=os.path.join(self.index.vector_store.directory,
+            path=os.path.join(self.query_results_dir,
                               f"{self.index.vector_store.name}_hit_frequency_distribution.png"))
 
         logger.info(
-            f"Saved histogram displaying distribution of spectra based on the number of similar spectra found to '{os.path.join(self.index.vector_store.directory,
+            f"Saved histogram displaying distribution of spectra based on the number of similar spectra found to '{os.path.join(self.query_results_dir,
                                                                                                                                 f"{self.index.vector_store.name}_hit_frequency_distribution.png")}'.")
 
         similarity_histogram_local.plot(
-            path=os.path.join(self.index.vector_store.directory,
+            path=os.path.join(self.query_results_dir,
                               f"{self.index.vector_store.name}_similarity_distribution.png"))
         logger.info(
-            f"Saved histogram displaying the distribution of similar spectra pairs by similarity score to '{os.path.join(self.index.vector_store.directory,
+            f"Saved histogram displaying the distribution of similar spectra pairs by similarity score to '{os.path.join(self.query_results_dir,
                                                                                                                          f"{self.index.vector_store.name}_similarity_distribution.png")}'.")
 
         similarity_sets.write(
-            path=os.path.join(self.index.vector_store.directory, f"{self.index.vector_store.name}_similarity_sets.txt"))
+            path=os.path.join(self.query_results_dir, f"{self.index.vector_store.name}_similarity_sets.txt"))
 
         logger.info(
-            f"Saved matrix showing the number of spectra in each group that have at least one similar spectrum in another group. File saved to '{os.path.join(self.index.vector_store.directory, f"{self.index.vector_store.name}_similarity_sets.txt")}'.")
+            f"Saved matrix showing the number of spectra in each group that have at least one similar spectrum in another group. File saved to '{os.path.join(self.query_results_dir, f"{self.index.vector_store.name}_similarity_sets.txt")}'.")
 
         return similarity_sets
