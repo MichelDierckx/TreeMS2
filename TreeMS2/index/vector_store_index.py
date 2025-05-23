@@ -247,4 +247,4 @@ class VectorStoreIndex:
                 d, i = self.index.search(query_vectors, k)  # FAISS standard KNN search
                 yield d, i, query_ids
                 pbar.update(nr_vectors)
-        logger.info(f"Queried all vectors using KNN in {format_execution_time(time.time() - query_time_start)}")
+        logger.info(f"Queried all vectors in {format_execution_time(time.time() - query_time_start)}")
