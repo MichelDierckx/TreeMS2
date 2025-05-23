@@ -29,8 +29,28 @@ class QueryIndexState(State):
 
         # search parameters
         self.batch_size: int = context.config.batch_size
-        self.num_neighbours: int = context.config.num_neighbours
-        self.num_probe: int = context.config.num_probe
+
+        # Clip num_neighbours if necessary
+        total_vectors = self.index.vector_store.vector_count
+        if context.config.num_neighbours > total_vectors:
+            logger.debug(
+                f"Requested num_neighbours ({context.config.num_neighbours}) exceeds total vectors in index ({total_vectors}). Clipping to {total_vectors}.")
+            self.num_neighbours = total_vectors
+        else:
+            self.num_neighbours: int = context.config.num_neighbours
+
+        # Clip num_probe if necessary
+        nlist = self.index.nlist
+        if nlist == 0:
+            logger.debug("Index is brute-force (nlist=0), setting num_probe to 1.")
+            self.num_probe = 1
+        elif context.config.num_probe > nlist:
+            logger.debug(
+                f"Requested num_probe ({context.config.num_probe}) exceeds number of clusters (nlist={nlist}). Clipping to {nlist}."
+            )
+            self.num_probe = nlist
+        else:
+            self.num_probe = context.config.num_probe
 
         # post-filtering
         self.similarity_threshold: float = context.config.similarity
