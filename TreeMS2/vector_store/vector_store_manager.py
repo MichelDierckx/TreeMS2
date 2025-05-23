@@ -72,6 +72,7 @@ class VectorStoreManager:
         :param parent_dir: The directory in which the JSON file will be written.
         :return:
         """
+        os.makedirs(parent_dir, exist_ok=True)
         d = {
             "vector_count": self.vector_count,
             "vector_stores": {

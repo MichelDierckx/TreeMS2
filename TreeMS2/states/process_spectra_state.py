@@ -32,6 +32,7 @@ logger = get_logger(__name__)
 GROUPS_SUMMARY_FILE = "groups.json"
 VECTOR_STORES = {"charge_1", "charge_2", "charge_3", "charge_4plus", "charge_unknown"}
 VECTOR_STORE_MANAGER_SAVE_FILE = "vector_stores.json"
+VECTOR_STORE_METADATA_DIR_NAME = "vector_stores_metadata"
 
 
 def map_charge_to_vector_store(charge: Optional[int]) -> str:
@@ -79,7 +80,8 @@ class ProcessSpectraState(State):
         if not self.context.config.overwrite:
             self.context.groups = Groups.load(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
             self.context.vector_store_manager = VectorStoreManager.load(
-                path=os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE))
+                path=os.path.join(os.path.join(self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME),
+                                  VECTOR_STORE_MANAGER_SAVE_FILE))
 
             if self.context.groups and self.context.vector_store_manager:
                 logger.info(
@@ -155,7 +157,8 @@ class ProcessSpectraState(State):
         groups.write_to_file(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
         logger.info(
             f"Saved detailed processing summary to '{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}'.")
-        vector_store_manager.save(parent_dir=self.context.results_dir, filename=VECTOR_STORE_MANAGER_SAVE_FILE)
+        vector_store_manager.save(parent_dir=os.path.join(self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME),
+                                  filename=VECTOR_STORE_MANAGER_SAVE_FILE)
         logger.info(
             f"For additional information per lance dataset, refer to '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'")
         return groups, vector_store_manager

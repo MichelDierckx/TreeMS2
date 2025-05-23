@@ -16,6 +16,9 @@ class ComputeDistancesState(State):
     def __init__(self, context: Context):
         super().__init__(context)
 
+        self.query_results_dir: str = os.path.join(context.results_dir, "global")
+        os.makedirs(self.query_results_dir, exist_ok=True)
+
         # search parameters
         self.similarity_threshold: float = context.config.similarity
 
@@ -26,10 +29,10 @@ class ComputeDistancesState(State):
         log_section_title(logger=logger, title=f"[ Aggregating Search Results ]")
         if not self.context.config.overwrite:
             if os.path.isfile(os.path.join(self.context.results_dir, "distance_matrix.meg")) and SimilaritySets.load(
-                    path=os.path.join(self.context.results_dir, "similarity_sets.txt"),
+                    path=os.path.join(self.query_results_dir, "similarity_sets.txt"),
                     groups=self.context.groups, vector_store=None):
                 logger.info(
-                    f"Found existing results ('{os.path.join(self.context.results_dir, "distance_matrix.meg")}', '{os.path.join(self.context.results_dir, "similarity_sets.txt")}'). Skipping.")
+                    f"Found existing results ('{os.path.join(self.context.results_dir, "distance_matrix.meg")}', '{os.path.join(self.query_results_dir, "similarity_sets.txt")}'). Skipping.")
                 self.context.pop_state()
                 return
         self._generate()
@@ -38,17 +41,17 @@ class ComputeDistancesState(State):
     def _generate(self):
         if self.context.hit_histogram_global is not None:
             self.context.hit_histogram_global.plot(
-                path=os.path.join(self.context.results_dir,
+                path=os.path.join(self.query_results_dir,
                                   "hit_frequency_distribution.png"))
             logger.info(
-                f"Saved histogram displaying distribution of spectra based on the number of similar spectra found to '{os.path.join(self.context.results_dir,
+                f"Saved histogram displaying distribution of spectra based on the number of similar spectra found to '{os.path.join(self.query_results_dir,
                                                                                                                                     "hit_frequency_distribution.png")}'.")
         if self.context.similarity_histogram_global is not None:
             self.context.similarity_histogram_global.plot(
-                path=os.path.join(self.context.results_dir,
+                path=os.path.join(self.query_results_dir,
                                   "similarity_distribution.png"))
             logger.info(
-                f"Saved histogram displaying the distribution of similar spectra pairs by similarity score to '{os.path.join(self.context.results_dir,
+                f"Saved histogram displaying the distribution of similar spectra pairs by similarity score to '{os.path.join(self.query_results_dir,
                                                                                                                              "similarity_distribution.png")}'.")
 
         similarity_sets = SimilaritySets(groups=self.context.groups, vector_store=None)
@@ -56,9 +59,9 @@ class ComputeDistancesState(State):
         for s in self.context.similarity_sets.values():
             similarity_sets.similarity_sets += s.similarity_sets
 
-        similarity_sets.write(path=os.path.join(self.context.results_dir, "similarity_sets.txt"))
+        similarity_sets.write(path=os.path.join(self.query_results_dir, "similarity_sets.txt"))
         logger.info(
-            f"Saved matrix showing the number of spectra in each group that have at least one similar spectrum in another group. File saved to '{os.path.join(self.context.results_dir, "similarity_sets.txt")}'.")
+            f"Saved matrix showing the number of spectra in each group that have at least one similar spectrum in another group. File saved to '{os.path.join(self.query_results_dir, "similarity_sets.txt")}'.")
 
         DistanceMatrix.create_mega(path=os.path.join(self.context.results_dir, "distance_matrix.meg"),
                                    similarity_threshold=self.similarity_threshold,

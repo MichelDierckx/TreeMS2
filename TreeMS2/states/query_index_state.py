@@ -22,7 +22,7 @@ class QueryIndexState(State):
     def __init__(self, context: Context, index: VectorStoreIndex):
         super().__init__(context)
         # query results dir
-        self.query_results_dir: str = os.path.join(context.results_dir, index.vector_store.name)
+        self.query_results_dir: str = os.path.join(context.results_dir, "per_charge", index.vector_store.name)
         os.makedirs(self.query_results_dir, exist_ok=True)
 
         # the index
