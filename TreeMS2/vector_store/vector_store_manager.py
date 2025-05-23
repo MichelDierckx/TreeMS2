@@ -6,8 +6,8 @@ from typing import Optional, Dict, List, Union, Any
 import pandas as pd
 
 from TreeMS2.groups.groups import Groups
-from TreeMS2.vector_store.vector_store import VectorStore
 from TreeMS2.logger_config import get_logger
+from TreeMS2.vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
@@ -33,10 +33,11 @@ class VectorStoreManager:
             for name in self.vector_stores
         }
 
-    def write(self, vector_store_name: str, entries_to_write: List[Dict],
+    def write(self, vector_store_name: str, entries_to_write: List[Dict], use_incremental_compaction: bool,
               multiprocessing_lock: Optional[multiprocessing.Lock],
               overwrite: multiprocessing.Value):
-        self.vector_stores[vector_store_name].write(entries_to_write, multiprocessing_lock, overwrite)
+        self.vector_stores[vector_store_name].write(entries_to_write, use_incremental_compaction, multiprocessing_lock,
+                                                    overwrite)
 
     def cleanup(self):
         for vector_store in self.vector_stores.values():

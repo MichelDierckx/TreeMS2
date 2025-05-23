@@ -57,8 +57,13 @@ class Config:
         self._validate_positive_number("remove_precursor_tol")
         self._validate_number_range("min_intensity", min_value=0.0, max_value=1.0)
         self._validate_positive_number("low_dim", True)
+        self._validate_positive_number("batch_size", True)
+        self._validate_positive_number("num_neighbours", True)
+        self._validate_positive_number("num_probe", True)
         self._validate_number_range("similarity", min_value=0.0, max_value=1.0)
         self._validate_positive_number("precursor_mz_window", True)
+
+        self._validate_num_neighbours_num_probe()
 
     def _define_arguments(self) -> None:
         """
@@ -90,9 +95,17 @@ class Config:
         )
         self._parser.add_argument(
             "--overwrite",
-            help="Overwrite existing results if they already exist (default: False).",
+            help="Overwrite existing results if they already exist.",
             action="store_true",
             dest="overwrite",
+        )
+
+        # Whether to enable temporary compaction during vector store writes
+        self._parser.add_argument(
+            "--incremental_compaction",
+            help="Whether to enable incremental compaction during writes to Lance vector stores. When enabled, compaction is performed periodically during ingestion rather than only at the end.",
+            action="store_true",
+            dest="incremental_compaction",
         )
 
         # Processing
@@ -178,15 +191,6 @@ class Config:
             dest="low_dim",
         )
 
-        # Indexing
-        self._parser.add_argument(
-            "--similarity",
-            default=0.8,
-            type=float,
-            help="Minimum cosine similarity score for 2 spectra to be considered similar (default: %(default)s).",
-            dest="similarity",
-        )
-
         # Whether to use GPU for training
         self._parser.add_argument(
             "--use_gpu",
@@ -195,7 +199,41 @@ class Config:
             dest="use_gpu",
         )
 
-        # Post-processing search results
+        self._parser.add_argument(
+            "--batch_size",
+            default=16384, type=int,
+            help="Number of query spectra to process simultaneously "
+                 "(default: %(default)s)",
+            dest="batch_size", )
+
+        self._parser.add_argument(
+            "--num_neighbours",
+            default=1024,
+            type=int,
+            help="The number of neighbours to retrieve for each query during ANN search. "
+                 "(default: %(default)s). maximum 2048 when using GPU",
+            dest="num_neighbours",
+        )
+
+        self._parser.add_argument(
+            "--num_probe",
+            default=128,
+            type=int,
+            help="Number of clusters to probe during ANN search. "
+                 "(default: %(default)s). maximum 2048 when using GPU",
+            dest="num_probe",
+        )
+
+        # Similarity threshold
+        self._parser.add_argument(
+            "--similarity",
+            default=0.8,
+            type=float,
+            help="Minimum cosine similarity score for 2 spectra to be considered similar (default: %(default)s).",
+            dest="similarity",
+        )
+
+        # Precursor MZ filtering on search results
         self._parser.add_argument(
             "--precursor_mz_window",
             default=2.05,
@@ -288,6 +326,21 @@ class Config:
             raise ValueError(f"--{param}: value can not be less than {min_value:.4f}. Got {value:.4f}.")
         if value > max_value:
             raise ValueError(f"--{param}: value can not be greater than {max_value:.4f}. Got {value:.4f}.")
+
+    def _validate_num_neighbours_num_probe(self) -> None:
+        """
+        Checks whether num_neighbours and num_probes exceed 2048 when using GPU.
+        """
+        num_neighbours: int = self.get("num_neighbours")
+        num_probe: int = self.get("num_probe")
+        use_gpu: bool = self.get("use_gpu")
+        if use_gpu:
+            if num_neighbours > 2048:
+                raise ValueError(
+                    f"--num_neighbours: value can not be larger than 2048 when using GPU (--use_gpu = true).")
+            if num_probe > 2048:
+                raise ValueError(
+                    f"--num_probe: value can not be larger than 2048 when using GPU (see --use_gpu = true).")
 
     def log_parameters(self) -> None:
         """Log all chosen parameters."""

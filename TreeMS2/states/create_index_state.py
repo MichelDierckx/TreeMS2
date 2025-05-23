@@ -13,7 +13,6 @@ logger = get_logger(__name__)
 
 class CreateIndexState(State):
     STATE_TYPE = StateType.CREATE_INDEX
-    BATCH_SIZE = 10_000
 
     def __init__(self, context: Context, vector_store: VectorStore):
         super().__init__(context)
@@ -22,6 +21,7 @@ class CreateIndexState(State):
 
         # create index
         self.use_gpu: bool = context.config.use_gpu
+        self.batch_size: int = context.config.batch_size
 
         # data generated from reading/processing spectra
         self.vector_store: VectorStore = vector_store
@@ -52,7 +52,7 @@ class CreateIndexState(State):
         # train the index
         index.train(use_gpu=self.use_gpu)
         # index the spectra for the groups
-        index.add(batch_size=CreateIndexState.BATCH_SIZE)
+        index.add(batch_size=self.batch_size)
         # save the index to disk
         index.save_index(path=os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index"))
         logger.info(f"Saved index to '{os.path.join(self.vector_store.directory, f"{self.vector_store.name}.index")}'.")

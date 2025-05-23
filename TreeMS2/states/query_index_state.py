@@ -18,9 +18,6 @@ logger = get_logger(__name__)
 
 class QueryIndexState(State):
     STATE_TYPE = StateType.QUERY_INDEX
-    BATCH_SIZE = 10_000
-    NUMBER_OF_NEIGHBOURS = 1024
-    NPROBE = 32  # 128
 
     def __init__(self, context: Context, index: VectorStoreIndex):
         super().__init__(context)
@@ -31,9 +28,12 @@ class QueryIndexState(State):
         self.index = index
 
         # search parameters
-        self.similarity_threshold: float = context.config.similarity
+        self.batch_size: int = context.config.batch_size
+        self.num_neighbours: int = context.config.num_neighbours
+        self.num_probe: int = context.config.num_probe
 
         # post-filtering
+        self.similarity_threshold: float = context.config.similarity
         self.precursor_mz_window: float = context.config.precursor_mz_window
 
     def run(self):
@@ -93,9 +93,9 @@ class QueryIndexState(State):
 
         # query index
         batch_nr = 0
-        for d, i, query_ids in self.index.knn_search(k=QueryIndexState.NUMBER_OF_NEIGHBOURS,
-                                                     nprobe=QueryIndexState.NPROBE,
-                                                     batch_size=QueryIndexState.BATCH_SIZE):
+        for d, i, query_ids in self.index.knn_search(k=self.num_neighbours,
+                                                     nprobe=self.num_probe,
+                                                     batch_size=self.batch_size):
             # compute a mask (similarity threshold)
             mask = d >= self.similarity_threshold
             # post filter distances using mask

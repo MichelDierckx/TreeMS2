@@ -49,7 +49,6 @@ def map_charge_to_vector_store(charge: Optional[int]) -> str:
 
 class ProcessSpectraState(State):
     STATE_TYPE = StateType.PROCESS_SPECTRA
-    BUFFER_SIZE = 10_000
 
     def __init__(self, context: Context):
         super().__init__(context)
@@ -59,6 +58,9 @@ class ProcessSpectraState(State):
 
         # group file
         self.sample_to_group_file: str = context.config.sample_to_group_file
+
+        self.buffer_size: int = context.config.batch_size
+        self.incremental_compaction: bool = context.config.incremental_compaction
 
         # spectrum preprocessing
         self.min_peaks: int = context.config.min_peaks
@@ -166,7 +168,9 @@ class ProcessSpectraState(State):
         return spectrum_vectorizer
 
     @staticmethod
-    def _process_file(file: PeakFile, processing_pipeline: SpectrumProcessingPipeline, vectorizer: SpectrumVectorizer,
+    def _process_file(file: PeakFile, buffer_size: int, incremental_compaction: bool,
+                      processing_pipeline: SpectrumProcessingPipeline,
+                      vectorizer: SpectrumVectorizer,
                       vector_store_manager: VectorStoreManager,
                       locks_and_flags: Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]) -> Tuple[
         PeakFile, Counter, Counter]:
@@ -183,6 +187,7 @@ class ProcessSpectraState(State):
             vectors = vectorize_batch(buffer)
             dict_list = [{**spec.to_dict(), "vector": vector} for spec, vector in zip(buffer, vectors)]
             vector_store_manager.write(vector_store_name=vector_store_name, entries_to_write=dict_list,
+                                       use_incremental_compaction=incremental_compaction,
                                        multiprocessing_lock=locks_and_flags[vector_store_name]["lock"],
                                        overwrite=locks_and_flags[vector_store_name]["overwrite"])
             nr_vectors_per_store[vector_store_name] += len(buffer)
@@ -191,7 +196,7 @@ class ProcessSpectraState(State):
             charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
             buffers[charge_category].append(processed_spectrum)
             nr_spectra_per_precursor_charge[processed_spectrum.spectrum.precursor_charge] += 1
-            if len(buffers[charge_category]) >= ProcessSpectraState.BUFFER_SIZE:
+            if len(buffers[charge_category]) >= buffer_size:
                 write_batch(charge_category, buffers[charge_category])
                 buffers[charge_category].clear()
 
@@ -231,7 +236,8 @@ class ProcessSpectraState(State):
 
             results = Parallel(n_jobs=max_file_workers, backend="loky")(
                 delayed(self._process_file)(
-                    file, processing_pipeline, vectorizer, vector_store_manager, locks_and_flags
+                    file, self.buffer_size, self.incremental_compaction, processing_pipeline, vectorizer,
+                    vector_store_manager, locks_and_flags
                 )
                 for file in tqdm(all_files, desc="Processing Files", unit="file", position=0, leave=True)
             )

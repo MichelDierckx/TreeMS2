@@ -63,7 +63,8 @@ class VectorStore:
         except ValueError as e:
             logger.warning(f"Could not cleanup Lance dataset at '{self.dataset_path}': {e}")
 
-    def write(self, entries_to_write: List[Dict], multiprocessing_lock: Optional[multiprocessing.Lock],
+    def write(self, entries_to_write: List[Dict], use_incremental_compaction: bool,
+              multiprocessing_lock: Optional[multiprocessing.Lock],
               overwrite: multiprocessing.Value) -> None:
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
         with multiprocessing_lock:
@@ -73,11 +74,12 @@ class VectorStore:
             else:
                 ds = lance.write_dataset(new_rows, self.dataset_path, mode="append")
 
-            if VectorStore.should_compact(ds):
-                VectorStore.compact_and_remove_prev_versions(ds)
+            if use_incremental_compaction:
+                if VectorStore.should_compact(ds):
+                    VectorStore.compact_and_remove_prev_versions(ds)
 
     @staticmethod
-    def should_compact(lance_ds, fragment_threshold: int = 256, small_file_threshold: int = 256):
+    def should_compact(lance_ds, fragment_threshold: int = 512, small_file_threshold: int = 512) -> bool:
         dataset_stats = lance_ds.stats.dataset_stats()
         return (
                 dataset_stats["num_fragments"] > fragment_threshold or
