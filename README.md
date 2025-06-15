@@ -97,4 +97,19 @@ TreeMS2 generates several output files during execution, but the most important 
 The distance matrix is always saved to `<work_directory>/results/distance_matrix.meg`. This file contains the computed
 pairwise distances between all sets of spectra. It is formatted for compatibility with the MEGA (Molecular Evolutionary
 Genetics Analysis) software (version 11), which can be used to construct
-a rooted tree using the UPGMA algorithm. (Phylogeny → Construct/Test UPGMA Tree → Pairwise Distance → Lower Left Matrix) 
+a rooted tree using the UPGMA algorithm. (Phylogeny → Construct/Test UPGMA Tree → Pairwise Distance → Lower Left Matrix)
+
+## Considerations and known issues
+
+- It is known that the current implementation of TreeMS2 does not utilize more than
+  one CPU core when searching an index. This is a bug. The reason for this
+  unexpected behaviour has not yet been identified. Solving this bug should be a
+  priority, since it causes a significant increase in computation time.
+
+- Additional testing should be done. Testing during development was mainly done on a
+  CPU. Additional testing on a GPU should be done, especially for larger datasets
+
+## Acknowledgements
+
+TreeMS2 is inspired by and builds upon the distance metric introduced in compareMS2, developed by Marissen et al. (
+2022).
