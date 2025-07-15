@@ -1,10 +1,12 @@
 import multiprocessing
 import os
 import time
+import contextlib
+
 from collections import defaultdict, Counter
 from typing import Tuple, List, Optional, Dict, Union
 
-from joblib import Parallel, delayed
+import joblib
 from joblib.externals.loky import get_reusable_executor
 from tqdm import tqdm
 
@@ -33,6 +35,24 @@ GROUPS_SUMMARY_FILE = "groups.json"
 VECTOR_STORES = {"charge_1", "charge_2", "charge_3", "charge_4plus", "charge_unknown"}
 VECTOR_STORE_MANAGER_SAVE_FILE = "vector_stores.json"
 VECTOR_STORE_METADATA_DIR_NAME = "vector_stores_metadata"
+
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+
+    class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+        def __call__(self, *args, **kwargs):
+            tqdm_object.update(n=self.batch_size)
+            return super().__call__(*args, **kwargs)
+
+    old_batch_callback = joblib.parallel.BatchCompletionCallBack
+    joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.BatchCompletionCallBack = old_batch_callback
+        tqdm_object.close()
 
 
 def map_charge_to_vector_store(charge: Optional[int]) -> str:
@@ -235,13 +255,14 @@ class ProcessSpectraState(State):
         with multiprocessing.Manager() as m:
             locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
 
-            results = Parallel(n_jobs=max_file_workers, backend="loky")(
-                delayed(self._process_file)(
-                    file, self.buffer_size, self.incremental_compaction, processing_pipeline, vectorizer,
-                    vector_store_manager, locks_and_flags
+            with tqdm_joblib(tqdm(desc="Processing Files", total=len(all_files), unit="file", position=0, leave=True)):
+                results = joblib.Parallel(n_jobs=max_file_workers, backend="loky")(
+                    joblib.delayed(self._process_file)(
+                        file, self.buffer_size, self.incremental_compaction, processing_pipeline, vectorizer,
+                        vector_store_manager, locks_and_flags
+                    )
+                    for file in all_files
                 )
-                for file in tqdm(all_files, desc="Processing Files", unit="file", position=0, leave=True)
-            )
 
         # Explicitly shut down the loky reusable executor to avoid idle lingering processes
         get_reusable_executor().shutdown(wait=True)
