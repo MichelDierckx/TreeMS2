@@ -215,7 +215,6 @@ class ProcessSpectraState(State):
         """
         Main function to orchestrate producers and consumers using queues.
         """
-        multiprocessing.set_start_method('spawn')  # lance does not work with FORK method
 
         precursor_charge_histogram = PrecursorChargeHistogram()
 
