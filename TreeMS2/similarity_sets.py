@@ -25,8 +25,10 @@ class SimilaritySets:
         rows, cols = similarity_matrix.matrix.nonzero()
         total_spectra = self.groups.total_spectra
 
-        row_ids = self.vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
-        col_ids = self.vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
+        global_ids = self.vector_store.get_col("global_id").to_numpy(dtype=np.uint32).ravel()
+        row_ids = global_ids[rows]
+        col_ids = global_ids[cols]
+
         m = csr_matrix((similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
                        dtype=np.bool_)
 

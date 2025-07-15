@@ -25,10 +25,12 @@ class PrecursorMzFilter(MaskFilter):
     def construct_mask(self, similarity_matrix: SimilarityMatrix) -> SpectraMatrix:
         rows, cols = similarity_matrix.matrix.nonzero()
 
-        precursor_mz_rows = self.vector_store.get_data(rows=rows, columns=["precursor_mz"])["precursor_mz"].to_numpy(
-            dtype=np.float32)
-        precursor_mz_cols = self.vector_store.get_data(rows=cols, columns=["precursor_mz"])["precursor_mz"].to_numpy(
-            dtype=np.float32)
+        # precursor mz values for all entries
+        precursor_mz = self.vector_store.get_col("precursor_mz").to_numpy(dtype=np.float32).ravel()
+
+        # Vectorized lookup using rows and cols
+        precursor_mz_rows = precursor_mz[rows]
+        precursor_mz_cols = precursor_mz[cols]
 
         mask_data = np.abs(precursor_mz_rows - precursor_mz_cols) > self.precursor_mz_window
         # Filter the rows and columns based on the mask

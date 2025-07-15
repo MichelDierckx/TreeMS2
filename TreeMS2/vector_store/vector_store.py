@@ -37,13 +37,13 @@ class VectorStore:
             pa.field("spectrum_id", pa.uint16()),
             pa.field("file_id", pa.uint16()),
             pa.field("group_id", pa.uint16()),
-            pa.field("identifier", pa.string()),
+            # pa.field("identifier", pa.string()),
             pa.field("precursor_mz", pa.float32()),
             pa.field("precursor_charge", pa.int8()),
-            pa.field("mz", pa.list_(pa.float32())),
-            pa.field("intensity", pa.list_(pa.float32())),
+            # pa.field("mz", pa.list_(pa.float32())),
+            # pa.field("intensity", pa.list_(pa.float32())),
             pa.field("retention_time", pa.float32()),
-            pa.field("vector", pa.list_(pa.float32())),
+            pa.field("vector", pa.list_(pa.float32(), vector_dim))            ,
         ])
 
     def _get_dataset(self) -> Optional[LanceDataset]:
@@ -114,6 +114,12 @@ class VectorStore:
         if ds is None:
             return pd.DataFrame(columns=columns)
         return ds.take(indices=rows, columns=columns).to_pandas()
+
+    def get_col(self, column) -> pd.DataFrame:
+        ds = self._get_dataset()
+        if ds is None:
+            return pd.DataFrame(columns=column)
+        return ds.to_table(columns=[column]).to_pandas()
 
     def add_global_ids(self, groups: Groups) -> None:
         def compute_global_id(row: pd.Series) -> int:
