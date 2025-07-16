@@ -23,38 +23,15 @@ class SimilaritySets:
 
     def update_similarity_sets(self, similarity_matrix: SimilarityMatrix):
         rows, cols = similarity_matrix.matrix.nonzero()
-        total_spectra = self.groups.total_spectra
 
-        global_ids = self.vector_store.get_col("global_id").to_numpy(dtype=np.uint32).ravel()
-        row_ids = global_ids[rows]
-        col_ids = global_ids[cols]
+        group_ids = self.vector_store.get_col("group_id").to_numpy(dtype=np.uint16).ravel()
+        row_group_ids = group_ids[rows]
+        col_group_ids = group_ids[cols]
 
-        m = csr_matrix((similarity_matrix.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra),
-                       dtype=np.bool_)
+        pairs = np.vstack((row_group_ids, col_group_ids)).T
+        unique_pairs, counts = np.unique(pairs, axis=0, return_counts=True)
 
-        # loop over groups representing the rows in s
-        for row_group in self.groups.get_groups():
-            row_group_id = row_group.get_id()
-            # retrieve id of first and last spectrum in group
-            row_begin = row_group.begin
-            row_end = row_group.end
-            # loop over groups representing the columns in s
-            for col_group in self.groups.get_groups():
-                col_group_id = col_group.get_id()
-
-                # diagonal should contain the number of vectors for the group in the vector store being analyzed
-                if row_group_id == col_group_id:
-                    self.similarity_sets[row_group_id, col_group_id] = self.vector_store.group_counts[row_group_id]
-                    continue
-                # retrieve id of first and last spectrum in group
-                col_begin = col_group.begin
-                col_end = col_group.end
-                # count the number of spectra in group A that have at least one similar in group B
-                # m[row_begin:row_end + 1, col_begin:col_end] extracts the relevant submatrix
-                # .getnnz(axis=1) counts the number of nonzero entries per row
-                # > 0 converts it into a boolean array where True means the row has at least one nonzero value
-                self.similarity_sets[row_group_id, col_group_id] += (
-                        m[row_begin:row_end + 1, col_begin:col_end].getnnz(axis=1) > 0).sum()
+        self.similarity_sets[unique_pairs[:, 0], unique_pairs[:, 1]] += counts.astype(np.uint64)
 
     def write(self, path: str):
         s = self.similarity_sets
