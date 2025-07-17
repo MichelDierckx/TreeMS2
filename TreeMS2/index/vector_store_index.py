@@ -129,7 +129,7 @@ class VectorStoreIndex:
         load_training_data_time_start = time.time()
         tracemalloc.start()
 
-        training_data = self.vector_store.sample(nr_of_training_points)
+        training_data = self.vector_store.parallel_sample(nr_of_training_points)
 
         current, peak = tracemalloc.get_traced_memory()
         logger.debug(

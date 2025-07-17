@@ -10,9 +10,11 @@ import lance
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from joblib import Parallel, delayed
 from lance import LanceDataset
 from numpy import ndarray
 
+from ..environment_variables import TREEMS2_NUM_CPUS
 from ..logger_config import get_logger
 
 # Create a logger for this module
@@ -90,11 +92,31 @@ class VectorStore:
         lance_ds.optimize.compact_files(target_rows_per_fragment=1024 * 1024)
         lance_ds.cleanup_old_versions(older_than=timedelta(microseconds=1))
 
-    def sample(self, n: int) -> ndarray:
+    @staticmethod
+    def _sample_chunk(ds, indices):
+        return np.vstack(ds.take(indices, columns=["vector"])["vector"].to_numpy())
+
+    def parallel_sample(self, n_samples):
         ds = self._get_dataset()
         if ds is None:
             return np.empty((0, self.vector_dim), dtype=np.float32)
-        return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
+        total_rows = ds.count_rows()
+
+        max_workers = int(os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count()))
+
+        # Generate all random indices
+        indices = np.random.choice(total_rows, size=n_samples, replace=False)
+        indices.sort()
+
+        # Split indices into n_jobs chunks as evenly as possible
+        chunks = np.array_split(indices, max_workers)
+
+        # Fetch in parallel
+        results = Parallel(n_jobs=max_workers, backend="loky")(
+            delayed(VectorStore._sample_chunk)(ds, chunk) for chunk in chunks
+        )
+
+        return np.vstack(results)
 
     def to_vector_batches(self, batch_size: int) -> Generator[Tuple[ndarray, ndarray, int], None, None]:
         ds = self._get_dataset()
