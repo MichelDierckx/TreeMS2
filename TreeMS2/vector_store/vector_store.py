@@ -10,9 +10,11 @@ import lance
 import numpy as np
 import pandas as pd
 import pyarrow as pa
+from joblib import Parallel, delayed
 from lance import LanceDataset
 from numpy import ndarray
 
+from ..environment_variables import TREEMS2_NUM_CPUS
 from ..groups.groups import Groups
 from ..logger_config import get_logger
 from ..utils.utils import format_execution_time
@@ -92,10 +94,40 @@ class VectorStore:
         lance_ds.optimize.compact_files(target_rows_per_fragment=1024 * 1024)
         lance_ds.cleanup_old_versions(older_than=timedelta(microseconds=1))
 
+    @staticmethod
+    def sample_chunk(ds, indices):
+        table = ds.take(indices, columns=["vector"])
+        vectors = table["vector"].to_numpy()
+        return np.vstack(vectors)
+
+    def parallel_sample(self, n_samples):
+        ds = self._get_dataset()
+        if ds is None:
+            return np.empty((0, self.vector_dim), dtype=np.float32)
+        total_rows = ds.count_rows()
+
+        max_workers = int(os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count()))
+
+        # Generate all random indices
+        indices = np.random.choice(total_rows, size=n_samples, replace=False)
+        indices.sort()
+
+        # Split indices into n_jobs chunks as evenly as possible
+        chunks = np.array_split(indices, max_workers)
+
+        # Fetch in parallel
+        results = Parallel(n_jobs=max_workers, backend="loky")(
+            delayed(VectorStore.sample_chunk)(ds, chunk) for chunk in chunks
+        )
+
+        return np.vstack(results)
+
     def sample(self, n: int) -> ndarray:
         ds = self._get_dataset()
         if ds is None:
             return np.empty((0, self.vector_dim), dtype=np.float32)
+
+        max_workers = int(os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count()))
 
 
         # Step 1: Sample from Lance dataset

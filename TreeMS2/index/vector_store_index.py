@@ -128,7 +128,8 @@ class VectorStoreIndex:
         logger.info(f"Loading {nr_of_training_points} training points from disk...")
         load_training_data_time_start = time.time()
 
-        training_data = self.vector_store.sample(nr_of_training_points)
+        training_data = self.vector_store.parallel_sample(nr_of_training_points)
+        print(f"results shape = {training_data.shape}")
 
         logger.info(
             f"Loaded all {nr_of_training_points} training points from disk in {format_execution_time(time.time() - load_training_data_time_start)}")
