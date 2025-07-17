@@ -127,13 +127,9 @@ class VectorStoreIndex:
 
         logger.info(f"Loading {nr_of_training_points} training points from disk...")
         load_training_data_time_start = time.time()
-        tracemalloc.start()
 
         training_data = self.vector_store.sample(nr_of_training_points)
 
-        current, peak = tracemalloc.get_traced_memory()
-        logger.debug(
-            f"Loaded {nr_of_training_points} from disk, taking up {current / 1e6:.2f} MB in memory. Peak memory usage: {peak / 1e6:.2f} MB")
         logger.info(
             f"Loaded all {nr_of_training_points} training points from disk in {format_execution_time(time.time() - load_training_data_time_start)}")
         return nr_of_training_points, training_data

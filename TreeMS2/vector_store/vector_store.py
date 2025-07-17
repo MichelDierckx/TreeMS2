@@ -97,9 +97,14 @@ class VectorStore:
         if ds is None:
             return np.empty((0, self.vector_dim), dtype=np.float32)
 
+
         # Step 1: Sample from Lance dataset
         t = time.time()
-        r1 = ds.sample(n, columns=["vector"])
+        #r1 r1 = ds.sample(n, columns=["vector"])
+
+        indices = np.random.randint(0, ds.count_rows(), size=n)
+        r1 = ds.take(indices, columns=["vector"])
+
         logger.info(f"Sampled from lance in {format_execution_time(time.time() - t)}")
         logger.info(f"Shape after sampling: {len(r1)} rows")
 
