@@ -8,22 +8,19 @@ import pandas as pd
 from TreeMS2.groups.groups import Groups
 from TreeMS2.logger_config import get_logger
 from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
-from TreeMS2.vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 
 
 class SimilaritySets:
-    def __init__(self, groups: Groups, vector_store: Optional[VectorStore]):
+    def __init__(self, groups: Groups):
         self.groups = groups
-        self.vector_store = vector_store
         self.similarity_sets: npt.NDArray[np.uint64] = np.zeros((self.groups.get_size(), self.groups.get_size()),
                                                                 dtype=np.uint64)
 
-    def update_similarity_sets(self, similarity_matrix: SimilarityMatrix):
+    def update_similarity_sets(self, similarity_matrix: SimilarityMatrix, group_ids=npt.NDArray[np.uint16]):
         rows, cols = similarity_matrix.matrix.nonzero()
 
-        group_ids = self.vector_store.get_col("group_id").to_numpy(dtype=np.uint16).ravel()
         row_group_ids = group_ids[rows]
         col_group_ids = group_ids[cols]
 
@@ -46,7 +43,7 @@ class SimilaritySets:
         return s
 
     @staticmethod
-    def load(path: str, groups: Groups, vector_store: Optional[VectorStore]) -> Optional["SimilaritySets"]:
+    def load(path: str, groups: Groups) -> Optional["SimilaritySets"]:
         """
         Load a SimilaritySets object from a file. If loading fails, return None.
         """
@@ -58,7 +55,7 @@ class SimilaritySets:
             if list(df.index) != expected_groups or list(df.columns) != expected_groups:
                 return None
             similarity_sets = df.to_numpy(dtype=np.uint64)
-            similarity_set_obj = SimilaritySets(groups=groups, vector_store=vector_store)
+            similarity_set_obj = SimilaritySets(groups=groups)
             similarity_set_obj.similarity_sets = similarity_sets
             return similarity_set_obj
         except Exception:

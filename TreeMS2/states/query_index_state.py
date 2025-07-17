@@ -5,7 +5,8 @@ import numpy as np
 from TreeMS2.histogram import HitHistogram, SimilarityHistogram
 from TreeMS2.index.vector_store_index import VectorStoreIndex
 from TreeMS2.logger_config import log_section_title, get_logger
-from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipelineFactory
+from TreeMS2.similarity_matrix.filters.precursor_mz_filter import PrecursorMzFilter
+from TreeMS2.similarity_matrix.pipeline import SimilarityMatrixPipeline
 from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
 from TreeMS2.similarity_sets import SimilaritySets
 from TreeMS2.states.compute_distances_state import ComputeDistancesState
@@ -63,7 +64,7 @@ class QueryIndexState(State):
             s = SimilaritySets.load(
                 path=os.path.join(self.query_results_dir,
                                   f"{self.index.vector_store.name}_similarity_sets.txt"),
-                groups=self.context.groups, vector_store=self.index.vector_store)
+                groups=self.context.groups)
             if s is not None:
                 logger.info(
                     f"Found existing results ('{os.path.join(self.query_results_dir,
@@ -84,12 +85,15 @@ class QueryIndexState(State):
     def _generate(self) -> SimilaritySets:
 
         # init similarity sets
-        similarity_sets = SimilaritySets(groups=self.context.groups,
-                                         vector_store=self.index.vector_store)
-        # init filtering pipeline
-        pipeline = SimilarityMatrixPipelineFactory.create_pipeline(
-            vector_store=self.index.vector_store,
-            precursor_mz_window=self.precursor_mz_window)
+        similarity_sets = SimilaritySets(groups=self.context.groups)
+
+        post_filtering_pipeline = SimilarityMatrixPipeline(mask_filters=[])
+        if self.precursor_mz_window is not None:
+            precursor_mzs = self.index.vector_store.get_col("precursor_mz").to_numpy(dtype=np.float32).ravel()
+            post_filtering_pipeline.add_filter(
+                PrecursorMzFilter(precursor_mz_window=self.precursor_mz_window, precursor_mzs=precursor_mzs))
+
+        group_ids = self.index.vector_store.get_col("group_id").to_numpy(dtype=np.uint16).ravel()
 
         def construct_bin_edges(max_hits):
             """Constructs bin edges up to the nearest power of 10 above max_hits, ensuring the first bin is [1, 2)."""
@@ -138,14 +142,14 @@ class QueryIndexState(State):
             similarity_matrix.update(data=data, rows=row_indices, cols=filtered_indices)
 
             # post filter (precursor mz window)
-            similarity_matrix = pipeline.process(similarity_matrix=similarity_matrix,
-                                                 total_spectra=self.context.groups.total_spectra,
-                                                 target_dir=os.path.join(self.query_results_dir,
-                                                                         "filters",
-                                                                         f"{batch_nr}_filter.txt"))
+            similarity_matrix = post_filtering_pipeline.process(similarity_matrix=similarity_matrix,
+                                                                total_spectra=self.context.groups.total_spectra,
+                                                                target_dir=os.path.join(self.query_results_dir,
+                                                                                        "filters",
+                                                                                        f"{batch_nr}_filter.txt"))
 
             # update similarity sets
-            similarity_sets.update_similarity_sets(similarity_matrix=similarity_matrix)
+            similarity_sets.update_similarity_sets(similarity_matrix=similarity_matrix, group_ids=group_ids)
 
             # update batch nr
             batch_nr += 1
