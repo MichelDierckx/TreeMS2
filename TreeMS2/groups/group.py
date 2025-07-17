@@ -15,9 +15,6 @@ class Group:
         self.failed_parsed = 0
         self.failed_processed = 0
 
-        self.begin = 0
-        self.end = 0
-
     def set_id(self, file_id: int):
         self._id = file_id
 
@@ -42,18 +39,6 @@ class Group:
     def get_peak_file(self, peak_file_id):
         return self._peak_files[peak_file_id]
 
-    def update(self, begin_id):
-        self.begin = begin_id
-        self.end = begin_id + self.total_spectra - 1
-        cur_id = self.begin
-        for peak_file in self._peak_files:
-            cur_id = peak_file.update(cur_id)
-        return self.end + 1
-
-    def get_global_id(self, peak_file_id: int, spectrum_id: int) -> int:
-        global_id = self._peak_files[peak_file_id].get_global_id(spectrum_id)
-        return global_id
-
     def total_valid_spectra(self) -> int:
         return self.total_spectra - self.failed_parsed - self.failed_processed
 
@@ -64,8 +49,6 @@ class Group:
             "total_spectra": self.total_spectra,
             "failed_parsed": self.failed_parsed,
             "failed_processed": self.failed_processed,
-            "begin": self.begin,
-            "end": self.end,
             "files": [file.to_dict() for file in self._peak_files],
         }
 
@@ -76,8 +59,6 @@ class Group:
         group.total_spectra = data["total_spectra"]
         group.failed_parsed = data["failed_parsed"]
         group.failed_processed = data["failed_processed"]
-        group.begin = data["begin"]
-        group.end = data["end"]
         for file in data["files"]:
             _, file_extension = os.path.splitext(file["filename"])
             match file_extension:
@@ -86,7 +67,3 @@ class Group:
                 case _:
                     continue
         return group
-
-    def __repr__(self) -> str:
-        files_repr = "\n\t".join([repr(file) for file in self._peak_files])
-        return f"{self.__class__.__name__}(id={self._id}, [{self.begin}, {self.end}]):\n\t{files_repr}"

@@ -4,7 +4,6 @@ from TreeMS2.logger_config import get_logger
 from .filters.mask_filter import MaskFilter
 from .filters.precursor_mz_filter import PrecursorMzFilter
 from .similarity_matrix import SimilarityMatrix
-from ..groups.groups import Groups
 from ..vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
@@ -35,11 +34,11 @@ class SimilarityMatrixPipeline:
 class SimilarityMatrixPipelineFactory:
     @staticmethod
     def create_pipeline(
-            groups: Groups, vector_store: VectorStore,
+            vector_store: VectorStore,
             precursor_mz_window: Optional[float]) -> SimilarityMatrixPipeline:
         mask_filters = []
         if precursor_mz_window is not None:
             mask_filters.append(
-                PrecursorMzFilter(groups=groups, vector_store=vector_store, precursor_mz_window=precursor_mz_window))
+                PrecursorMzFilter(vector_store=vector_store, precursor_mz_window=precursor_mz_window))
         pipeline = SimilarityMatrixPipeline(mask_filters=mask_filters)
         return pipeline

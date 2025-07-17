@@ -15,8 +15,6 @@ class PeakFile(ABC):
         self.failed_parsed = 0
         self.failed_processed = 0
 
-        self.begin = 0
-        self.end = 0
         self.filtered: List[int] = []
 
     @abstractmethod
@@ -39,15 +37,6 @@ class PeakFile(ABC):
     def get_group_id(self):
         return self._group_id
 
-    def update(self, begin_id: int):
-        self.begin = begin_id
-        self.end = begin_id + self.total_spectra - 1
-        self.filtered = [x + self.begin for x in self.filtered]
-        return self.end + 1
-
-    def get_global_id(self, spectrum_id: int) -> int:
-        return self.begin + spectrum_id
-
     def total_valid_spectra(self) -> int:
         return self.total_spectra - self.failed_parsed - self.failed_processed
 
@@ -58,8 +47,6 @@ class PeakFile(ABC):
             "total_spectra": self.total_spectra,
             "failed_parsed": self.failed_parsed,
             "failed_processed": self.failed_processed,
-            "begin": self.begin,
-            "end": self.end,
             "filtered": self.filtered,
         }
 
@@ -70,10 +57,5 @@ class PeakFile(ABC):
         peak_file.total_spectra = data["total_spectra"]
         peak_file.failed_parsed = data["failed_parsed"]
         peak_file.failed_processed = data["failed_processed"]
-        peak_file.begin = data["begin"]
-        peak_file.end = data["end"]
         peak_file.filtered = data["filtered"]
         return peak_file
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(id={self._id}, filepath={self.file_path}, [{self.begin}, {self.end}])"

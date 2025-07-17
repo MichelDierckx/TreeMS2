@@ -1,8 +1,7 @@
+import contextlib
 import multiprocessing
 import os
 import time
-import contextlib
-
 from collections import defaultdict, Counter
 from typing import Tuple, List, Optional, Dict, Union
 
@@ -164,15 +163,8 @@ class ProcessSpectraState(State):
         vector_store_manager.update_vector_count()
         logger.info(f"Finished compaction in {format_execution_time(time.time() - compacting_time_start)}")
 
-        logger.info(
-            "Creating total ordering for the vectors based on the corresponding group identifier, file identifier and spectrum position within file...")
-        total_ordering_time_start = time.time()
-        # create global ordering of spectra based on (group, file and spectrum position in file)
-        groups.update()
-        # add global identifier (based on total ordering) to each spectrum in the vector store
-        vector_store_manager.add_global_ids(groups=groups)
         vector_store_manager.cleanup()
-        logger.info(f"Added total ordering in {format_execution_time(time.time() - total_ordering_time_start)}")
+
         # write groups summary and reading/processing statistics to file
         groups.write_to_file(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
         logger.info(

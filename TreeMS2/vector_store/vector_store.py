@@ -13,7 +13,6 @@ import pyarrow as pa
 from lance import LanceDataset
 from numpy import ndarray
 
-from ..groups.groups import Groups
 from ..logger_config import get_logger
 
 # Create a logger for this module
@@ -43,7 +42,7 @@ class VectorStore:
             # pa.field("mz", pa.list_(pa.float32())),
             # pa.field("intensity", pa.list_(pa.float32())),
             pa.field("retention_time", pa.float32()),
-            pa.field("vector", pa.list_(pa.float32(), vector_dim))            ,
+            pa.field("vector", pa.list_(pa.float32(), vector_dim)),
         ])
 
     def _get_dataset(self) -> Optional[LanceDataset]:
@@ -120,21 +119,6 @@ class VectorStore:
         if ds is None:
             return pd.DataFrame(columns=column)
         return ds.to_table(columns=[column]).to_pandas()
-
-    def add_global_ids(self, groups: Groups) -> None:
-        def compute_global_id(row: pd.Series) -> int:
-            offset = groups.get_group(row['group_id']).get_peak_file(row['file_id']).begin
-            return offset + row["spectrum_id"]
-
-        @lance.batch_udf()
-        def add_global_ids_batch(batch: pa.RecordBatch) -> pd.DataFrame:
-            global_ids = batch.to_pandas().apply(compute_global_id, axis=1).astype(np.int32)
-            return pd.DataFrame({"global_id": global_ids}, dtype=np.int32)
-
-        ds = self._get_dataset()
-        if ds is None:
-            return
-        ds.add_columns(add_global_ids_batch)
 
     def _count_vectors(self) -> int:
         ds = self._get_dataset()

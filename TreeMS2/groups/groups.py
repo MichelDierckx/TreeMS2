@@ -21,9 +21,6 @@ class Groups:
         self.failed_parsed = 0
         self.failed_processed = 0
 
-        self.begin = 0
-        self.end = 0
-
     def add(self, group: Group) -> Group:
         for g in self._groups:
             if g.get_group_name() == group.get_group_name():
@@ -49,22 +46,6 @@ class Groups:
 
     def get_group_ids(self) -> List[int]:
         return [group.get_id() for group in self._groups]
-
-    def update(self):
-        self.end = self.total_spectra - 1
-        cur_id = self.begin
-        for group in self._groups:
-            cur_id = group.update(begin_id=cur_id)
-
-    def get_global_id(self, group_id: int, file_id, spectrum_id) -> int:
-        global_id = self._groups[group_id].get_global_id(file_id, spectrum_id)
-        return global_id
-
-    def get_group_id_from_global_id(self, global_id: int) -> int:
-        for group in self._groups:
-            if group.begin <= global_id <= group.end:
-                return group.get_id()
-        raise ValueError(f"Global id '{global_id}' does not belong to any group.")
 
     def total_valid_spectra(self) -> int:
         return self.total_spectra - self.failed_parsed - self.failed_processed
@@ -145,8 +126,6 @@ class Groups:
             "total_spectra": self.total_spectra,
             "failed_parsed": self.failed_parsed,
             "failed_processed": self.failed_processed,
-            "begin": self.begin,
-            "end": self.end,
             "groups": [group.to_dict() for group in self._groups],
         }
 
@@ -167,8 +146,7 @@ class Groups:
             groups.total_spectra = data["total_spectra"]
             groups.failed_parsed = data["failed_parsed"]
             groups.failed_processed = data["failed_processed"]
-            groups.begin = data["begin"]
-            groups.end = data["end"]
+
             groups._groups = [Group.from_dict(group) for group in data["groups"]]
             return groups
         except (KeyError, TypeError, AttributeError):
@@ -184,7 +162,3 @@ class Groups:
             return cls.from_dict(data)
         except (json.JSONDecodeError, OSError, PermissionError):
             return None  # Return None if the file is unreadable or corrupted
-
-    def __repr__(self) -> str:
-        groups_repr = "\n\t".join([repr(group) for group in self._groups])
-        return f"{self.__class__.__name__}({self.get_size()} groups, {self.get_nr_files()} files, [{self.begin}, {self.end}]):\n\t{groups_repr}"

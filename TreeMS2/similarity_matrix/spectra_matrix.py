@@ -1,7 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix, save_npz, load_npz
-
-from TreeMS2.vector_store.vector_store import VectorStore
+from scipy.sparse import csr_matrix
 
 
 class SpectraMatrix:
@@ -23,29 +21,5 @@ class SpectraMatrix:
         else:
             raise ValueError("Invalid arguments for initializing SpectraMatrix.")
 
-    def nr_bytes(self):
-        return self.matrix.data.nbytes + self.matrix.indptr.nbytes + self.matrix.indices.nbytes
-
-    def write(self, path: str) -> str:
-        save_npz(path, self.matrix)
-        return path
-
-    def write_global(self, path: str, total_spectra: int, vector_store: VectorStore):
-        rows, cols = self.matrix.nonzero()
-        row_ids = vector_store.get_data(rows, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
-        col_ids = vector_store.get_data(cols, ["global_id"])["global_id"].to_numpy(dtype=np.int32)
-        m = csr_matrix((self.matrix.data, (row_ids, col_ids)), shape=(total_spectra, total_spectra), dtype=np.bool_)
-        save_npz(path, m)
-        return path
-
     def subtract(self, spectra_matrix: 'SpectraMatrix'):
         self.matrix -= spectra_matrix.matrix
-
-    @classmethod
-    def load(cls, path: str) -> 'SpectraMatrix':
-        # Load the sparse matrix
-        matrix = load_npz(path)
-        # Create a new instance of SpectraMatrix
-        instance = cls(matrix)
-
-        return instance

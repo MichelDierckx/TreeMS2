@@ -87,9 +87,9 @@ class QueryIndexState(State):
         similarity_sets = SimilaritySets(groups=self.context.groups,
                                          vector_store=self.index.vector_store)
         # init filtering pipeline
-        pipeline = SimilarityMatrixPipelineFactory.create_pipeline(groups=self.context.groups,
-                                                                   vector_store=self.index.vector_store,
-                                                                   precursor_mz_window=self.precursor_mz_window)
+        pipeline = SimilarityMatrixPipelineFactory.create_pipeline(
+            vector_store=self.index.vector_store,
+            precursor_mz_window=self.precursor_mz_window)
 
         def construct_bin_edges(max_hits):
             """Constructs bin edges up to the nearest power of 10 above max_hits, ensuring the first bin is [1, 2)."""

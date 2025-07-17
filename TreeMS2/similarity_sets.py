@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from scipy.sparse import csr_matrix
 
 from TreeMS2.groups.groups import Groups
 from TreeMS2.logger_config import get_logger

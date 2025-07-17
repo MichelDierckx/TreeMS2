@@ -21,18 +21,3 @@ class MaskFilter(ABC):
     @abstractmethod
     def construct_mask(self, similarity_matrix: SimilarityMatrix) -> SpectraMatrix:
         pass
-
-    @abstractmethod
-    def write_filter_statistics(self, target_dir: str, total_spectra: int):
-        pass
-
-    @abstractmethod
-    def save_mask(self, target_dir: str):
-        pass
-
-    @abstractmethod
-    def save_mask_global(self, target_dir: str, total_spectra: int):
-        pass
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}()"
