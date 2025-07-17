@@ -15,6 +15,7 @@ from numpy import ndarray
 
 from ..groups.groups import Groups
 from ..logger_config import get_logger
+from ..utils.utils import format_execution_time
 
 # Create a logger for this module
 logger = get_logger(__name__)
@@ -95,7 +96,28 @@ class VectorStore:
         ds = self._get_dataset()
         if ds is None:
             return np.empty((0, self.vector_dim), dtype=np.float32)
-        return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
+
+        # Step 1: Sample from Lance dataset
+        t = time.time()
+        r1 = ds.sample(n, columns=["vector"])
+        logger.info(f"Sampled from lance in {format_execution_time(time.time() - t)}")
+        logger.info(f"Shape after sampling: {len(r1)} rows")
+
+        # Step 2: Convert to NumPy
+        t = time.time()
+        r1 = r1["vector"].to_numpy()
+        logger.info(f"Converted pyarrow to numpy in {format_execution_time(time.time() - t)}")
+        logger.info(f"Shape after conversion: {r1.shape}")  # Expect a 1D array of objects
+
+        # Step 3: Stack arrays into single 2D NumPy array
+        t = time.time()
+        r1 = np.vstack(r1)
+        logger.info(f"Stacked in {format_execution_time(time.time() - t)}")
+        logger.info(f"Final stacked shape: {r1.shape}")  # Should be (n, vector_dim)
+
+        return r1
+
+        # return np.vstack(ds.sample(n, columns=["vector"])["vector"].to_numpy())
 
     def to_vector_batches(self, batch_size: int) -> Generator[Tuple[ndarray, ndarray, int], None, None]:
         ds = self._get_dataset()
