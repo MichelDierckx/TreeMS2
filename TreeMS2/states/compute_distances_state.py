@@ -30,7 +30,7 @@ class ComputeDistancesState(State):
         if not self.context.config.overwrite:
             if os.path.isfile(os.path.join(self.context.results_dir, "distance_matrix.meg")) and SimilaritySets.load(
                     path=os.path.join(self.query_results_dir, "similarity_sets.txt"),
-                    groups=self.context.groups, vector_store=None):
+                    groups=self.context.groups):
                 logger.info(
                     f"Found existing results ('{os.path.join(self.context.results_dir, "distance_matrix.meg")}', '{os.path.join(self.query_results_dir, "similarity_sets.txt")}'). Skipping.")
                 self.context.pop_state()
@@ -54,7 +54,7 @@ class ComputeDistancesState(State):
                 f"Saved histogram displaying the distribution of similar spectra pairs by similarity score to '{os.path.join(self.query_results_dir,
                                                                                                                              "similarity_distribution.png")}'.")
 
-        similarity_sets = SimilaritySets(groups=self.context.groups, vector_store=None)
+        similarity_sets = SimilaritySets(groups=self.context.groups)
         # combine similarity sets across charges
         for s in self.context.similarity_sets.values():
             similarity_sets.similarity_sets += s.similarity_sets
