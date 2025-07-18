@@ -3,8 +3,6 @@ import multiprocessing
 import os
 from typing import Optional, Dict, List, Union, Any
 
-import pandas as pd
-
 from TreeMS2.logger_config import get_logger
 from TreeMS2.vector_store.vector_store import VectorStore
 
@@ -13,11 +11,6 @@ logger = get_logger(__name__)
 
 class VectorStoreManager:
     def __init__(self, vector_stores: Dict[str, VectorStore]):
-
-        # self.vector_stores = {
-        #     name: VectorStore(name=name, directory=os.path.join(path, name), vector_dim=vector_dim)
-        #     for name in vector_store_names
-        # }
         self.vector_stores = vector_stores
         self.vector_count = 0
 
@@ -41,12 +34,6 @@ class VectorStoreManager:
     def cleanup(self):
         for vector_store in self.vector_stores.values():
             vector_store.cleanup()
-
-    def sample(self, vector_store_name: str, n: int):
-        return self.vector_stores[vector_store_name].sample(n=n)
-
-    def get_data(self, vector_store_name: str, rows: List[int], columns: List[str]) -> pd.DataFrame:
-        return self.vector_stores[vector_store_name].get_data(rows=rows, columns=columns)
 
     def update_vector_count(self):
         for vector_store in self.vector_stores.values():

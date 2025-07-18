@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from .group import Group
-from .peak_file.peak_file_factory import PeakFileFactory
-from ..logger_config import get_logger
+from TreeMS2.groups.group import Group
+from TreeMS2.groups.peak_file.peak_file_factory import PeakFileFactory
+from TreeMS2.logger_config import get_logger
 
 logger = get_logger(__name__)
 

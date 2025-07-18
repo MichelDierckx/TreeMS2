@@ -1,10 +1,10 @@
 import time
 
 from TreeMS2.config.config import Config
+from TreeMS2.logger_config import get_logger
+from TreeMS2.states.context import Context
+from TreeMS2.states.process_spectra_state import ProcessSpectraState
 from TreeMS2.utils.utils import format_execution_time
-from .logger_config import get_logger
-from .states.context import Context
-from .states.process_spectra_state import ProcessSpectraState
 
 logger = get_logger(__name__)
 

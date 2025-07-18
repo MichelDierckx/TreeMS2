@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Iterable, Dict, Any, List
 
-from ...spectrum.group_spectrum import GroupSpectrum
-from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
+from TreeMS2.spectrum.group_spectrum import GroupSpectrum
+from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 
 class PeakFile(ABC):

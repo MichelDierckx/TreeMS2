@@ -3,11 +3,10 @@ from typing import Dict, Iterable
 import pyteomics.mgf
 import spectrum_utils.spectrum as sus
 
-from .peak_file import PeakFile
-from ...spectrum.group_spectrum import GroupSpectrum
-from ...spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
-
+from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.logger_config import get_logger
+from TreeMS2.spectrum.group_spectrum import GroupSpectrum
+from TreeMS2.spectrum.spectrum_processing.pipeline import SpectrumProcessingPipeline
 
 logger = get_logger(__name__)
 
@@ -39,11 +38,8 @@ class MgfFile(PeakFile):
                     continue
 
                 # Create a Spectrum instance and assign the correct file_id and group_id
-                spectrum = GroupSpectrum(processed_spectrum)
-                spectrum.set_id(spectrum_i)  # Assign the spectrum index as the spectrum id
-                spectrum.set_file_id(self._id)  # Set the file_id for this spectrum
-                spectrum.set_group_id(self._group_id)  # Set the group_id for this spectrum
-
+                spectrum = GroupSpectrum(spectrum_id=spectrum_i, file_id=self._id, group_id=self._group_id,
+                                         spectrum=processed_spectrum)
                 yield spectrum  # Yield the spectrum instance with the correct data
 
     @staticmethod

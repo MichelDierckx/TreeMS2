@@ -3,7 +3,7 @@ from typing import Optional, Literal
 
 import spectrum_utils.spectrum as sus
 
-from ..spectrum_processor import SpectrumProcessor
+from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
 
 
 class ScalingMethod(Enum):

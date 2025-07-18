@@ -1,10 +1,9 @@
-# TreeMS2/config/config_factory.py
 import os
 from typing import Optional, Any, Union
 
 import configargparse
 
-from ..logger_config import get_logger, log_section_title, log_parameter
+from TreeMS2.logger_config import get_logger, log_section_title, log_parameter
 
 # Create a logger for this module
 logger = get_logger(__name__)

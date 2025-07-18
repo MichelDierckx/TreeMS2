@@ -1,13 +1,13 @@
 import os
 from typing import Optional, Dict, List
 
-from .state import State
-from .state_type import StateType
-from ..config.config import Config
-from ..groups.groups import Groups
-from ..histogram import HitHistogram, SimilarityHistogram
-from ..similarity_sets import SimilaritySets
-from ..vector_store.vector_store_manager import VectorStoreManager
+from TreeMS2.config.config import Config
+from TreeMS2.groups.groups import Groups
+from TreeMS2.histogram import HitHistogram, SimilarityHistogram
+from TreeMS2.similarity_sets import SimilaritySets
+from TreeMS2.states.state import State
+from TreeMS2.states.state_type import StateType
+from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
 
 RESULTS_DIR_NAME = "results"
 LANCE_DIR_NAME = "lance"
@@ -46,9 +46,10 @@ class Context:
             self.states[-1].run()
         return
 
-    def pop_state(self) -> State:
+    def pop_state(self) -> Optional[State]:
         if self.states:
             return self.states.pop()
+        return None
 
     def push_state(self, state: State):
         self.states.append(state)

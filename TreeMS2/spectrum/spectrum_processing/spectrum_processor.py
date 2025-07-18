@@ -4,7 +4,7 @@ from typing import Optional
 
 import spectrum_utils.spectrum as sus
 
-from .processors.spectrum_validator import SpectrumValidator
+from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import SpectrumValidator
 
 
 class SpectrumProcessor(ABC):

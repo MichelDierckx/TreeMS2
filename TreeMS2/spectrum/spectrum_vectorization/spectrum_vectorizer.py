@@ -3,9 +3,9 @@ from typing import List
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from .dimensionality_reducer import DimensionalityReducer
-from .spectrum_binner import SpectrumBinner
-from ...logger_config import get_logger
+from TreeMS2.logger_config import get_logger
+from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
+from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 
 logger = get_logger(__name__)
 

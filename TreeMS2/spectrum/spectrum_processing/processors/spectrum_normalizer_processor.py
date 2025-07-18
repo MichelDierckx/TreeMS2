@@ -2,7 +2,7 @@ import numba as nb
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from ..spectrum_processor import SpectrumProcessor
+from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
 
 
 class SpectrumNormalizerProcessor(SpectrumProcessor):

@@ -1,7 +1,7 @@
 import spectrum_utils.spectrum as sus
 
-from .spectrum_validator import SpectrumValidator
-from ..spectrum_processor import SpectrumProcessor
+from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import SpectrumValidator
+from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
 
 
 class PrecursorPeakRemoverProcessor(SpectrumProcessor):

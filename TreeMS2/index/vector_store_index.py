@@ -11,9 +11,9 @@ from faiss.contrib import clustering
 from tqdm import tqdm
 
 from TreeMS2.environment_variables import TREEMS2_NUM_CPUS, TREEMS2_MEM_PER_CPU
+from TreeMS2.logger_config import get_logger
 from TreeMS2.utils.utils import format_execution_time
-from ..logger_config import get_logger
-from ..vector_store.vector_store import VectorStore
+from TreeMS2.vector_store.vector_store import VectorStore
 
 logger = get_logger(__name__)
 

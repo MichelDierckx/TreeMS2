@@ -14,7 +14,8 @@ class TestDimensionalityReducer(unittest.TestCase):
         self.num_vectors = 1000
         self.reducer = DimensionalityReducer(low_dim=self.low_dim, high_dim=self.high_dim)
 
-    def _generate_sparse_matrix(self, num_vectors, high_dim, density=0.0005):
+    @staticmethod
+    def _generate_sparse_matrix(num_vectors, high_dim, density=0.0005):
         matrix = ss.rand(num_vectors, high_dim, density=density, format='csr', dtype=np.float32)
         return matrix
 

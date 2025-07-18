@@ -4,10 +4,10 @@ from typing import Union, List
 import faiss
 from dotenv import load_dotenv
 
+from TreeMS2.config.config import Config
 from TreeMS2.environment_variables import log_environment_variables
-from .config.config import Config
-from .logger_config import setup_logging, get_logger
-from .tree_ms2 import TreeMS2
+from TreeMS2.logger_config import setup_logging, get_logger
+from TreeMS2.tree_ms2 import TreeMS2
 
 
 def main(args: Union[str, List[str]] = None) -> int:

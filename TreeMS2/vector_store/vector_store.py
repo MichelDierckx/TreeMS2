@@ -14,8 +14,8 @@ from joblib import Parallel, delayed
 from lance import LanceDataset
 from numpy import ndarray
 
-from ..environment_variables import TREEMS2_NUM_CPUS
-from ..logger_config import get_logger
+from TreeMS2.environment_variables import TREEMS2_NUM_CPUS
+from TreeMS2.logger_config import get_logger
 
 # Create a logger for this module
 logger = get_logger(__name__)
@@ -38,12 +38,8 @@ class VectorStore:
             pa.field("spectrum_id", pa.uint16()),
             pa.field("file_id", pa.uint16()),
             pa.field("group_id", pa.uint16()),
-            # pa.field("identifier", pa.string()),
             pa.field("precursor_mz", pa.float32()),
             pa.field("precursor_charge", pa.int8()),
-            # pa.field("mz", pa.list_(pa.float32())),
-            # pa.field("intensity", pa.list_(pa.float32())),
-            pa.field("retention_time", pa.float32()),
             pa.field("vector", pa.list_(pa.float32(), vector_dim)),
         ])
 
@@ -76,11 +72,11 @@ class VectorStore:
                 ds = lance.write_dataset(new_rows, self.dataset_path, mode="append")
 
             if use_incremental_compaction:
-                if VectorStore.should_compact(ds):
+                if VectorStore._should_compact(ds):
                     VectorStore.compact_and_remove_prev_versions(ds)
 
     @staticmethod
-    def should_compact(lance_ds, fragment_threshold: int = 512, small_file_threshold: int = 512) -> bool:
+    def _should_compact(lance_ds, fragment_threshold: int = 512, small_file_threshold: int = 512) -> bool:
         dataset_stats = lance_ds.stats.dataset_stats()
         return (
                 dataset_stats["num_fragments"] > fragment_threshold or
@@ -129,12 +125,6 @@ class VectorStore:
             ids = np.arange(start=first, stop=first + batch.num_rows, dtype=np.int64)
             first += batch.num_rows
             yield vectors, ids, batch.num_rows
-
-    def get_data(self, rows: List[int], columns: List[str]) -> pd.DataFrame:
-        ds = self._get_dataset()
-        if ds is None:
-            return pd.DataFrame(columns=columns)
-        return ds.take(indices=rows, columns=columns).to_pandas()
 
     def get_col(self, column) -> pd.DataFrame:
         ds = self._get_dataset()
