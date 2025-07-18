@@ -12,7 +12,9 @@ class SimilarityMatrixPipeline:
     def __init__(self, mask_filters: List[MaskFilter]):
         self.mask_filters = mask_filters
 
-    def process(self, similarity_matrix: SimilarityMatrix, total_spectra: int, target_dir: str) -> SimilarityMatrix:
+    def process(
+        self, similarity_matrix: SimilarityMatrix, total_spectra: int, target_dir: str
+    ) -> SimilarityMatrix:
         for mask_filter in self.mask_filters:  # Iterate over the list of mask filters
             mask_filter.apply(similarity_matrix)  # Apply each mask filter
         return similarity_matrix

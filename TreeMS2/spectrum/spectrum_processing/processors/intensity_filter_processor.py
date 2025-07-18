@@ -2,12 +2,19 @@ from typing import Optional
 
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import SpectrumValidator
+from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import (
+    SpectrumValidator,
+)
 from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
 
 
 class IntensityFilterProcessor(SpectrumProcessor):
-    def __init__(self, min_intensity: Optional[float], max_peaks_used: Optional[int], validator: SpectrumValidator):
+    def __init__(
+        self,
+        min_intensity: Optional[float],
+        max_peaks_used: Optional[int],
+        validator: SpectrumValidator,
+    ):
         super().__init__(validator)
         self.min_intensity: float = min_intensity or 0.0
         self.max_peaks_used = max_peaks_used

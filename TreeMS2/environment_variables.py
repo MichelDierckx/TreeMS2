@@ -37,12 +37,15 @@ env_vars = [
     NUMEXPR_NUM_THREADS,
     BLIS_NUM_THREADS,
     OPENBLAS_NUM_THREADS,
-    OMP_WAIT_POLICY
+    OMP_WAIT_POLICY,
 ]
 
 
 def log_environment_variables():
     log_section_title(logger=logger, title="[ ENVIRONMENT VARIABLES ]")
     for var in env_vars:
-        log_parameter(logger=logger, parameter_name=var,
-                      parameter_value=os.environ.get(var, 'Not Set'))
+        log_parameter(
+            logger=logger,
+            parameter_name=var,
+            parameter_value=os.environ.get(var, "Not Set"),
+        )

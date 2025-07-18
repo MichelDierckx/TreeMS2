@@ -21,5 +21,5 @@ class SpectraMatrix:
         else:
             raise ValueError("Invalid arguments for initializing SpectraMatrix.")
 
-    def subtract(self, spectra_matrix: 'SpectraMatrix'):
+    def subtract(self, spectra_matrix: "SpectraMatrix"):
         self.matrix -= spectra_matrix.matrix

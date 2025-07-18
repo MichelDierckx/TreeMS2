@@ -18,7 +18,9 @@ class PeakFile(ABC):
         self.filtered: List[int] = []
 
     @abstractmethod
-    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[GroupSpectrum]:
+    def get_spectra(
+        self, processing_pipeline: SpectrumProcessingPipeline
+    ) -> Iterable[GroupSpectrum]:
         """
         Abstract method to read spectra from the file.
         Each subclass must implement this method.

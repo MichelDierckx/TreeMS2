@@ -4,7 +4,9 @@ import numpy as np
 import spectrum_utils.spectrum as sus
 
 from TreeMS2.logger_config import get_logger
-from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
+from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import (
+    DimensionalityReducer,
+)
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
 
 logger = get_logger(__name__)
@@ -15,7 +17,9 @@ class SpectrumVectorizer:
     Vectorizes spectra using binning and dimensionality reduction.
     """
 
-    def __init__(self, binner: SpectrumBinner, reducer: DimensionalityReducer, norm: bool = True):
+    def __init__(
+        self, binner: SpectrumBinner, reducer: DimensionalityReducer, norm: bool = True
+    ):
         self.binner = binner
         self.reducer = reducer
         if self.binner.dim != self.reducer.high_dim:

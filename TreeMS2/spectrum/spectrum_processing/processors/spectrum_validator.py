@@ -17,7 +17,7 @@ class SpectrumValidator:
 
 @nb.njit(cache=True)
 def _check_spectrum_valid(
-        spectrum_mz: np.ndarray, min_peaks: int, min_mz_range: float
+    spectrum_mz: np.ndarray, min_peaks: int, min_mz_range: float
 ) -> bool:
     """
     Check whether a cluster is of good enough quality to be used.
@@ -38,6 +38,6 @@ def _check_spectrum_valid(
         range, False otherwise.
     """
     return (
-            len(spectrum_mz) >= min_peaks
-            and spectrum_mz[-1] - spectrum_mz[0] >= min_mz_range
+        len(spectrum_mz) >= min_peaks
+        and spectrum_mz[-1] - spectrum_mz[0] >= min_mz_range
     )

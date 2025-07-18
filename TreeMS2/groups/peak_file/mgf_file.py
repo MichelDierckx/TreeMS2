@@ -16,7 +16,9 @@ class MgfFile(PeakFile):
         # Call the parent class constructor
         super().__init__(file_path)
 
-    def get_spectra(self, processing_pipeline: SpectrumProcessingPipeline) -> Iterable[GroupSpectrum]:
+    def get_spectra(
+        self, processing_pipeline: SpectrumProcessingPipeline
+    ) -> Iterable[GroupSpectrum]:
         with pyteomics.mgf.MGF(self.file_path) as f_in:
             for spectrum_i, spectrum_dict in enumerate(f_in):
                 self.total_spectra += 1  # Increment the total spectra counter
@@ -38,8 +40,12 @@ class MgfFile(PeakFile):
                     continue
 
                 # Create a Spectrum instance and assign the correct file_id and group_id
-                spectrum = GroupSpectrum(spectrum_id=spectrum_i, file_id=self._id, group_id=self._group_id,
-                                         spectrum=processed_spectrum)
+                spectrum = GroupSpectrum(
+                    spectrum_id=spectrum_i,
+                    file_id=self._id,
+                    group_id=self._group_id,
+                    spectrum=processed_spectrum,
+                )
                 yield spectrum  # Yield the spectrum instance with the correct data
 
     @staticmethod
@@ -49,7 +55,11 @@ class MgfFile(PeakFile):
         intensity_array = spectrum_dict["intensity array"]
         retention_time = float(spectrum_dict["params"].get("rtinseconds", -1))
         precursor_mz = float(spectrum_dict["params"]["pepmass"][0])
-        precursor_charge = int(spectrum_dict["params"]["charge"][0]) if "charge" in spectrum_dict["params"] else 404
+        precursor_charge = (
+            int(spectrum_dict["params"]["charge"][0])
+            if "charge" in spectrum_dict["params"]
+            else 404
+        )
 
         return sus.MsmsSpectrum(
             # A unique identifier or title for the spectrum (often representing the filename or a descriptor of the experiment).

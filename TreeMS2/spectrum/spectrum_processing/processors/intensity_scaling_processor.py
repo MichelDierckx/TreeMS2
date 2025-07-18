@@ -14,8 +14,11 @@ class ScalingMethod(Enum):
 
 
 class IntensityScalingProcessor(SpectrumProcessor):
-    def __init__(self, scaling: Literal[ScalingMethod.ROOT, ScalingMethod.LOG, ScalingMethod.RANK],
-                 max_rank: Optional[int]):
+    def __init__(
+        self,
+        scaling: Literal[ScalingMethod.ROOT, ScalingMethod.LOG, ScalingMethod.RANK],
+        max_rank: Optional[int],
+    ):
         super().__init__()
         self.scaling = scaling
         self.max_rank = max_rank

@@ -25,33 +25,46 @@ class CreateIndexState(State):
         self.vector_store: VectorStore = vector_store
 
     def run(self):
-        log_section_title(logger=logger, title=f"[ Building Lance Index ({self.vector_store.name}) ]")
+        log_section_title(
+            logger=logger, title=f"[ Building Lance Index ({self.vector_store.name}) ]"
+        )
         if not self.context.config.overwrite:
             index = VectorStoreIndex.load(
-                path=os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index"),
-                vector_store=self.vector_store)
+                path=os.path.join(
+                    self.context.indexes_dir, f"{self.vector_store.name}.index"
+                ),
+                vector_store=self.vector_store,
+            )
             if index is not None:
                 logger.info(
-                    f"Found existing index ('{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'). Skipping processing and loading index from disk.")
+                    f"Found existing index ('{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'). Skipping processing and loading index from disk."
+                )
                 self.context.replace_state(
-                    state=QueryIndexState(context=self.context,
-                                          index=index))
+                    state=QueryIndexState(context=self.context, index=index)
+                )
                 return
         index = self._generate()
         self.context.replace_state(
-            state=QueryIndexState(context=self.context,
-                                  index=index))
+            state=QueryIndexState(context=self.context, index=index)
+        )
 
     def _generate(self) -> VectorStoreIndex:
         # create an index
         index = VectorStoreIndex(vector_store=self.vector_store)
         logger.info(
-            f"Created FAISS index with factory string '{index.factory_string}' for vector store '{self.vector_store.dataset_path}'.")
+            f"Created FAISS index with factory string '{index.factory_string}' for vector store '{self.vector_store.dataset_path}'."
+        )
         # train the index
         index.train(use_gpu=self.use_gpu)
         # index the spectra for the groups
         index.add(batch_size=self.batch_size)
         # save the index to disk
-        index.save_index(path=os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index"))
-        logger.info(f"Saved index to '{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'.")
+        index.save_index(
+            path=os.path.join(
+                self.context.indexes_dir, f"{self.vector_store.name}.index"
+            )
+        )
+        logger.info(
+            f"Saved index to '{os.path.join(self.context.indexes_dir, f"{self.vector_store.name}.index")}'."
+        )
         return index

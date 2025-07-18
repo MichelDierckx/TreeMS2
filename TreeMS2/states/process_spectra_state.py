@@ -15,11 +15,20 @@ from TreeMS2.groups.peak_file.peak_file import PeakFile
 from TreeMS2.histogram import PrecursorChargeHistogram
 from TreeMS2.logger_config import get_logger, log_section_title
 from TreeMS2.spectrum.group_spectrum import GroupSpectrum
-from TreeMS2.spectrum.spectrum_processing.pipeline import ProcessingPipelineFactory, SpectrumProcessingPipeline
-from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
-from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import DimensionalityReducer
+from TreeMS2.spectrum.spectrum_processing.pipeline import (
+    ProcessingPipelineFactory,
+    SpectrumProcessingPipeline,
+)
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import (
+    ScalingMethod,
+)
+from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import (
+    DimensionalityReducer,
+)
 from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
-from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import SpectrumVectorizer
+from TreeMS2.spectrum.spectrum_vectorization.spectrum_vectorizer import (
+    SpectrumVectorizer,
+)
 from TreeMS2.states.context import Context
 from TreeMS2.states.create_index_state import CreateIndexState
 from TreeMS2.states.state import State
@@ -97,14 +106,22 @@ class ProcessSpectraState(State):
         log_section_title(logger=logger, title="[ Processing Peak Files ]")
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
-            self.context.groups = Groups.load(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
+            self.context.groups = Groups.load(
+                path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)
+            )
             self.context.vector_store_manager = VectorStoreManager.load(
-                path=os.path.join(os.path.join(self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME),
-                                  VECTOR_STORE_MANAGER_SAVE_FILE))
+                path=os.path.join(
+                    os.path.join(
+                        self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME
+                    ),
+                    VECTOR_STORE_MANAGER_SAVE_FILE,
+                )
+            )
 
             if self.context.groups and self.context.vector_store_manager:
                 logger.info(
-                    f"Found existing results ('{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}', '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'). Skipping processing and loading results from disk.")
+                    f"Found existing results ('{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}', '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'). Skipping processing and loading results from disk."
+                )
                 self._transition()
                 return  # Exit early if loading was successful
 
@@ -128,66 +145,96 @@ class ProcessSpectraState(State):
         # parse sample to group file
         groups = Groups.read(self.sample_to_group_file)
         logger.info(
-            f"Loaded group mapping from '{self.sample_to_group_file}': {groups.get_size()} groups across {groups.get_nr_files()} peak files.")
+            f"Loaded group mapping from '{self.sample_to_group_file}': {groups.get_size()} groups across {groups.get_nr_files()} peak files."
+        )
         # create vector store manager instance
-        vector_store_manager = VectorStoreManager(vector_stores={
-            name: VectorStore(name=name, directory=os.path.join(self.context.lance_dir, name), vector_dim=self.low_dim)
-            for name in VECTOR_STORES
-        })
+        vector_store_manager = VectorStoreManager(
+            vector_stores={
+                name: VectorStore(
+                    name=name,
+                    directory=os.path.join(self.context.lance_dir, name),
+                    vector_dim=self.low_dim,
+                )
+                for name in VECTOR_STORES
+            }
+        )
 
         vector_store_manager.clear()
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
         # create spectrum preprocessor instance (preprocesses the spectra)
-        spectrum_processor = ProcessingPipelineFactory.create_pipeline(min_peaks=self.min_peaks,
-                                                                       min_mz_range=self.min_mz_range,
-                                                                       remove_precursor_tol=self.remove_precursor_tol,
-                                                                       min_intensity=self.min_intensity,
-                                                                       max_peaks_used=self.max_peaks_used,
-                                                                       scaling=self.scaling,
-                                                                       min_mz=vectorizer.binner.min_mz,
-                                                                       max_mz=vectorizer.binner.max_mz)
+        spectrum_processor = ProcessingPipelineFactory.create_pipeline(
+            min_peaks=self.min_peaks,
+            min_mz_range=self.min_mz_range,
+            remove_precursor_tol=self.remove_precursor_tol,
+            min_intensity=self.min_intensity,
+            max_peaks_used=self.max_peaks_used,
+            scaling=self.scaling,
+            min_mz=vectorizer.binner.min_mz,
+            max_mz=vectorizer.binner.max_mz,
+        )
         # read, preprocess, vectorize and store spectra
-        precursor_charge_histogram = self._read_and_process_spectra(groups=groups,
-                                                                    processing_pipeline=spectrum_processor,
-                                                                    vectorizer=vectorizer,
-                                                                    vector_store_manager=vector_store_manager)
+        precursor_charge_histogram = self._read_and_process_spectra(
+            groups=groups,
+            processing_pipeline=spectrum_processor,
+            vectorizer=vectorizer,
+            vector_store_manager=vector_store_manager,
+        )
         precursor_charge_histogram.plot(
-            path=os.path.join(self.context.results_dir, "precursor_charge_distribution.png"))
+            path=os.path.join(
+                self.context.results_dir, "precursor_charge_distribution.png"
+            )
+        )
         logger.info(
-            f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.context.results_dir, "precursor_charge_distribution.png")}'.")
+            f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.context.results_dir, "precursor_charge_distribution.png")}'."
+        )
         # cleanup old versions to compact dataset
         logger.info("Compacting dataset(s)...")
         compacting_time_start = time.time()
         vector_store_manager.cleanup()
         vector_store_manager.update_vector_count()
-        logger.info(f"Finished compaction in {format_execution_time(time.time() - compacting_time_start)}")
+        logger.info(
+            f"Finished compaction in {format_execution_time(time.time() - compacting_time_start)}"
+        )
 
         vector_store_manager.cleanup()
 
         # write groups summary and reading/processing statistics to file
-        groups.write_to_file(path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE))
+        groups.write_to_file(
+            path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)
+        )
         logger.info(
-            f"Saved detailed processing summary to '{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}'.")
-        vector_store_manager.save(parent_dir=os.path.join(self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME),
-                                  filename=VECTOR_STORE_MANAGER_SAVE_FILE)
+            f"Saved detailed processing summary to '{os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)}'."
+        )
+        vector_store_manager.save(
+            parent_dir=os.path.join(
+                self.context.results_dir, VECTOR_STORE_METADATA_DIR_NAME
+            ),
+            filename=VECTOR_STORE_MANAGER_SAVE_FILE,
+        )
         logger.info(
-            f"For additional information per lance dataset, refer to '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'")
+            f"For additional information per lance dataset, refer to '{os.path.join(self.context.results_dir, VECTOR_STORE_MANAGER_SAVE_FILE)}'"
+        )
         return groups, vector_store_manager
 
     def _setup_vectorizer(self) -> SpectrumVectorizer:
-        binner = SpectrumBinner(min_mz=self.min_mz, max_mz=self.max_mz, bin_size=self.fragment_tol)
+        binner = SpectrumBinner(
+            min_mz=self.min_mz, max_mz=self.max_mz, bin_size=self.fragment_tol
+        )
         reducer = DimensionalityReducer(low_dim=self.low_dim, high_dim=binner.dim)
         spectrum_vectorizer = SpectrumVectorizer(binner=binner, reducer=reducer)
         return spectrum_vectorizer
 
     @staticmethod
-    def _process_file(file: PeakFile, buffer_size: int, incremental_compaction: bool,
-                      processing_pipeline: SpectrumProcessingPipeline,
-                      vectorizer: SpectrumVectorizer,
-                      vector_store_manager: VectorStoreManager,
-                      locks_and_flags: Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]) -> Tuple[
-        PeakFile, Counter, Counter]:
+    def _process_file(
+        file: PeakFile,
+        buffer_size: int,
+        incremental_compaction: bool,
+        processing_pipeline: SpectrumProcessingPipeline,
+        vectorizer: SpectrumVectorizer,
+        vector_store_manager: VectorStoreManager,
+        locks_and_flags: Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]],
+    ) -> Tuple[PeakFile, Counter, Counter]:
         buffers: defaultdict[str, List[GroupSpectrum]] = defaultdict(list)
         nr_spectra_per_precursor_charge = Counter()  # Store counts per charge
         nr_vectors_per_store = Counter()
@@ -199,17 +246,29 @@ class ProcessSpectraState(State):
         def write_batch(vector_store_name: str, buffer: List[GroupSpectrum]):
             """Writes a batch of spectra to the correct vector store."""
             vectors = vectorize_batch(buffer)
-            dict_list = [{**spec.to_dict(), "vector": vector} for spec, vector in zip(buffer, vectors)]
-            vector_store_manager.write(vector_store_name=vector_store_name, entries_to_write=dict_list,
-                                       use_incremental_compaction=incremental_compaction,
-                                       multiprocessing_lock=locks_and_flags[vector_store_name]["lock"],
-                                       overwrite=locks_and_flags[vector_store_name]["overwrite"])
+            dict_list = [
+                {**spec.to_dict(), "vector": vector}
+                for spec, vector in zip(buffer, vectors)
+            ]
+            vector_store_manager.write(
+                vector_store_name=vector_store_name,
+                entries_to_write=dict_list,
+                use_incremental_compaction=incremental_compaction,
+                multiprocessing_lock=locks_and_flags[vector_store_name]["lock"],
+                overwrite=locks_and_flags[vector_store_name]["overwrite"],
+            )
             nr_vectors_per_store[vector_store_name] += len(buffer)
 
-        for processed_spectrum in file.get_spectra(processing_pipeline=processing_pipeline):
-            charge_category = map_charge_to_vector_store(processed_spectrum.spectrum.precursor_charge)
+        for processed_spectrum in file.get_spectra(
+            processing_pipeline=processing_pipeline
+        ):
+            charge_category = map_charge_to_vector_store(
+                processed_spectrum.spectrum.precursor_charge
+            )
             buffers[charge_category].append(processed_spectrum)
-            nr_spectra_per_precursor_charge[processed_spectrum.spectrum.precursor_charge] += 1
+            nr_spectra_per_precursor_charge[
+                processed_spectrum.spectrum.precursor_charge
+            ] += 1
             if len(buffers[charge_category]) >= buffer_size:
                 write_batch(charge_category, buffers[charge_category])
                 buffers[charge_category].clear()
@@ -221,9 +280,13 @@ class ProcessSpectraState(State):
                 buffer.clear()
         return file, nr_spectra_per_precursor_charge, nr_vectors_per_store
 
-    def _read_and_process_spectra(self, groups: Groups, processing_pipeline: SpectrumProcessingPipeline,
-                                  vectorizer: SpectrumVectorizer,
-                                  vector_store_manager: VectorStoreManager) -> PrecursorChargeHistogram:
+    def _read_and_process_spectra(
+        self,
+        groups: Groups,
+        processing_pipeline: SpectrumProcessingPipeline,
+        vectorizer: SpectrumVectorizer,
+        vector_store_manager: VectorStoreManager,
+    ) -> PrecursorChargeHistogram:
         """
         Main function to orchestrate producers and consumers using queues.
         """
@@ -232,13 +295,13 @@ class ProcessSpectraState(State):
 
         # Flatten the list of all peak files across groups for processing.
         all_files = [
-            file
-            for group in groups.get_groups()
-            for file in group.get_peak_files()
+            file for group in groups.get_groups() for file in group.get_peak_files()
         ]
 
         # Use multiple worker processes to read the peak files.
-        max_file_workers = int(os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count()))
+        max_file_workers = int(
+            os.environ.get(TREEMS2_NUM_CPUS, multiprocessing.cpu_count())
+        )
 
         max_file_workers = min(groups.get_nr_files(), max_file_workers)
 
@@ -247,11 +310,24 @@ class ProcessSpectraState(State):
         with multiprocessing.Manager() as m:
             locks_and_flags = vector_store_manager.create_locks_and_flags(manager=m)
 
-            with tqdm_joblib(tqdm(desc="Processing Files", total=len(all_files), unit="file", position=0, leave=True)):
+            with tqdm_joblib(
+                tqdm(
+                    desc="Processing Files",
+                    total=len(all_files),
+                    unit="file",
+                    position=0,
+                    leave=True,
+                )
+            ):
                 results = joblib.Parallel(n_jobs=max_file_workers, backend="loky")(
                     joblib.delayed(self._process_file)(
-                        file, self.buffer_size, self.incremental_compaction, processing_pipeline, vectorizer,
-                        vector_store_manager, locks_and_flags
+                        file,
+                        self.buffer_size,
+                        self.incremental_compaction,
+                        processing_pipeline,
+                        vectorizer,
+                        vector_store_manager,
+                        locks_and_flags,
                     )
                     for file in all_files
                 )
@@ -281,9 +357,11 @@ class ProcessSpectraState(State):
 
             # update the count of the number of vectors for a group in each vector store
             for vector_store_name, nr_vectors in nr_vectors_per_store.items():
-                vector_store_manager.update_group_count(vector_store_name=vector_store_name,
-                                                        group_id=file.get_group_id(),
-                                                        nr_vectors=nr_vectors)
+                vector_store_manager.update_group_count(
+                    vector_store_name=vector_store_name,
+                    group_id=file.get_group_id(),
+                    nr_vectors=nr_vectors,
+                )
 
         # Log final processing statistics.
         logger.info(

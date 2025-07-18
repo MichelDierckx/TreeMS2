@@ -14,17 +14,18 @@ class State(ABC):
     associated with the State. This backreference can be used by States to
     transition the Context to another State.
     """
+
     STATE_TYPE = StateType
 
-    def __init__(self, context: 'Context') -> None:
-        self._context: 'Context' = context
+    def __init__(self, context: "Context") -> None:
+        self._context: "Context" = context
 
     @property
-    def context(self) -> 'Context':
+    def context(self) -> "Context":
         return self._context
 
     @context.setter
-    def context(self, context: 'Context') -> None:
+    def context(self, context: "Context") -> None:
         self._context = context
 
     @abstractmethod

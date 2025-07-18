@@ -14,22 +14,29 @@ class VectorStoreManager:
         self.vector_stores = vector_stores
         self.vector_count = 0
 
-    def create_locks_and_flags(self, manager: multiprocessing.Manager) -> Dict[
-        str, Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]]:
+    def create_locks_and_flags(
+        self, manager: multiprocessing.Manager
+    ) -> Dict[str, Dict[str, Union[multiprocessing.Lock, multiprocessing.Value]]]:
         """Returns a dictionary containing locks and overwrite flags for each vector store."""
         return {
-            name: {
-                "lock": manager.Lock(),
-                "overwrite": manager.Value("b", True)
-            }
+            name: {"lock": manager.Lock(), "overwrite": manager.Value("b", True)}
             for name in self.vector_stores
         }
 
-    def write(self, vector_store_name: str, entries_to_write: List[Dict], use_incremental_compaction: bool,
-              multiprocessing_lock: Optional[multiprocessing.Lock],
-              overwrite: multiprocessing.Value):
-        self.vector_stores[vector_store_name].write(entries_to_write, use_incremental_compaction, multiprocessing_lock,
-                                                    overwrite)
+    def write(
+        self,
+        vector_store_name: str,
+        entries_to_write: List[Dict],
+        use_incremental_compaction: bool,
+        multiprocessing_lock: Optional[multiprocessing.Lock],
+        overwrite: multiprocessing.Value,
+    ):
+        self.vector_stores[vector_store_name].write(
+            entries_to_write,
+            use_incremental_compaction,
+            multiprocessing_lock,
+            overwrite,
+        )
 
     def cleanup(self):
         for vector_store in self.vector_stores.values():
@@ -40,7 +47,9 @@ class VectorStoreManager:
             self.vector_count += vector_store.update_vector_count()
         return self.vector_count
 
-    def update_group_count(self, vector_store_name: str, group_id: int, nr_vectors: int):
+    def update_group_count(
+        self, vector_store_name: str, group_id: int, nr_vectors: int
+    ):
         self.vector_stores[vector_store_name].update_group_count(group_id, nr_vectors)
 
     def clear(self):

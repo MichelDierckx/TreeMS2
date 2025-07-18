@@ -3,8 +3,12 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.spectrum.spectrum_processing.processors.mz_range_filter_processor import MZRangeFilterProcessor
-from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import SpectrumValidator
+from TreeMS2.spectrum.spectrum_processing.processors.mz_range_filter_processor import (
+    MZRangeFilterProcessor,
+)
+from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import (
+    SpectrumValidator,
+)
 
 
 class TestMZRangeFilterProcessor(unittest.TestCase):
@@ -38,9 +42,14 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
         expected_intensity = np.array([50.0, 300.0, 20.0], dtype=float)
 
         # Validate the results
-        np.testing.assert_array_equal(filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match.")
-        np.testing.assert_array_equal(filtered_spectrum.intensity, expected_intensity,
-                                      "Filtered intensity values do not match.")
+        np.testing.assert_array_equal(
+            filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match."
+        )
+        np.testing.assert_array_equal(
+            filtered_spectrum.intensity,
+            expected_intensity,
+            "Filtered intensity values do not match.",
+        )
 
     def test_no_mz_min(self):
         # Test when mz_min is None (only mz_max applied)
@@ -52,9 +61,14 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
         expected_intensity = np.array([10.0, 50.0, 300.0, 20.0], dtype=float)
 
         # Validate the results
-        np.testing.assert_array_equal(filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match.")
-        np.testing.assert_array_equal(filtered_spectrum.intensity, expected_intensity,
-                                      "Filtered intensity values do not match.")
+        np.testing.assert_array_equal(
+            filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match."
+        )
+        np.testing.assert_array_equal(
+            filtered_spectrum.intensity,
+            expected_intensity,
+            "Filtered intensity values do not match.",
+        )
 
     def test_no_mz_max(self):
         # Test when mz_max is None (only mz_min applied)
@@ -66,9 +80,14 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
         expected_intensity = np.array([50.0, 300.0, 20.0, 150.0], dtype=float)
 
         # Validate the results
-        np.testing.assert_array_equal(filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match.")
-        np.testing.assert_array_equal(filtered_spectrum.intensity, expected_intensity,
-                                      "Filtered intensity values do not match.")
+        np.testing.assert_array_equal(
+            filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match."
+        )
+        np.testing.assert_array_equal(
+            filtered_spectrum.intensity,
+            expected_intensity,
+            "Filtered intensity values do not match.",
+        )
 
     def test_invalid_range(self):
         # Test when mz_min > mz_max
@@ -81,9 +100,14 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
         expected_intensity = np.array([50.0, 300.0, 20.0], dtype=float)
 
         # Validate the results
-        np.testing.assert_array_equal(filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match.")
-        np.testing.assert_array_equal(filtered_spectrum.intensity, expected_intensity,
-                                      "Filtered intensity values do not match.")
+        np.testing.assert_array_equal(
+            filtered_spectrum.mz, expected_mz, "Filtered m/z values do not match."
+        )
+        np.testing.assert_array_equal(
+            filtered_spectrum.intensity,
+            expected_intensity,
+            "Filtered intensity values do not match.",
+        )
 
     def test_no_filtering(self):
         # Test when mz_min and mz_max are both None (no filtering)
@@ -92,10 +116,16 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
         filtered_spectrum = self.processor.process(self.spectrum)
 
         # Expect the original spectrum
-        np.testing.assert_array_equal(filtered_spectrum.mz, self.spectrum.mz,
-                                      "Filtered m/z values do not match the original.")
-        np.testing.assert_array_equal(filtered_spectrum.intensity, self.spectrum.intensity,
-                                      "Filtered intensity values do not match the original.")
+        np.testing.assert_array_equal(
+            filtered_spectrum.mz,
+            self.spectrum.mz,
+            "Filtered m/z values do not match the original.",
+        )
+        np.testing.assert_array_equal(
+            filtered_spectrum.intensity,
+            self.spectrum.intensity,
+            "Filtered intensity values do not match the original.",
+        )
 
     def test_all_peaks_removed(self):
         # Test when mz range excludes all peaks

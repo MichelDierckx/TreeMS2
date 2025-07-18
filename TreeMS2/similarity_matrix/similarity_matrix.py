@@ -14,5 +14,10 @@ class SimilarityMatrix(SpectraMatrix):
         super().__init__(*args)
         self.similarity_threshold = similarity_threshold
 
-    def update(self, data: npt.NDArray[np.bool_], rows: npt.NDArray[np.int64], cols: npt.NDArray[np.int64]):
+    def update(
+        self,
+        data: npt.NDArray[np.bool_],
+        rows: npt.NDArray[np.int64],
+        cols: npt.NDArray[np.int64],
+    ):
         self.matrix += csr_matrix((data, (rows, cols)), self.matrix.shape)

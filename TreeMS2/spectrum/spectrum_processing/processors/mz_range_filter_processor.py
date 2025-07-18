@@ -2,12 +2,19 @@ from typing import Optional
 
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import SpectrumValidator
+from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import (
+    SpectrumValidator,
+)
 from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
 
 
 class MZRangeFilterProcessor(SpectrumProcessor):
-    def __init__(self, mz_min: Optional[float], mz_max: Optional[float], validator: SpectrumValidator):
+    def __init__(
+        self,
+        mz_min: Optional[float],
+        mz_max: Optional[float],
+        validator: SpectrumValidator,
+    ):
         super().__init__(validator)
         self.mz_min = mz_min
         self.mz_max = mz_max

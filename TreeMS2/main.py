@@ -27,7 +27,7 @@ def main(args: Union[str, List[str]] = None) -> int:
     # log environment variables
     log_environment_variables()
 
-    multiprocessing.set_start_method('spawn')  # lance does not work with FORK method
+    multiprocessing.set_start_method("spawn")  # lance does not work with FORK method
     # get FAISS number of threads
     logger.debug(f"FAISS threads: {faiss.omp_get_max_threads()}")
 

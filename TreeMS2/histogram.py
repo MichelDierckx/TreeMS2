@@ -28,12 +28,25 @@ class HitHistogram:
         total_spectra = self.counts.sum()
         relative_frequencies = self.counts / total_spectra
         plt.figure(figsize=(10, 5))
-        plt.bar(range(len(self.counts)), relative_frequencies, width=1.0, edgecolor="black", align="edge")
+        plt.bar(
+            range(len(self.counts)),
+            relative_frequencies,
+            width=1.0,
+            edgecolor="black",
+            align="edge",
+        )
 
         # Add relative frequency labels on top of bars
         for i, rel_freq in enumerate(relative_frequencies):
             if rel_freq > 0:  # Avoid labeling zero-height bars
-                plt.text(i + 0.5, rel_freq, f"{rel_freq:.2%}", ha="center", va="bottom", fontsize=8)
+                plt.text(
+                    i + 0.5,
+                    rel_freq,
+                    f"{rel_freq:.2%}",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
 
         plt.xlabel("Number of Similar Spectra Found (Hits)")
         plt.ylabel("Proportion of Queried Spectra")
@@ -46,7 +59,9 @@ class HitHistogram:
         interval_labels = [f"{n:,}".replace(",", " ") for n in self.bin_edges]
 
         # Set custom x-ticks at uniform positions
-        plt.xticks(ticks=range(len(self.counts) + 1), labels=interval_labels, rotation=-90)
+        plt.xticks(
+            ticks=range(len(self.counts) + 1), labels=interval_labels, rotation=-90
+        )
         plt.xlim(left=0, right=len(self.counts))
 
         plt.savefig(path, bbox_inches="tight")
@@ -73,8 +88,13 @@ class SimilarityHistogram:
     def plot(self, path: str):
         """Plots the histogram of similarity scores."""
         plt.figure(figsize=(10, 5))
-        plt.bar(self.bin_edges[:-1], self.counts, width=np.diff(self.bin_edges),
-                align="edge", edgecolor="black")
+        plt.bar(
+            self.bin_edges[:-1],
+            self.counts,
+            width=np.diff(self.bin_edges),
+            align="edge",
+            edgecolor="black",
+        )
         plt.xlabel("Similarity Score")
         plt.ylabel("Number of Spectrum Pairs")
         plt.title("Similarity Score Distribution")
@@ -109,8 +129,12 @@ class PrecursorChargeHistogram:
             return
 
         # Extract charge categories and counts
-        charges, counts = zip(*sorted(self.charge_counts.items()))  # Sort for better visualization
-        charges = [str(c) for c in charges]  # convert into categories to prevent x-axis scaling
+        charges, counts = zip(
+            *sorted(self.charge_counts.items())
+        )  # Sort for better visualization
+        charges = [
+            str(c) for c in charges
+        ]  # convert into categories to prevent x-axis scaling
         # Create plot
         plt.figure(figsize=(10, 5))
         plt.bar(charges, counts, edgecolor="black")

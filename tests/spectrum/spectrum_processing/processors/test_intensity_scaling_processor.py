@@ -3,8 +3,12 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import IntensityScalingProcessor
-from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import ScalingMethod
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import (
+    IntensityScalingProcessor,
+)
+from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import (
+    ScalingMethod,
+)
 
 
 class TestIntensityScalingProcessor(unittest.TestCase):
@@ -22,8 +26,7 @@ class TestIntensityScalingProcessor(unittest.TestCase):
     def test_root_scaling(self):
         # Initialize the processor with root scaling
         processor = IntensityScalingProcessor(
-            scaling=ScalingMethod.ROOT,
-            max_rank=None  # Not used in root scaling
+            scaling=ScalingMethod.ROOT, max_rank=None  # Not used in root scaling
         )
 
         # Expected intensity values (square root of original intensities)
@@ -34,35 +37,39 @@ class TestIntensityScalingProcessor(unittest.TestCase):
 
         # Validate the results
         np.testing.assert_array_almost_equal(
-            scaled_spectrum.intensity, expected_intensity, decimal=6,
-            err_msg="Root scaling failed."
+            scaled_spectrum.intensity,
+            expected_intensity,
+            decimal=6,
+            err_msg="Root scaling failed.",
         )
 
     def test_log_scaling(self):
         # Initialize the processor with log scaling
         processor = IntensityScalingProcessor(
-            scaling=ScalingMethod.LOG,
-            max_rank=None  # Not used in log scaling
+            scaling=ScalingMethod.LOG, max_rank=None  # Not used in log scaling
         )
 
         # Expected intensity values (logarithm base 2 of original intensities + 1)
-        expected_intensity = (np.log1p(self.spectrum.intensity) / np.log(2)).astype(np.float32)
+        expected_intensity = (np.log1p(self.spectrum.intensity) / np.log(2)).astype(
+            np.float32
+        )
 
         # Apply the scaling method
         scaled_spectrum = processor.process(self.spectrum)
 
         # Validate the results
         np.testing.assert_array_almost_equal(
-            scaled_spectrum.intensity, expected_intensity, decimal=6,
-            err_msg="Log scaling failed."
+            scaled_spectrum.intensity,
+            expected_intensity,
+            decimal=6,
+            err_msg="Log scaling failed.",
         )
 
     def test_rank_scaling(self):
         # Initialize the processor with rank scaling
         max_rank = 5  # Define a maximum rank
         processor = IntensityScalingProcessor(
-            scaling=ScalingMethod.RANK,
-            max_rank=max_rank
+            scaling=ScalingMethod.RANK, max_rank=max_rank
         )
 
         # Expected rank values (inverse rank of intensities)
@@ -74,16 +81,16 @@ class TestIntensityScalingProcessor(unittest.TestCase):
 
         # Validate the results
         np.testing.assert_array_equal(
-            scaled_spectrum.intensity, expected_intensity,
-            err_msg="Rank scaling failed."
+            scaled_spectrum.intensity,
+            expected_intensity,
+            err_msg="Rank scaling failed.",
         )
 
     def test_invalid_max_rank(self):
         # Initialize the processor with rank scaling but an invalid max_rank
         max_rank = 3  # Less than the number of peaks in the spectrum
         processor = IntensityScalingProcessor(
-            scaling=ScalingMethod.RANK,
-            max_rank=max_rank
+            scaling=ScalingMethod.RANK, max_rank=max_rank
         )
 
         # Expect a ValueError due to invalid max_rank

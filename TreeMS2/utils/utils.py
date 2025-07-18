@@ -1,5 +1,6 @@
 # UTILS
 
+
 def format_execution_time(seconds: float) -> str:
     millis = int((seconds - int(seconds)) * 1000)
     seconds = int(seconds)

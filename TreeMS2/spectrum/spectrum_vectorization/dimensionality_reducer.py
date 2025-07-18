@@ -41,8 +41,12 @@ class DimensionalityReducer:
 
         dense_vectors = (vectors @ self.transformation).toarray()
         if normalize:
-            if dense_vectors.shape[0] > 0 and np.allclose(np.linalg.norm(dense_vectors, axis=1), 0):
-                raise ValueError("Input vectors must not be zero-vectors for normalization.")
+            if dense_vectors.shape[0] > 0 and np.allclose(
+                np.linalg.norm(dense_vectors, axis=1), 0
+            ):
+                raise ValueError(
+                    "Input vectors must not be zero-vectors for normalization."
+                )
             # Normalize for cosine similarity
             faiss.normalize_L2(dense_vectors)
         return dense_vectors

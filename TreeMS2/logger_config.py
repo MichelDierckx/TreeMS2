@@ -32,15 +32,17 @@ def setup_logging(work_dir: str, console_level: str):
     log_file = os.path.join(log_dir, f"{timestamp}.log")
 
     # File handler (no colors here)
-    file_handler = logging.FileHandler(filename=log_file, mode='w')
+    file_handler = logging.FileHandler(filename=log_file, mode="w")
     file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     file_handler.setFormatter(file_formatter)
 
     # Console handler (with color)
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
-    color_formatter = ColorFormatter('%(asctime)s - %(levelname)s - %(message)s')
+    color_formatter = ColorFormatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(color_formatter)
 
     # Root logger
@@ -63,7 +65,9 @@ def get_logger(module_name: str) -> logging.Logger:
     return logging.getLogger(module_name)
 
 
-def log_section_title(logger: logging.Logger, title: str, symbol: str = "=", width: int = 80):
+def log_section_title(
+    logger: logging.Logger, title: str, symbol: str = "=", width: int = 80
+):
     """
     Logs a section title, making it more visually distinct with a specific color (magenta).
     """

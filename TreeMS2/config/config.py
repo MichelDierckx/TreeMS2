@@ -27,7 +27,9 @@ class Config:
         :return: Optional[str], The value of the configuration option or the default value.
         """
         if self._namespace is None:
-            raise RuntimeError("The configuration has not been initialized. Call `parse()` first.")
+            raise RuntimeError(
+                "The configuration has not been initialized. Call `parse()` first."
+            )
         return self._namespace.get(option, default)
 
     def parse(self, args_str: Optional[str] = None) -> None:
@@ -79,7 +81,7 @@ class Config:
                 "  - .csv: Must contain 'sample_file' and 'group' columns.\n"
             ),
             type=str,
-            action='store',
+            action="store",
             dest="sample_to_group_file",
             metavar="<path>",
         )
@@ -88,7 +90,7 @@ class Config:
             required=True,
             help="Working directory (used to save lance datasets)",
             type=str,
-            action='store',
+            action="store",
             dest="work_dir",
             metavar="<path>",
         )
@@ -120,7 +122,7 @@ class Config:
             default=5,
             type=int,
             help="Discard spectra with fewer than this number of peaks "
-                 "(default: %(default)s).",
+            "(default: %(default)s).",
             dest="min_peaks",
         )
         self._parser.add_argument(
@@ -128,23 +130,21 @@ class Config:
             default=250.0,
             type=float,
             help="Discard spectra with a smaller mass range "
-                 "(default: %(default)s m/z).",
+            "(default: %(default)s m/z).",
             dest="min_mz_range",
         )
         self._parser.add_argument(
             "--min_mz",
             default=101.0,
             type=float,
-            help="Minimum peak m/z value (inclusive, "
-                 "default: %(default)s m/z).",
+            help="Minimum peak m/z value (inclusive, " "default: %(default)s m/z).",
             dest="min_mz",
         )
         self._parser.add_argument(
             "--max_mz",
             default=1500.0,
             type=float,
-            help="Maximum peak m/z value (inclusive, "
-                 "default: %(default)s m/z).",
+            help="Maximum peak m/z value (inclusive, " "default: %(default)s m/z).",
             dest="max_mz",
         )
         self._parser.add_argument(
@@ -152,7 +152,7 @@ class Config:
             default=1.5,
             type=float,
             help="Window around the precursor mass to remove peaks "
-                 "(default: %(default)s m/z).",
+            "(default: %(default)s m/z).",
             dest="remove_precursor_tol",
         )
         self._parser.add_argument(
@@ -160,7 +160,7 @@ class Config:
             default=0.01,
             type=float,
             help="Remove peaks with a lower intensity relative to the base "
-                 "intensity (default: %(default)s).",
+            "intensity (default: %(default)s).",
             dest="min_intensity",
         )
         self._parser.add_argument(
@@ -168,7 +168,7 @@ class Config:
             default=50,
             type=int,
             help="Only use the specified most intense peaks in the spectra "
-                 "(default: %(default)s).",
+            "(default: %(default)s).",
             dest="max_peaks_used",
         )
         self._parser.add_argument(
@@ -177,7 +177,7 @@ class Config:
             type=str,
             choices=["off", "root", "log", "rank"],
             help="Peak scaling method used to reduce the influence of very "
-                 "intense peaks (default: %(default)s).",
+            "intense peaks (default: %(default)s).",
             dest="scaling",
         )
 
@@ -200,17 +200,19 @@ class Config:
 
         self._parser.add_argument(
             "--batch_size",
-            default=16384, type=int,
+            default=16384,
+            type=int,
             help="Number of query spectra to process simultaneously "
-                 "(default: %(default)s)",
-            dest="batch_size", )
+            "(default: %(default)s)",
+            dest="batch_size",
+        )
 
         self._parser.add_argument(
             "--num_neighbours",
             default=1024,
             type=int,
             help="The number of neighbours to retrieve for each query during ANN search. "
-                 "(default: %(default)s). maximum 2048 when using GPU",
+            "(default: %(default)s). maximum 2048 when using GPU",
             dest="num_neighbours",
         )
 
@@ -219,7 +221,7 @@ class Config:
             default=128,
             type=int,
             help="Number of clusters to probe during ANN search. "
-                 "(default: %(default)s). maximum 2048 when using GPU",
+            "(default: %(default)s). maximum 2048 when using GPU",
             dest="num_probe",
         )
 
@@ -254,7 +256,9 @@ class Config:
             dest="log_level",
         )
 
-    def _validate_directory_path(self, param: str, required_extensions: Optional[list] = None) -> None:
+    def _validate_directory_path(
+        self, param: str, required_extensions: Optional[list] = None
+    ) -> None:
         """
         Validate that a directory path exists and optionally check if it has one of the required extensions.
 
@@ -269,20 +273,26 @@ class Config:
         """
         path = self.get(param)
         if not os.path.isdir(path):  # Check if path is a valid directory
-            raise NotADirectoryError(f"--{param}: Path '{path}' is not a valid directory.")
+            raise NotADirectoryError(
+                f"--{param}: Path '{path}' is not a valid directory."
+            )
 
         if required_extensions:
             # Check if any file in the directory matches the required extensions
             files_with_valid_extension = [
-                file for file in os.listdir(path) if any(file.endswith(ext) for ext in required_extensions)
+                file
+                for file in os.listdir(path)
+                if any(file.endswith(ext) for ext in required_extensions)
             ]
             if not files_with_valid_extension:
-                valid_extensions = ', '.join(required_extensions)
+                valid_extensions = ", ".join(required_extensions)
                 raise ValueError(
                     f"--{param}: No files with extensions {valid_extensions} found in the directory '{path}'."
                 )
 
-    def _validate_file_path(self, param: str, required_extensions: Optional[list] = None) -> None:
+    def _validate_file_path(
+        self, param: str, required_extensions: Optional[list] = None
+    ) -> None:
         """
         Validate that a file path exists and optionally check if it has one of the required extensions.
 
@@ -300,7 +310,7 @@ class Config:
 
         if required_extensions:
             if not any(path.endswith(ext) for ext in required_extensions):
-                valid_extensions = ', '.join(required_extensions)
+                valid_extensions = ", ".join(required_extensions)
                 raise ValueError(
                     f"--{param}: Path '{path}' does not end with one of the following extensions: {valid_extensions}"
                 )
@@ -310,9 +320,13 @@ class Config:
         float_value = float(value)
         if (strict and float_value <= 0) or (not strict and float_value < 0):
             comparison = "greater than 0" if strict else "0 or greater"
-            raise ValueError(f"--{param}: {value} is not a positive integer ({comparison}).")
+            raise ValueError(
+                f"--{param}: {value} is not a positive integer ({comparison})."
+            )
 
-    def _validate_number_range(self, param: str, min_value: Union[int, float], max_value: Union[int, float]) -> None:
+    def _validate_number_range(
+        self, param: str, min_value: Union[int, float], max_value: Union[int, float]
+    ) -> None:
         """
         Validate that the value of a configuration parameter is in the range (inclusive) specified by the user.
         :param param: The name of the parameter to be validated
@@ -322,9 +336,13 @@ class Config:
         """
         value = self.get(param)
         if value < min_value:
-            raise ValueError(f"--{param}: value can not be less than {min_value:.4f}. Got {value:.4f}.")
+            raise ValueError(
+                f"--{param}: value can not be less than {min_value:.4f}. Got {value:.4f}."
+            )
         if value > max_value:
-            raise ValueError(f"--{param}: value can not be greater than {max_value:.4f}. Got {value:.4f}.")
+            raise ValueError(
+                f"--{param}: value can not be greater than {max_value:.4f}. Got {value:.4f}."
+            )
 
     def _validate_num_neighbours_num_probe(self) -> None:
         """
@@ -336,10 +354,12 @@ class Config:
         if use_gpu:
             if num_neighbours > 2048:
                 raise ValueError(
-                    f"--num_neighbours: value can not be larger than 2048 when using GPU (--use_gpu = true).")
+                    f"--num_neighbours: value can not be larger than 2048 when using GPU (--use_gpu = true)."
+                )
             if num_probe > 2048:
                 raise ValueError(
-                    f"--num_probe: value can not be larger than 2048 when using GPU (see --use_gpu = true).")
+                    f"--num_probe: value can not be larger than 2048 when using GPU (see --use_gpu = true)."
+                )
 
     def log_parameters(self) -> None:
         """Log all chosen parameters."""
@@ -354,7 +374,9 @@ class Config:
         Raises a KeyError with a helpful message if the option does not exist.
         """
         if self._namespace is None:
-            raise RuntimeError("The configuration has not been initialized. Call `parse()` first.")
+            raise RuntimeError(
+                "The configuration has not been initialized. Call `parse()` first."
+            )
         if option not in self._namespace:
             raise KeyError(f"The configuration option '{option}' does not exist.")
         return self._namespace[option]

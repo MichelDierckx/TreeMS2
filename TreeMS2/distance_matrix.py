@@ -10,11 +10,17 @@ logger = get_logger(__name__)
 
 class DistanceMatrix:
     @staticmethod
-    def create_mega(path: str, similarity_threshold: float, precursor_mz_window: float,
-                    similarity_sets: SimilaritySets):
-        lines: List[str] = ["#mega",
-                            f"TITLE: {similarity_sets.groups.filename} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
-                            ""]
+    def create_mega(
+        path: str,
+        similarity_threshold: float,
+        precursor_mz_window: float,
+        similarity_sets: SimilaritySets,
+    ):
+        lines: List[str] = [
+            "#mega",
+            f"TITLE: {similarity_sets.groups.filename} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
+            "",
+        ]
         for group in similarity_sets.groups.get_groups():
             group_name = group.get_group_name().replace(" ", "_")
             lines.append(f"#{group_name}")
@@ -35,7 +41,7 @@ class DistanceMatrix:
             lines.append(line)
         text = "\r\n".join(lines)
 
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             f.write(text)
         return
 

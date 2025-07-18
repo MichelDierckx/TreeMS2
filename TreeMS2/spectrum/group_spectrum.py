@@ -4,7 +4,14 @@ import spectrum_utils.spectrum as sus
 
 
 class GroupSpectrum:
-    def __init__(self, spectrum_id: int, file_id: int, group_id: int, spectrum: sus.MsmsSpectrum, vector=None):
+    def __init__(
+        self,
+        spectrum_id: int,
+        file_id: int,
+        group_id: int,
+        spectrum: sus.MsmsSpectrum,
+        vector=None,
+    ):
         self.spectrum_id = spectrum_id
         self.file_id = file_id
         self.group_id = group_id

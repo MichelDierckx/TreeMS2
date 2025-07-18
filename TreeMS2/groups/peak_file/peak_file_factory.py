@@ -17,4 +17,5 @@ class PeakFileFactory:
                 return MgfFile(str(path))
             case _:
                 raise ValueError(
-                    f"Unsupported file type: {file_extension}. Supported types: {', '.join(self.valid_extensions)}")
+                    f"Unsupported file type: {file_extension}. Supported types: {', '.join(self.valid_extensions)}"
+                )

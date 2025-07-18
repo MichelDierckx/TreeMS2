@@ -38,10 +38,7 @@ class SpectrumBinner:
 
 @nb.njit(cache=True)
 def _to_vector(
-        mzs: List[np.ndarray],
-        intensities: List[np.ndarray],
-        min_mz: float,
-        bin_size: float
+    mzs: List[np.ndarray], intensities: List[np.ndarray], min_mz: float, bin_size: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Convert spectra to sparse binned vectors for input into a vectorizer.
@@ -58,8 +55,10 @@ def _to_vector(
     peak_idx = 0
     for spec_idx, (mz, intensity) in enumerate(zip(mzs, intensities)):
         n_peaks_spectrum = len(mz)
-        data[peak_idx:peak_idx + n_peaks_spectrum] = intensity
-        indices[peak_idx:peak_idx + n_peaks_spectrum] = np.floor((mz - min_mz) / bin_size).astype(np.int32)
+        data[peak_idx : peak_idx + n_peaks_spectrum] = intensity
+        indices[peak_idx : peak_idx + n_peaks_spectrum] = np.floor(
+            (mz - min_mz) / bin_size
+        ).astype(np.int32)
         indptr[spec_idx + 1] = indptr[spec_idx] + n_peaks_spectrum
         peak_idx += n_peaks_spectrum
 
@@ -67,9 +66,7 @@ def _to_vector(
 
 
 @nb.njit("Tuple((u4, f4, f4))(f4, f4, f4)", cache=True)
-def _get_dim(
-        min_mz: float, max_mz: float, bin_size: float
-) -> Tuple[int, float, float]:
+def _get_dim(min_mz: float, max_mz: float, bin_size: float) -> Tuple[int, float, float]:
     """
     Compute the number of bins over the given mass range for the given bin
     size.

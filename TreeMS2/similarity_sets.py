@@ -15,10 +15,13 @@ logger = get_logger(__name__)
 class SimilaritySets:
     def __init__(self, groups: Groups):
         self.groups = groups
-        self.similarity_sets: npt.NDArray[np.uint64] = np.zeros((self.groups.get_size(), self.groups.get_size()),
-                                                                dtype=np.uint64)
+        self.similarity_sets: npt.NDArray[np.uint64] = np.zeros(
+            (self.groups.get_size(), self.groups.get_size()), dtype=np.uint64
+        )
 
-    def update_similarity_sets(self, similarity_matrix: SimilarityMatrix, group_ids=npt.NDArray[np.uint16]):
+    def update_similarity_sets(
+        self, similarity_matrix: SimilarityMatrix, group_ids=npt.NDArray[np.uint16]
+    ):
         rows, cols = similarity_matrix.matrix.nonzero()
 
         row_group_ids = group_ids[rows]
@@ -27,7 +30,9 @@ class SimilaritySets:
         pairs = np.vstack((row_group_ids, col_group_ids)).T
         unique_pairs, counts = np.unique(pairs, axis=0, return_counts=True)
 
-        self.similarity_sets[unique_pairs[:, 0], unique_pairs[:, 1]] += counts.astype(np.uint64)
+        self.similarity_sets[unique_pairs[:, 0], unique_pairs[:, 1]] += counts.astype(
+            np.uint64
+        )
 
     def write(self, path: str):
         s = self.similarity_sets
@@ -36,7 +41,7 @@ class SimilaritySets:
         df = pd.DataFrame(s, index=group_names, columns=group_names)
 
         # write S to a file in human-readable format
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             df_string = df.to_string()
             f.write(df_string)
         # return s to calculate global distance matrix

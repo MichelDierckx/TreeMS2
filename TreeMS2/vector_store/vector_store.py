@@ -34,14 +34,16 @@ class VectorStore:
         if not os.path.exists(self.dataset_path):
             os.makedirs(self.dataset_path)
 
-        self.schema: pa.Schema = pa.schema([
-            pa.field("spectrum_id", pa.uint16()),
-            pa.field("file_id", pa.uint16()),
-            pa.field("group_id", pa.uint16()),
-            pa.field("precursor_mz", pa.float32()),
-            pa.field("precursor_charge", pa.int8()),
-            pa.field("vector", pa.list_(pa.float32(), vector_dim)),
-        ])
+        self.schema: pa.Schema = pa.schema(
+            [
+                pa.field("spectrum_id", pa.uint16()),
+                pa.field("file_id", pa.uint16()),
+                pa.field("group_id", pa.uint16()),
+                pa.field("precursor_mz", pa.float32()),
+                pa.field("precursor_charge", pa.int8()),
+                pa.field("vector", pa.list_(pa.float32(), vector_dim)),
+            ]
+        )
 
     def _get_dataset(self) -> Optional[LanceDataset]:
         try:
@@ -58,15 +60,26 @@ class VectorStore:
             time.sleep(0.1)
             ds.cleanup_old_versions(older_than=timedelta(microseconds=1))
         except ValueError as e:
-            logger.warning(f"Could not cleanup Lance dataset at '{self.dataset_path}': {e}")
+            logger.warning(
+                f"Could not cleanup Lance dataset at '{self.dataset_path}': {e}"
+            )
 
-    def write(self, entries_to_write: List[Dict], use_incremental_compaction: bool,
-              multiprocessing_lock: Optional[multiprocessing.Lock],
-              overwrite: multiprocessing.Value) -> None:
+    def write(
+        self,
+        entries_to_write: List[Dict],
+        use_incremental_compaction: bool,
+        multiprocessing_lock: Optional[multiprocessing.Lock],
+        overwrite: multiprocessing.Value,
+    ) -> None:
         new_rows = pa.Table.from_pylist(entries_to_write, self.schema)
         with multiprocessing_lock:
             if overwrite.value:
-                ds = lance.write_dataset(new_rows, self.dataset_path, mode="overwrite", data_storage_version="stable")
+                ds = lance.write_dataset(
+                    new_rows,
+                    self.dataset_path,
+                    mode="overwrite",
+                    data_storage_version="stable",
+                )
                 overwrite.value = False
             else:
                 ds = lance.write_dataset(new_rows, self.dataset_path, mode="append")
@@ -76,11 +89,13 @@ class VectorStore:
                     VectorStore.compact_and_remove_prev_versions(ds)
 
     @staticmethod
-    def _should_compact(lance_ds, fragment_threshold: int = 512, small_file_threshold: int = 512) -> bool:
+    def _should_compact(
+        lance_ds, fragment_threshold: int = 512, small_file_threshold: int = 512
+    ) -> bool:
         dataset_stats = lance_ds.stats.dataset_stats()
         return (
-                dataset_stats["num_fragments"] > fragment_threshold or
-                dataset_stats["num_small_files"] > small_file_threshold
+            dataset_stats["num_fragments"] > fragment_threshold
+            or dataset_stats["num_small_files"] > small_file_threshold
         )
 
     @staticmethod
@@ -114,7 +129,9 @@ class VectorStore:
 
         return np.vstack(results)
 
-    def to_vector_batches(self, batch_size: int) -> Generator[Tuple[ndarray, ndarray, int], None, None]:
+    def to_vector_batches(
+        self, batch_size: int
+    ) -> Generator[Tuple[ndarray, ndarray, int], None, None]:
         ds = self._get_dataset()
         if ds is None:
             return
@@ -173,9 +190,15 @@ class VectorStore:
     @classmethod
     def _from_dict(cls, data: Dict[str, Any]) -> Optional["VectorStore"]:
         try:
-            vector_store = cls(name=data["name"], directory=data["directory"], vector_dim=data["vector_dim"])
+            vector_store = cls(
+                name=data["name"],
+                directory=data["directory"],
+                vector_dim=data["vector_dim"],
+            )
             vector_store.vector_count = data["vector_count"]
-            group_counts = {int(k): v for k, v in data["group_counts"].items()}  # convert str keys back to integers
+            group_counts = {
+                int(k): v for k, v in data["group_counts"].items()
+            }  # convert str keys back to integers
             vector_store.group_counts = defaultdict(int, group_counts)
             return vector_store
         except (KeyError, TypeError, AttributeError):

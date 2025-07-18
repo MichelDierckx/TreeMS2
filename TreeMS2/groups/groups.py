@@ -55,7 +55,9 @@ class Groups:
         path = Path(file_path)
         # Check if the file exists
         if not path.exists() or not path.is_file():
-            raise FileNotFoundError(f"The file at {path} does not exist or is not a valid file.")
+            raise FileNotFoundError(
+                f"The file at {path} does not exist or is not a valid file."
+            )
         valid_extensions = [".csv", ".tsv"]
         file_extension = path.suffix.lower()
         match file_extension:
@@ -63,7 +65,8 @@ class Groups:
                 groups = cls._read_groups_from_file(path)
             case _:
                 raise ValueError(
-                    f"Unsupported file type: {file_extension}. Supported types: {', '.join(valid_extensions)}")
+                    f"Unsupported file type: {file_extension}. Supported types: {', '.join(valid_extensions)}"
+                )
         return groups
 
     @staticmethod
@@ -81,9 +84,9 @@ class Groups:
         file_name = path.name
         groups.filename = file_name
 
-        with path.open(newline='', mode='r') as f:
+        with path.open(newline="", mode="r") as f:
             # Determine the delimiter based on file extension
-            delimiter = ',' if path.suffix.lower() == '.csv' else '\t'
+            delimiter = "," if path.suffix.lower() == ".csv" else "\t"
 
             reader = csv.DictReader(f, delimiter=delimiter)
 
@@ -94,10 +97,14 @@ class Groups:
             data_rows_found = False  # Track if we find any valid data rows
 
             # Process each row and create Group objects
-            for row_number, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+            for row_number, row in enumerate(
+                reader, start=2
+            ):  # start=2 because row 1 is header
                 # Ensure both 'file' and 'group' are present and not empty
                 if not row.get("file") or not row.get("group"):
-                    raise ValueError(f"Row {row_number}: Each row must contain both a valid 'file' and 'group' entry.")
+                    raise ValueError(
+                        f"Row {row_number}: Each row must contain both a valid 'file' and 'group' entry."
+                    )
 
                 file_value = row["file"]
                 group_value = row["group"]
@@ -107,7 +114,8 @@ class Groups:
                 # Check if the file path exists (the file should exist on the filesystem)
                 if not absolute_file_path.is_file():
                     raise FileNotFoundError(
-                        f"Row {row_number}: The file specified in the 'file' column, {absolute_file_path}, does not exist.")
+                        f"Row {row_number}: The file specified in the 'file' column, {absolute_file_path}, does not exist."
+                    )
 
                 peak_file = file_factory.create(absolute_file_path)
                 group = Group(group_value)
