@@ -22,7 +22,7 @@ from TreeMS2.spectrum.spectrum_processing.processors.spectrum_validator import (
     SpectrumValidator,
 )
 from TreeMS2.spectrum.spectrum_processing.spectrum_processor import SpectrumProcessor
-from ...logger_config import get_logger
+from TreeMS2.config.logger_config import get_logger
 
 logger = get_logger(__name__)
 

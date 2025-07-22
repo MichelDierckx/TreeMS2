@@ -2,9 +2,9 @@ import numpy as np
 import numpy.typing as npt
 from scipy.sparse import csr_matrix
 
-from TreeMS2.logger_config import get_logger
+from TreeMS2.config.logger_config import get_logger
 from TreeMS2.similarity_matrix.filters.mask_filter import MaskFilter
-from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
+from TreeMS2.search.vector_store_similarity_counts import SimilarityMatrix
 from TreeMS2.similarity_matrix.spectra_matrix import SpectraMatrix
 
 logger = get_logger(__name__)

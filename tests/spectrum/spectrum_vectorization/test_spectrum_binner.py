@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.spectrum.spectrum_vectorization.spectrum_binner import SpectrumBinner
+from TreeMS2.ingestion.vectorization.spectra_binner import SpectraBinner
 
 
 class TestSpectrumBinner(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestSpectrumBinner(unittest.TestCase):
         self.max_mz = 10
         self.min_mz = 3.5
         self.bin_size = 1.5
-        self.binner = SpectrumBinner(self.min_mz, self.max_mz, self.bin_size)
+        self.binner = SpectraBinner(self.min_mz, self.max_mz, self.bin_size)
 
         # Define some test spectra
         self.spectra = [
@@ -147,12 +147,12 @@ class TestSpectrumBinner(unittest.TestCase):
     def test_invalid_bin_size(self):
         # Test creating a SpectrumBinner with an invalid bin size
         with self.assertRaises(ValueError):
-            SpectrumBinner(self.min_mz, self.max_mz, bin_size=0.0)
+            SpectraBinner(self.min_mz, self.max_mz, bin_size=0.0)
 
     def test_invalid_mz_range(self):
         # Test creating a SpectrumBinner with invalid mz range
         with self.assertRaises(ValueError):
-            SpectrumBinner(self.max_mz, self.min_mz, bin_size=self.bin_size)
+            SpectraBinner(self.max_mz, self.min_mz, bin_size=self.bin_size)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ...group_spectrum import GroupSpectrum
+from TreeMS2.ingestion.spectra_dataset.treems2_spectrum import TreeMS2Spectrum
 
 
 class MZRangeFilterProcessor:
@@ -8,5 +8,5 @@ class MZRangeFilterProcessor:
         self.mz_min = mz_min
         self.mz_max = mz_max
 
-    def process(self, spectrum: GroupSpectrum) -> GroupSpectrum:
+    def process(self, spectrum: TreeMS2Spectrum) -> TreeMS2Spectrum:
         return spectrum.set_mz_range(self.mz_min, self.mz_max)

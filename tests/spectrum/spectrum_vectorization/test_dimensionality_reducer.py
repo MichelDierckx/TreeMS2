@@ -4,7 +4,7 @@ import numpy as np
 import scipy.sparse as ss
 from sklearn.metrics.pairwise import cosine_similarity
 
-from TreeMS2.spectrum.spectrum_vectorization.dimensionality_reducer import (
+from TreeMS2.ingestion.vectorization.dimensionality_reducer import (
     DimensionalityReducer,
 )
 

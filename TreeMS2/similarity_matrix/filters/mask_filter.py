@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
+from TreeMS2.search.vector_store_similarity_counts import SimilarityMatrix
 from TreeMS2.similarity_matrix.spectra_matrix import SpectraMatrix
 
 

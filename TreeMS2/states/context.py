@@ -1,13 +1,13 @@
 import os
 from typing import Optional, Dict, List
 
-from TreeMS2.config.config import Config
-from TreeMS2.groups.groups import Groups
+from TreeMS2.config.treems2_config import Config
+from TreeMS2.ingestion.spectra_dataset.spectra_dataset import SpectraDataset
 from TreeMS2.histogram import HitHistogram, SimilarityHistogram
-from TreeMS2.similarity_sets import SimilaritySets
+from TreeMS2.search.similarity_sets import SimilaritySets
 from TreeMS2.states.state import State
 from TreeMS2.states.state_type import StateType
-from TreeMS2.vector_store.vector_store_manager import VectorStoreManager
+from TreeMS2.ingestion.storage.vector_stores import VectorStores
 
 RESULTS_DIR_NAME = "results"
 LANCE_DIR_NAME = "lance"
@@ -26,8 +26,8 @@ class Context:
 
         # shared data across states
         self.config = config
-        self.groups: Optional[Groups] = None
-        self.vector_store_manager: Optional[VectorStoreManager] = None
+        self.groups: Optional[SpectraDataset] = None
+        self.vector_store_manager: Optional[VectorStores] = None
         self.similarity_sets: Dict[str, SimilaritySets] = {}
         self.hit_histogram_global: Optional[HitHistogram] = None
         self.similarity_histogram_global: Optional[SimilarityHistogram] = None
@@ -43,7 +43,7 @@ class Context:
 
     def next(self):
         if self.states:
-            self.states[-1].run()
+            self.states[-1].process()
         return
 
     def pop_state(self) -> Optional[State]:

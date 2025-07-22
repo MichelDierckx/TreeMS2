@@ -1,8 +1,8 @@
 from typing import List
 
-from TreeMS2.logger_config import get_logger
+from TreeMS2.config.logger_config import get_logger
 from TreeMS2.similarity_matrix.filters.mask_filter import MaskFilter
-from TreeMS2.similarity_matrix.similarity_matrix import SimilarityMatrix
+from TreeMS2.search.vector_store_similarity_counts import SimilarityMatrix
 
 logger = get_logger(__name__)
 

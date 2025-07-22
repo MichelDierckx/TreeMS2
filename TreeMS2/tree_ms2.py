@@ -1,10 +1,10 @@
 import time
 
-from TreeMS2.config.config import Config
-from TreeMS2.logger_config import get_logger
+from TreeMS2.config.treems2_config import Config
+from TreeMS2.config.logger_config import get_logger
 from TreeMS2.states.context import Context
-from TreeMS2.states.process_spectra_state import ProcessSpectraState
-from TreeMS2.utils.utils import format_execution_time
+from TreeMS2.ingestion.ingestion_state import IngestionState
+from TreeMS2.config.utils import format_execution_time
 
 logger = get_logger(__name__)
 
@@ -17,7 +17,7 @@ class TreeMS2:
 
     def run(self):
         start_time = time.time()  # record start time
-        self.context.push_state(state=ProcessSpectraState(context=self.context))
+        self.context.push_state(state=IngestionState(context=self.context))
         loop_nr = 0
         while self.context.states:
             if loop_nr > LOOP_LIMIT:

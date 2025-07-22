@@ -2,8 +2,8 @@ from typing import List
 
 import numba as nb
 
-from TreeMS2.logger_config import get_logger
-from TreeMS2.similarity_sets import SimilaritySets
+from TreeMS2.config.logger_config import get_logger
+from TreeMS2.search.similarity_sets import SimilaritySets
 
 logger = get_logger(__name__)
 
@@ -18,20 +18,20 @@ class DistanceMatrix:
     ):
         lines: List[str] = [
             "#mega",
-            f"TITLE: {similarity_sets.groups.filename} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
+            f"TITLE: {similarity_sets.groups.spectra_sets_mapping_path} (similarity threshold={similarity_threshold}, precursor m/z window={precursor_mz_window}))",
             "",
         ]
-        for group in similarity_sets.groups.get_groups():
-            group_name = group.get_group_name().replace(" ", "_")
+        for group in similarity_sets.groups.get_spectra_sets():
+            group_name = group.get_label().replace(" ", "_")
             lines.append(f"#{group_name}")
         lines.extend(["", ""])
 
         # construct Lower-left triangular matrix
-        for j in range(1, similarity_sets.groups.get_size()):
+        for j in range(1, similarity_sets.groups.count_spectra_sets()):
             distances = []
-            b = similarity_sets.groups.get_group(j).total_valid_spectra()
+            b = similarity_sets.groups.get_spectra_set(j).total_valid_spectra()
             for i in range(j):
-                a = similarity_sets.groups.get_group(i).total_valid_spectra()
+                a = similarity_sets.groups.get_spectra_set(i).total_valid_spectra()
                 s_a = similarity_sets.similarity_sets.item((i, j))
                 s_b = similarity_sets.similarity_sets.item((j, i))
                 global_similarity = _global_similarity(a, b, s_a, s_b)

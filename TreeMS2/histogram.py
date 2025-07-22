@@ -3,7 +3,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import numpy as np
 
-from TreeMS2.logger_config import get_logger
+from TreeMS2.config.logger_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -100,52 +100,5 @@ class SimilarityHistogram:
         plt.title("Similarity Score Distribution")
         plt.xticks(rotation=45)
         plt.xlim(self.bin_edges[0], self.bin_edges[-1])
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-
-
-class PrecursorChargeHistogram:
-    def __init__(self):
-        """
-        Initializes the ChargeHistogram.
-        """
-        self.charge_counts = Counter()
-
-    def update(self, charge_counts: Counter):
-        """
-        Updates the histogram given charge counts.
-        :param charge_counts: A Counter dictionary where keys are charge categories and values are their counts.
-        :return:
-        """
-        self.charge_counts.update(charge_counts)
-
-    def plot(self, path: str):
-        """
-        Plots and saves the charge histogram.
-
-        :param path: Path where the plot image will be saved.
-        """
-        if not self.charge_counts:
-            return
-
-        # Extract charge categories and counts
-        charges, counts = zip(
-            *sorted(self.charge_counts.items())
-        )  # Sort for better visualization
-        charges = [
-            str(c) for c in charges
-        ]  # convert into categories to prevent x-axis scaling
-        # Create plot
-        plt.figure(figsize=(10, 5))
-        plt.bar(charges, counts, edgecolor="black")
-
-        # Labels & styling
-        plt.xlabel("Precursor Charge")
-        plt.ylabel("Number of Spectra")
-        plt.title("Number of Spectra by Precursor Charge")
-        plt.xticks(charges)  # Ensure all charge categories are labeled
-        plt.grid(axis="y", linestyle="--")
-
-        # Save plot
         plt.savefig(path, bbox_inches="tight")
         plt.close()
