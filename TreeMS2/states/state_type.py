@@ -3,6 +3,7 @@ from enum import Enum
 
 class StateType(Enum):
     INGESTION_STATE = "ingestion_state"
-    CREATE_INDEX = "create_index"
-    QUERY_INDEX = "query_index"
-    COMPUTE_DISTANCES = "compute_distances"
+    INDEXING_STATE = "indexing_state"
+    SEARCH_STATE = "search_state"
+    SEARCH_RESULT_AGGREGATION_STATE = "search_result_aggregation_state"
+    DISTANCE_MATRIX_COMPUTATION_STATE = "distance_matrix_computation_state"

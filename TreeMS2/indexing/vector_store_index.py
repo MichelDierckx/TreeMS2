@@ -24,12 +24,13 @@ class IndexConstructionError(Exception):
 class VectorStoreIndex:
     def __init__(self, vector_store: VectorStore):
         """
-        Index for fast ms/ms spectrum similarity search.
+        Index for fast ms/ms ingestion similarity search.
         """
         self.vector_store = vector_store
+        self.vector_count = vector_store.count_vectors()
 
         factory_string, nlist = self._create_factory_string(
-            vector_count=vector_store.vector_count, vector_dim=vector_store.vector_dim
+            vector_count=self.vector_count, vector_dim=vector_store.vector_dim
         )
         self.index = faiss.index_factory(
             vector_store.vector_dim, factory_string, faiss.METRIC_INNER_PRODUCT
@@ -141,7 +142,7 @@ class VectorStoreIndex:
         return factory_string, nlist
 
     def _load_training_data(self) -> Tuple[int, np.ndarray]:
-        nr_of_training_points = min(39 * self.nlist, self.vector_store.vector_count)
+        nr_of_training_points = min(39 * self.nlist, self.vector_count)
 
         logger.info(f"Loading {nr_of_training_points} training points from disk...")
         load_training_data_time_start = time.time()
@@ -200,7 +201,7 @@ class VectorStoreIndex:
             return
         if self.nlist <= 0:
             return
-        if self.vector_store.vector_count < 10**7:
+        if self.vector_count < 10**7:
             self._train_cpu()
         else:
             if use_gpu:
@@ -230,7 +231,7 @@ class VectorStoreIndex:
         with tqdm(
             desc="Vectors added to index",
             unit=f" vector",
-            total=self.vector_store.vector_count,
+            total=self.vector_count,
         ) as pbar:
             for vectors, ids, nr_vectors in self.vector_store.to_vector_batches(
                 batch_size=batch_size
@@ -289,7 +290,7 @@ class VectorStoreIndex:
         self.index.nprobe = nprobe
         query_time_start = time.time()
         with tqdm(
-            desc="Vectors queried", unit=" vector", total=self.vector_store.vector_count
+            desc="Vectors queried", unit=" vector", total=self.vector_count
         ) as pbar:
             for (
                 query_vectors,

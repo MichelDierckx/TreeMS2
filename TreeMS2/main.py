@@ -4,9 +4,9 @@ from typing import Union, List
 import faiss
 from dotenv import load_dotenv
 
-from TreeMS2.config.treems2_config import Config
 from TreeMS2.config.env_variables import log_environment_variables
 from TreeMS2.config.logger_config import setup_logging, get_logger
+from TreeMS2.config.treems2_config import Config
 from TreeMS2.tree_ms2 import TreeMS2
 
 

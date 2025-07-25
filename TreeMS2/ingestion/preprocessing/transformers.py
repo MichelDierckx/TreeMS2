@@ -1,11 +1,11 @@
 from enum import Enum
-import numba as nb
 from typing import Optional, Literal
 
+import numba as nb
 import numpy as np
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.ingestion.preprocessing.pipeline_step import PipelineStep
+from TreeMS2.ingestion.preprocessing.preprocessing_step import PreprocessingStep
 
 
 class ScalingMethod(Enum):
@@ -15,7 +15,7 @@ class ScalingMethod(Enum):
     RANK = "rank"
 
 
-class IntensityScaler(PipelineStep):
+class IntensityScaler(PreprocessingStep):
     def __init__(
         self,
         scaling: Literal[ScalingMethod.ROOT, ScalingMethod.LOG, ScalingMethod.RANK],
@@ -29,11 +29,11 @@ class IntensityScaler(PipelineStep):
         return spectrum.scale_intensity(self.scaling.value, max_rank=self.max_rank)
 
 
-class Normalizer(PipelineStep):
+class Normalizer(PreprocessingStep):
     def change(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         spectrum._intensity = _norm_intensity(spectrum.intensity)
         new_spectrum = sus.MsmsSpectrum(
-            # A unique identifier or title for the spectrum (often representing the filename or a descriptor of the experiment).
+            # A unique identifier or title for the ingestion (often representing the filename or a descriptor of the experiment).
             identifier=spectrum.identifier,
             # The mass-to-charge ratio (m/z) of the precursor ion (the peptide ion before fragmentation).
             precursor_mz=spectrum.precursor_mz,
@@ -47,6 +47,7 @@ class Normalizer(PipelineStep):
             retention_time=spectrum.retention_time,
         )
         return new_spectrum
+
 
 @nb.njit(cache=True)
 def _norm_intensity(spectrum_intensity: np.ndarray) -> np.ndarray:

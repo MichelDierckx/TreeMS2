@@ -2,7 +2,6 @@ import json
 import multiprocessing
 import os
 import time
-from collections import defaultdict
 from datetime import timedelta
 from typing import List, Dict, Tuple, Optional, Generator, Any
 
@@ -144,12 +143,12 @@ class VectorStore:
             return pd.DataFrame(columns=column)
         return ds.to_table(columns=[column]).to_pandas()
 
-    def _count_vectors(self) -> int:
+    def count_vectors(self) -> int:
         ds = self._get_dataset()
         return ds.count_rows() if ds else 0
 
     def is_empty(self) -> bool:
-        return self._count_vectors() == 0
+        return self.count_vectors() == 0
 
     def clear(self) -> None:
         ds = self._get_dataset()

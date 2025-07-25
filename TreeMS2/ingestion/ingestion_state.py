@@ -2,33 +2,27 @@ import contextlib
 import multiprocessing
 import os
 import time
-from collections import defaultdict, Counter
-from typing import Tuple, List, Optional, Dict, Union
+from typing import Tuple
 
 import joblib
 from joblib.externals.loky import get_reusable_executor
 from tqdm import tqdm
 
 from TreeMS2.config.env_variables import TREEMS2_NUM_CPUS
+from TreeMS2.config.logger_config import format_execution_time
+from TreeMS2.config.logger_config import get_logger, log_section_title
+from TreeMS2.indexing.indexing_state import IndexingState
 from TreeMS2.ingestion.batch_writer import BatchWriter
 from TreeMS2.ingestion.file_processor import FileProcessor
-from TreeMS2.ingestion.preprocessing.pipeline import Pipeline
-from TreeMS2.ingestion.spectra_dataset.peak_file.parsing_stats import ParsingStats
-from TreeMS2.ingestion.spectra_dataset.peak_file.peak_file import PeakFile
-from TreeMS2.ingestion.spectra_dataset.peak_file.quality_stats import QualityStats
-from TreeMS2.ingestion.spectra_dataset.peak_file.readers.reader_factory import ReaderFactory
-from TreeMS2.ingestion.spectra_dataset.peak_file.spectrum_parser import SpectrumParser
-from TreeMS2.ingestion.spectra_dataset.spectra_dataset import SpectraDataset
 from TreeMS2.ingestion.ingestion_plots import PrecursorChargeHistogram
-from TreeMS2.config.logger_config import get_logger, log_section_title
-from TreeMS2.ingestion.spectra_dataset.treems2_spectrum import TreeMS2Spectrum
-from TreeMS2.spectrum.spectrum_processing.pipeline import (
-    ProcessingPipelineFactory,
-    SpectrumProcessingPipeline,
+from TreeMS2.ingestion.preprocessing.spectrum_preprocessor import SpectrumPreprocessor
+from TreeMS2.ingestion.preprocessing.transformers import ScalingMethod
+from TreeMS2.ingestion.spectra_sets.peak_file.readers.reader_factory import (
+    ReaderFactory,
 )
-from TreeMS2.spectrum.spectrum_processing.processors.intensity_scaling_processor import (
-    ScalingMethod,
-)
+from TreeMS2.ingestion.spectra_sets.spectra_sets import SpectraSets
+from TreeMS2.ingestion.storage.vector_store import VectorStore
+from TreeMS2.ingestion.storage.vector_stores import VectorStores
 from TreeMS2.ingestion.vectorization.dimensionality_reducer import (
     DimensionalityReducer,
 )
@@ -37,12 +31,8 @@ from TreeMS2.ingestion.vectorization.spectra_vector_transformer import (
     SpectraVectorTransformer,
 )
 from TreeMS2.states.context import Context
-from TreeMS2.indexing.vector_store_indexing_state import VectorStoreIndexingState
 from TreeMS2.states.state import State
 from TreeMS2.states.state_type import StateType
-from TreeMS2.config.logger_config import format_execution_time
-from TreeMS2.ingestion.storage.vector_store import VectorStore
-from TreeMS2.ingestion.storage.vector_stores import VectorStores
 
 logger = get_logger(__name__)
 
@@ -69,6 +59,7 @@ def tqdm_joblib(tqdm_object):
         joblib.parallel.BatchCompletionCallBack = old_batch_callback
         tqdm_object.close()
 
+
 class IngestionState(State):
     STATE_TYPE = StateType.INGESTION_STATE
 
@@ -81,7 +72,7 @@ class IngestionState(State):
         self.buffer_size: int = context.config.batch_size
         self.incremental_compaction: bool = context.config.incremental_compaction
 
-        # spectrum preprocessing
+        # ingestion preprocessing
         self.min_peaks: int = context.config.min_peaks
         self.min_mz_range: float = context.config.min_mz_range
         self.remove_precursor_tol: float = context.config.remove_precursor_tol
@@ -99,7 +90,7 @@ class IngestionState(State):
         log_section_title(logger=logger, title="[ Processing Peak Files ]")
         # Try loading existing data if overwrite is not enabled
         if not self.context.config.overwrite:
-            self.context.groups = SpectraDataset.load(
+            self.context.groups = SpectraSets.load(
                 path=os.path.join(self.context.results_dir, GROUPS_SUMMARY_FILE)
             )
             self.context.vector_store_manager = VectorStores.load(
@@ -132,11 +123,11 @@ class IngestionState(State):
         self.context.pop_state()
         for vector_store in self.context.vector_store_manager.vector_stores.values():
             if not vector_store.is_empty():
-                self.context.push_state(VectorStoreIndexingState(self.context, vector_store))
+                self.context.push_state(IndexingState(self.context, vector_store))
 
-    def _generate(self) -> Tuple[SpectraDataset, VectorStores]:
+    def _generate(self) -> Tuple[SpectraSets, VectorStores]:
         # parse sample to group file
-        groups = SpectraDataset.read(self.sample_to_group_file)
+        groups = SpectraSets.read(self.sample_to_group_file)
         logger.info(
             f"Loaded group mapping from '{self.sample_to_group_file}': {groups.count_spectra_sets()} groups across {groups.count_peak_files()} peak files."
         )
@@ -155,8 +146,8 @@ class IngestionState(State):
         vector_store_manager.clear()
         # create vectorizer instance (converts high dimensional spectra to low dimensional spectra)
         vectorizer = self._setup_vectorizer()
-        # create spectrum preprocessor instance (preprocesses the spectra)
-        spectrum_processor = ProcessingPipelineFactory.create_pipeline(
+        # create ingestion preprocessor instance (preprocesses the spectra)
+        spectrum_processor = SpectrumPreprocessor(
             min_peaks=self.min_peaks,
             min_mz_range=self.min_mz_range,
             remove_precursor_tol=self.remove_precursor_tol,
@@ -167,9 +158,9 @@ class IngestionState(State):
             max_mz=vectorizer.binner.max_mz,
         )
         # read, preprocess, vectorize and store spectra
-        self._read_and_process_spectra(
+        self._process_peak_files(
             groups=groups,
-            processing_pipeline=spectrum_processor,
+            spectrum_preprocessor=spectrum_processor,
             vectorizer=vectorizer,
             vector_store_manager=vector_store_manager,
         )
@@ -209,10 +200,10 @@ class IngestionState(State):
         spectrum_vectorizer = SpectraVectorTransformer(binner=binner, reducer=reducer)
         return spectrum_vectorizer
 
-    def _read_and_process_spectra(
+    def _process_peak_files(
         self,
-        groups: SpectraDataset,
-        processing_pipeline: Pipeline,
+        groups: SpectraSets,
+        spectrum_preprocessor: SpectrumPreprocessor,
         vectorizer: SpectraVectorTransformer,
         vector_store_manager: VectorStores,
     ):
@@ -221,15 +212,23 @@ class IngestionState(State):
         """
 
         all_files = [f for g in groups.get_spectra_sets() for f in g.get_peak_files()]
-        max_workers = min(len(all_files), int(os.getenv(TREEMS2_NUM_CPUS, multiprocessing.cpu_count())))
+        max_workers = min(
+            len(all_files),
+            int(os.getenv(TREEMS2_NUM_CPUS, multiprocessing.cpu_count())),
+        )
 
         logger.info(f"Processing spectra from {len(all_files)} peak files...")
 
-
         def process_file(file):
             reader = ReaderFactory().get_reader(file.file_path)
-            batch_writer = BatchWriter(self.buffer_size, vectorizer, vector_store_manager)
-            processor = FileProcessor(reader=reader, pipeline=processing_pipeline, batch_writer=batch_writer)
+            batch_writer = BatchWriter(
+                self.buffer_size, vectorizer, vector_store_manager
+            )
+            processor = FileProcessor(
+                reader=reader,
+                spectrum_preprocessor=spectrum_preprocessor,
+                batch_writer=batch_writer,
+            )
             return processor.process(file)
 
         with tqdm_joblib(
@@ -264,10 +263,11 @@ class IngestionState(State):
             f"\t- {quality_stat_counts.high_quality} spectra were successfully processed, vectorized and written to the lance dataset(s)."
         )
 
-        PrecursorChargeHistogram.plot(charge_counts=parsing_stat_counts.precursor_charge_counts,
+        PrecursorChargeHistogram.plot(
+            charge_counts=parsing_stat_counts.precursor_charge_counts,
             path=os.path.join(
                 self.context.results_dir, "precursor_charge_distribution.png"
-            )
+            ),
         )
         logger.info(
             f"Saved histogram displaying distribution of spectra by precursor charge to '{os.path.join(self.context.results_dir, "precursor_charge_distribution.png")}'."

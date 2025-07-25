@@ -1,15 +1,15 @@
 from typing import Optional
-from collections import Counter
 
 from TreeMS2.ingestion.batch_writer import BatchWriter
-from TreeMS2.ingestion.spectra_dataset.peak_file.parsing_stats import ParsingStats
-from TreeMS2.ingestion.spectra_dataset.peak_file.peak_file import PeakFile
-from TreeMS2.ingestion.preprocessing.pipeline import Pipeline
-from TreeMS2.ingestion.spectra_dataset.peak_file.quality_stats import QualityStats
-from TreeMS2.ingestion.spectra_dataset.peak_file.readers.peak_file_reader import PeakFileReader
-from TreeMS2.ingestion.spectra_dataset.peak_file.spectrum_parser import SpectrumParser
-from TreeMS2.ingestion.spectra_dataset.treems2_spectrum import TreeMS2Spectrum
-from TreeMS2.ingestion.vectorization.spectra_vector_transformer import SpectraVectorTransformer
+from TreeMS2.ingestion.parsing.parsing_stats import ParsingStats
+from TreeMS2.ingestion.parsing.spectrum_parser import SpectrumParser
+from TreeMS2.ingestion.preprocessing.quality_stats import QualityStats
+from TreeMS2.ingestion.preprocessing.spectrum_preprocessor import SpectrumPreprocessor
+from TreeMS2.ingestion.spectra_sets.peak_file.peak_file import PeakFile
+from TreeMS2.ingestion.spectra_sets.peak_file.readers.peak_file_reader import (
+    PeakFileReader,
+)
+from TreeMS2.ingestion.spectra_sets.treems2_spectrum import TreeMS2Spectrum
 
 
 def map_charge_to_vector_store(charge: Optional[int]) -> str:
@@ -26,17 +26,25 @@ def map_charge_to_vector_store(charge: Optional[int]) -> str:
 
 
 class ProcessingResult:
-    def __init__(self, file_id: int, parsing_stats: ParsingStats, quality_stats: QualityStats):
+    def __init__(
+        self, file_id: int, parsing_stats: ParsingStats, quality_stats: QualityStats
+    ):
         self.file_id = file_id
         self.parsing_stats = parsing_stats
         self.quality_stats = quality_stats
 
 
 class FileProcessor:
-    def __init__(self, reader: PeakFileReader, pipeline: Pipeline, batch_writer: BatchWriter):
+    def __init__(
+        self,
+        reader: PeakFileReader,
+        spectrum_preprocessor: SpectrumPreprocessor,
+        batch_writer: BatchWriter,
+    ):
 
         self.reader = reader
-        self.pipeline = pipeline
+        self.spectrum_parser = SpectrumParser()
+        self.spectrum_preprocessor = spectrum_preprocessor
         self.batch_writer = batch_writer
 
         self.parsing_stats = ParsingStats()
@@ -50,28 +58,27 @@ class FileProcessor:
                     spectrum_id=spec_id,
                     file_id=peak_file.get_id(),
                     group_id=peak_file.get_spectra_set_id(),
-                    spectrum=processed_spectrum
+                    spectrum=processed_spectrum,
                 )
-                target_store = map_charge_to_vector_store(processed_spectrum.precursor_charge)
+                target_store = map_charge_to_vector_store(
+                    processed_spectrum.precursor_charge
+                )
                 self.batch_writer.add(target_store, treems2_spectrum)
 
         self.batch_writer.flush()
         return ProcessingResult(
             file_id=peak_file.get_id(),
             parsing_stats=self.parsing_stats,
-            quality_stats=self.quality_stats
+            quality_stats=self.quality_stats,
         )
 
     def _process_spectrum(self, spec_id, raw):
-        parsed = SpectrumParser.parse(raw)
+        parsed = SpectrumParser.parse(spec_id, raw, self.parsing_stats)
         if parsed is None:
-            self.parsing_stats.add_invalid(spec_id)
             return None
-        self.parsing_stats.add_valid()
-        self.parsing_stats.add_precursor_charge(parsed.precursor_charge, 1)
-        processed = self.pipeline.process(parsed)
+        processed = self.spectrum_preprocessor.process(
+            spec_id, parsed, self.quality_stats
+        )
         if processed is None:
-            self.quality_stats.add_low_quality(spec_id)
             return None
-        self.quality_stats.add_high_quality()
         return processed

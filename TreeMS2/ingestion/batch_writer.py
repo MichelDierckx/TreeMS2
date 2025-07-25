@@ -1,14 +1,19 @@
-import multiprocessing
-from collections import defaultdict, Counter
-from typing import Dict, Union
+from collections import defaultdict
 
-from TreeMS2.ingestion.spectra_dataset.treems2_spectrum import TreeMS2Spectrum
+from TreeMS2.ingestion.spectra_sets.treems2_spectrum import TreeMS2Spectrum
 from TreeMS2.ingestion.storage.vector_stores import VectorStores
-from TreeMS2.ingestion.vectorization.spectra_vector_transformer import SpectraVectorTransformer
+from TreeMS2.ingestion.vectorization.spectra_vector_transformer import (
+    SpectraVectorTransformer,
+)
 
 
 class BatchWriter:
-    def __init__(self, buffer_size: int, vectorizer: SpectraVectorTransformer, vector_store_manager: VectorStores):
+    def __init__(
+        self,
+        buffer_size: int,
+        vectorizer: SpectraVectorTransformer,
+        vector_store_manager: VectorStores,
+    ):
         self.buffer_size = buffer_size
         self.vectorizer = vectorizer
         self.vector_store_manager = vector_store_manager
@@ -34,4 +39,3 @@ class BatchWriter:
         for store_name in list(self.buffers.keys()):
             if self.buffers[store_name]:
                 self._flush_store(store_name)
-

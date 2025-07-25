@@ -1,10 +1,9 @@
 import time
 
+from TreeMS2.config.logger_config import get_logger, format_execution_time
 from TreeMS2.config.treems2_config import Config
-from TreeMS2.config.logger_config import get_logger
-from TreeMS2.states.context import Context
 from TreeMS2.ingestion.ingestion_state import IngestionState
-from TreeMS2.config.utils import format_execution_time
+from TreeMS2.states.context import Context
 
 logger = get_logger(__name__)
 

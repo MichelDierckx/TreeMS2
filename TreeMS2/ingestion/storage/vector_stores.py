@@ -1,7 +1,6 @@
 import json
-import multiprocessing
 import os
-from typing import Optional, Dict, List, Union, Any
+from typing import Optional, Dict, List, Any
 
 from TreeMS2.config.logger_config import get_logger
 from TreeMS2.ingestion.storage.vector_store import VectorStore

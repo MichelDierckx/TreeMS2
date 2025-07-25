@@ -2,11 +2,11 @@ from typing import Optional
 
 import spectrum_utils.spectrum as sus
 
-from TreeMS2.ingestion.preprocessing.pipeline_step import PipelineStep
+from TreeMS2.ingestion.preprocessing.preprocessing_step import PreprocessingStep
 from TreeMS2.ingestion.preprocessing.validators import SpectrumValidator
 
 
-class IntensityFilter(PipelineStep):
+class IntensityFilter(PreprocessingStep):
     def __init__(
         self,
         min_intensity: Optional[float],
@@ -21,7 +21,7 @@ class IntensityFilter(PipelineStep):
         return spectrum.filter_intensity(self.min_intensity, self.max_peaks_used)
 
 
-class MZRangeFilter(PipelineStep):
+class MZRangeFilter(PreprocessingStep):
     def __init__(
         self,
         mz_min: Optional[float],
@@ -36,7 +36,8 @@ class MZRangeFilter(PipelineStep):
         spectrum = spectrum.set_mz_range(self.mz_min, self.mz_max)
         return spectrum
 
-class PrecursorPeakFilter(PipelineStep):
+
+class PrecursorPeakFilter(PreprocessingStep):
     def __init__(self, remove_precursor_tolerance: float, validator: SpectrumValidator):
         super().__init__(validator)
         self.remove_precursor_tolerance = remove_precursor_tolerance
