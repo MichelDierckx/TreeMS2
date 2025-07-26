@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import threading
 import time
 from datetime import timedelta
 from typing import List, Dict, Tuple, Optional, Generator, Any
@@ -27,7 +28,7 @@ class VectorStore:
         self.name: str = name
         self.vector_dim: int = vector_dim
 
-        self._lock = multiprocessing.Lock()  # Lock per store
+        self._lock = threading.Lock()  # Lock per store
 
         if not os.path.exists(self.dataset_path):
             os.makedirs(self.dataset_path)
@@ -48,6 +49,10 @@ class VectorStore:
             return lance.dataset(self.dataset_path)
         except (ValueError, FileNotFoundError):
             return None
+
+    def set_lock(self, lock):
+        """Replace current lock with a given lock (threading or multiprocessing)."""
+        self._lock = lock
 
     def cleanup(self) -> None:
         ds = self._get_dataset()

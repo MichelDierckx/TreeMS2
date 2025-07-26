@@ -106,9 +106,11 @@ class SpectraSets:
         """
         spectra_dataset = SpectraSets()
 
+        path = path.resolve()
+        spectra_dataset.spectra_sets_mapping_path = str(path)
+
         # Get the directory of the CSV/TSV file to resolve relative paths
         file_dir = path.parent
-        spectra_dataset.spectra_sets_mapping_path = file_dir
 
         with path.open(newline="", mode="r") as f:
             # Determine the delimiter based on file extension
@@ -135,7 +137,7 @@ class SpectraSets:
                 file_value = row["file"]
                 group_value = row["group"]
 
-                absolute_file_path = file_dir / file_value
+                absolute_file_path = (file_dir / file_value).resolve()
 
                 # Check if the file path exists (the file should exist on the filesystem)
                 if not absolute_file_path.is_file():
@@ -143,7 +145,7 @@ class SpectraSets:
                         f"Row {row_number}: The file specified in the 'file' column, {absolute_file_path}, does not exist."
                     )
 
-                peak_file = PeakFile(file_path=absolute_file_path)
+                peak_file = PeakFile(file_path=str(absolute_file_path))
                 spectra_set = SpectraSet(group_value)
                 spectra_dataset.add(spectra_set).add(peak_file)
                 data_rows_found = True  # At least one valid data row was found

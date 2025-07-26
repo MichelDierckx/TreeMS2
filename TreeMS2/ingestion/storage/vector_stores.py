@@ -12,6 +12,9 @@ class VectorStores:
     def __init__(self, vector_stores: Dict[str, VectorStore]):
         self.vector_stores = vector_stores
 
+    def get_vector_stores(self) -> List[VectorStore]:
+        return list(self.vector_stores.values())
+
     def write(
         self,
         vector_store_name: str,

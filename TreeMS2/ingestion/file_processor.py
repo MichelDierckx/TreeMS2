@@ -27,8 +27,13 @@ def map_charge_to_vector_store(charge: Optional[int]) -> str:
 
 class ProcessingResult:
     def __init__(
-        self, file_id: int, parsing_stats: ParsingStats, quality_stats: QualityStats
+        self,
+        spectra_set_id: int,
+        file_id: int,
+        parsing_stats: ParsingStats,
+        quality_stats: QualityStats,
     ):
+        self.spectra_set_id: int = spectra_set_id
         self.file_id = file_id
         self.parsing_stats = parsing_stats
         self.quality_stats = quality_stats
@@ -67,6 +72,7 @@ class FileProcessor:
 
         self.batch_writer.flush()
         return ProcessingResult(
+            spectra_set_id=peak_file.get_spectra_set_id(),
             file_id=peak_file.get_id(),
             parsing_stats=self.parsing_stats,
             quality_stats=self.quality_stats,

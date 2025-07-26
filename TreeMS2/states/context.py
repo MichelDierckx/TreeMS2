@@ -43,7 +43,7 @@ class Context:
 
     def next(self):
         if self.states:
-            self.states[-1].process()
+            self.states[-1].run()
         return
 
     def pop_state(self) -> Optional[State]:

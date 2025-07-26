@@ -21,6 +21,7 @@ from TreeMS2.ingestion.spectra_sets.peak_file.readers.reader_factory import (
     ReaderFactory,
 )
 from TreeMS2.ingestion.spectra_sets.spectra_sets import SpectraSets
+from TreeMS2.ingestion.storage.lock_manager import LockManager
 from TreeMS2.ingestion.storage.vector_store import VectorStore
 from TreeMS2.ingestion.storage.vector_stores import VectorStores
 from TreeMS2.ingestion.vectorization.dimensionality_reducer import (
@@ -200,6 +201,15 @@ class IngestionState(State):
         spectrum_vectorizer = SpectraVectorTransformer(binner=binner, reducer=reducer)
         return spectrum_vectorizer
 
+    @staticmethod
+    def _process_peak_file(
+        file, buffer_size, vectorizer, vector_store_manager, spectrum_preprocessor
+    ):
+        reader = ReaderFactory().get_reader(file.file_path)
+        batch_writer = BatchWriter(buffer_size, vectorizer, vector_store_manager)
+        processor = FileProcessor(reader, spectrum_preprocessor, batch_writer)
+        return processor.process(file)
+
     def _process_peak_files(
         self,
         groups: SpectraSets,
@@ -219,38 +229,37 @@ class IngestionState(State):
 
         logger.info(f"Processing spectra from {len(all_files)} peak files...")
 
-        def process_file(file):
-            reader = ReaderFactory().get_reader(file.file_path)
-            batch_writer = BatchWriter(
-                self.buffer_size, vectorizer, vector_store_manager
-            )
-            processor = FileProcessor(
-                reader=reader,
-                spectrum_preprocessor=spectrum_preprocessor,
-                batch_writer=batch_writer,
-            )
-            return processor.process(file)
+        lock_manager = LockManager(vector_store_manager.get_vector_stores())
 
-        with tqdm_joblib(
-            tqdm(
-                desc="Processing Files",
-                total=len(all_files),
-                unit="file",
-                position=0,
-                leave=True,
-            )
-        ):
-            results = joblib.Parallel(n_jobs=max_workers, backend="loky")(
-                joblib.delayed(process_file)(file) for file in all_files
-            )
+        with lock_manager.use_multiprocessing_locks():
 
-        # Explicitly shut down the loky reusable executor to avoid idle lingering processes
-        get_reusable_executor().shutdown(wait=True)
+            with tqdm_joblib(
+                tqdm(
+                    desc="Processing Files",
+                    total=len(all_files),
+                    unit="file",
+                    position=0,
+                    leave=True,
+                )
+            ):
+                results = joblib.Parallel(n_jobs=max_workers, backend="loky")(
+                    joblib.delayed(self._process_peak_file)(
+                        file,
+                        self.buffer_size,
+                        vectorizer,
+                        vector_store_manager,
+                        spectrum_preprocessor,
+                    )
+                    for file in all_files
+                )
+
+            # Explicitly shut down the loky reusable executor to avoid idle lingering processes
+            get_reusable_executor().shutdown(wait=True)
 
         for result in results:
-            group = groups.get_spectra_set(result.file_id)
-            peak_file = group.get_peak_file(result.file_id)
-
+            peak_file = groups.get_spectra_set(result.spectra_set_id).get_peak_file(
+                result.file_id
+            )
             peak_file.parsing_stats = result.parsing_stats
             peak_file.quality_stats = result.quality_stats
 
