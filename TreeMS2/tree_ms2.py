@@ -27,3 +27,4 @@ class TreeMS2:
         execution_time = time.time() - start_time  # calculate execution time
         formatted_time = format_execution_time(execution_time)
         logger.info(f"TreeMS2 finished in {formatted_time}")
+        return self.context.groups.get_stats()[1].high_quality
