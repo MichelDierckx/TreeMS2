@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 
@@ -8,7 +8,6 @@ from TreeMS2.indexing.vector_store_index import VectorStoreIndex
 from TreeMS2.search.post_processing.filters import (
     SimilarityThresholdFilter,
     PrecursorMzFilter,
-    PairFilter,
 )
 from TreeMS2.search.post_processing.processor import SearchResultProcessor
 from TreeMS2.search.search_stats import SearchStats
@@ -101,20 +100,16 @@ class QueryIndexState(State):
             self.context.push_state(SearchResultAggregationState(self.context))
 
     def _setup_search_result_processor(self) -> SearchResultProcessor:
-        filters: List[PairFilter] = [
-            SimilarityThresholdFilter(self.similarity_threshold)
-        ]
-
+        similarity_threshold_filter = SimilarityThresholdFilter(self.similarity_threshold)
+        precursor_mz_filter = None
         if self.precursor_mz_window is not None:
             precursor_mzs = (
                 self.index.vector_store.get_col("precursor_mz")
                 .to_numpy(dtype=np.float32)
                 .ravel()
             )
-            filters.append(
-                PrecursorMzFilter(
-                    precursor_mzs=precursor_mzs, mz_window=self.precursor_mz_window
-                )
+            precursor_mz_filter = PrecursorMzFilter(
+                precursor_mzs=precursor_mzs, mz_window=self.precursor_mz_window
             )
 
         group_ids = (
@@ -124,7 +119,8 @@ class QueryIndexState(State):
         )
         vector_store_similarity_counts_updater = SimilarityCountsUpdater(group_ids)
         return SearchResultProcessor(
-            filters=filters,
+            similarity_threshold_filter=similarity_threshold_filter,
+            precursor_mz_filter=precursor_mz_filter,
             vector_store_similarity_counts_updater=vector_store_similarity_counts_updater,
         )
 

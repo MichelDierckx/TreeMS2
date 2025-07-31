@@ -1,9 +1,9 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
 import numpy.typing as npt
 
-from TreeMS2.search.post_processing.filters import PairFilter
+from TreeMS2.search.post_processing.filters import SimilarityThresholdFilter, PrecursorMzFilter
 from TreeMS2.search.search_stats import SearchStats
 from TreeMS2.search.similarity_counts import SimilarityCountsUpdater, SimilarityCounts
 
@@ -11,10 +11,12 @@ from TreeMS2.search.similarity_counts import SimilarityCountsUpdater, Similarity
 class SearchResultProcessor:
     def __init__(
         self,
-        filters: list[PairFilter],
+        similarity_threshold_filter: SimilarityThresholdFilter,
+        precursor_mz_filter: Optional[PrecursorMzFilter],
         vector_store_similarity_counts_updater: SimilarityCountsUpdater,
     ):
-        self.filters = filters
+        self.similarity_threshold_filter = similarity_threshold_filter
+        self.precursor_mz_filter = precursor_mz_filter
         self.vector_store_similarity_counts_updater = (
             vector_store_similarity_counts_updater
         )
@@ -34,21 +36,26 @@ class SearchResultProcessor:
         candidate_targets = i.ravel()  # flatten neighbor indices
         candidate_distances = d.ravel()  # flatten distances
 
+        mask = self.similarity_threshold_filter.filter(query_ids=candidate_queries,
+                target_ids=candidate_targets,
+                distances=candidate_distances,)
+        candidate_queries = candidate_queries[mask]
+        candidate_targets = candidate_targets[mask]
+        candidate_distances = candidate_distances[mask]
+
         for search_stat in search_stats:
             search_stat.update_similarity(similarities=candidate_distances)
 
-        # Apply filters sequentially
-        mask = np.ones(len(candidate_queries), dtype=bool)
-        for f in self.filters:
-            mask &= f.filter(
-                query_ids=candidate_queries,
-                target_ids=candidate_targets,
-                distances=candidate_distances,
-            )
+        mask = self.precursor_mz_filter.filter(
+            query_ids=candidate_queries,
+            target_ids=candidate_targets,
+            distances=candidate_distances,
+        )
+        candidate_queries = candidate_queries[mask]
+        candidate_targets = candidate_targets[mask]
 
-        # Keep only valid pairs
-        valid_queries = candidate_queries[mask]
-        valid_targets = candidate_targets[mask]
+        valid_queries = candidate_queries
+        valid_targets = candidate_targets
 
         _, hit_counts = np.unique(valid_queries, return_counts=True)
         for search_stat in search_stats:
