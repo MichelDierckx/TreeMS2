@@ -100,7 +100,9 @@ class QueryIndexState(State):
             self.context.push_state(SearchResultAggregationState(self.context))
 
     def _setup_search_result_processor(self) -> SearchResultProcessor:
-        similarity_threshold_filter = SimilarityThresholdFilter(self.similarity_threshold)
+        similarity_threshold_filter = SimilarityThresholdFilter(
+            self.similarity_threshold
+        )
         precursor_mz_filter = None
         if self.precursor_mz_window is not None:
             precursor_mzs = (

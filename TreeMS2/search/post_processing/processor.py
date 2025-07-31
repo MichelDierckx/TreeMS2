@@ -3,7 +3,10 @@ from typing import Tuple, List, Optional
 import numpy as np
 import numpy.typing as npt
 
-from TreeMS2.search.post_processing.filters import SimilarityThresholdFilter, PrecursorMzFilter
+from TreeMS2.search.post_processing.filters import (
+    SimilarityThresholdFilter,
+    PrecursorMzFilter,
+)
 from TreeMS2.search.search_stats import SearchStats
 from TreeMS2.search.similarity_counts import SimilarityCountsUpdater, SimilarityCounts
 
@@ -36,9 +39,11 @@ class SearchResultProcessor:
         candidate_targets = i.ravel()  # flatten neighbor indices
         candidate_distances = d.ravel()  # flatten distances
 
-        mask = self.similarity_threshold_filter.filter(query_ids=candidate_queries,
-                target_ids=candidate_targets,
-                distances=candidate_distances,)
+        mask = self.similarity_threshold_filter.filter(
+            query_ids=candidate_queries,
+            target_ids=candidate_targets,
+            distances=candidate_distances,
+        )
         candidate_queries = candidate_queries[mask]
         candidate_targets = candidate_targets[mask]
         candidate_distances = candidate_distances[mask]
