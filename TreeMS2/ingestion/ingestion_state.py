@@ -232,7 +232,6 @@ class IngestionState(State):
         lock_manager = LockManager(vector_store_manager.get_vector_stores())
 
         with lock_manager.use_multiprocessing_locks():
-
             with tqdm_joblib(
                 tqdm(
                     desc="Processing Files",
