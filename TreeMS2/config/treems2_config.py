@@ -1,3 +1,8 @@
+"""
+Module containing functionality related to reading, parsing and validating arguments provided either via the command-line or
+via a configuration file.
+"""
+
 import os
 from typing import Optional, Any, Union
 

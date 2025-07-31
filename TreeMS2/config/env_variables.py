@@ -1,3 +1,7 @@
+"""
+Module related to relevant environment variables
+"""
+
 import os
 
 from TreeMS2.config.logger_config import get_logger, log_parameter, log_section_title
@@ -25,7 +29,7 @@ BLIS_NUM_THREADS = "BLIS_NUM_THREADS"
 OPENBLAS_NUM_THREADS = "OPENBLAS_NUM_THREADS"
 OMP_WAIT_POLICY = "OMP_WAIT_POLICY"  # OMP_WAIT_POLICY=PASSIVE
 
-# List of environment variables you're interested in
+# List of environment variables
 env_vars = [
     TREEMS2_NUM_CPUS,
     TREEMS2_MEM_PER_CPU,
@@ -42,6 +46,10 @@ env_vars = [
 
 
 def log_environment_variables():
+    """
+    Helper function to log environment variables.
+    :return:
+    """
     log_section_title(logger=logger, title="[ ENVIRONMENT VARIABLES ]")
     for var in env_vars:
         log_parameter(

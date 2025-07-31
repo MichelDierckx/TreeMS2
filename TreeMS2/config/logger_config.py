@@ -1,3 +1,6 @@
+"""
+Module related to logging
+"""
 import logging
 import os
 from datetime import datetime
@@ -23,6 +26,10 @@ class ColorFormatter(logging.Formatter):
 
 
 def format_execution_time(seconds: float) -> str:
+    """
+    Pretty print execution time.
+    :return:
+    """
     millis = int((seconds - int(seconds)) * 1000)
     seconds = int(seconds)
 
@@ -87,7 +94,6 @@ def setup_logging(work_dir: str, console_level: str):
 def get_logger(module_name: str) -> logging.Logger:
     """
     Get a logger for the given module name.
-    Each logger is prefixed with the module's name for clarity.
     """
     return logging.getLogger(module_name)
 
@@ -96,7 +102,7 @@ def log_section_title(
     logger: logging.Logger, title: str, symbol: str = "=", width: int = 80
 ):
     """
-    Logs a section title, making it more visually distinct with a specific color (magenta).
+    Logs a section title.
     """
     section_color = LOG_COLORS["SECTION"]
     reset_color = LOG_COLORS["RESET"]
@@ -107,5 +113,8 @@ def log_section_title(
 
 
 def log_parameter(logger: logging.Logger, parameter_name, parameter_value):
+    """
+    Logs a parameter value.
+    """
     log_content = f"  {parameter_name}: {parameter_value}"
     logger.info(log_content)
