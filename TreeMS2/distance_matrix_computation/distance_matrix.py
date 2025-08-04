@@ -10,6 +10,11 @@ logger = get_logger(__name__)
 
 
 def sanitize_taxa_label(label: str) -> str:
+    """
+    Force taxa label to be compatible with MEGA11 software (https://www.megasoftware.net/webhelp/inputdata_rh/rh_rules_for_taxa_names.htm)
+    :param label:
+    :return:
+    """
     # Replace spaces, commas, tabs and ; with underscores
     label = re.sub(r"[ ,;\t]", "_", label)
 
@@ -37,7 +42,7 @@ class DistanceMatrix:
             "",
         ]
         for group in similarity_sets.groups.get_spectra_sets():
-            group_name = group.get_label().replace(" ", "_")
+            group_name = sanitize_taxa_label(group.get_label())
             lines.append(f"#{group_name}")
         lines.extend(["", ""])
 
