@@ -65,10 +65,14 @@ class SimilarityCountsUpdater:
         row_group_ids = self.group_ids[query_ids]
         col_group_ids = self.group_ids[target_ids]
 
+        # Step 1: Form all (row, col) group ID pairs
         pairs = np.vstack((row_group_ids, col_group_ids)).T
-        unique_pairs, counts = np.unique(pairs, axis=0, return_counts=True)
 
+        # Step 2: Deduplicate the pairs — only keep unique ones
+        unique_pairs = np.unique(pairs, axis=0)
+
+        # Step 3: Increment similarity count ONCE for each unique pair
         similarity_counts.similarity_sets[
             unique_pairs[:, 0], unique_pairs[:, 1]
-        ] += counts.astype(np.uint64)
+        ] += 1  # Only one count per unique pair
         return similarity_counts
