@@ -1,11 +1,26 @@
 from typing import List
 
 import numba as nb
+import re
 
 from TreeMS2.config.logger_config import get_logger
 from TreeMS2.search.similarity_counts import SimilarityCounts
 
 logger = get_logger(__name__)
+
+
+def sanitize_taxa_label(label: str) -> str:
+    # Replace spaces, commas, tabs and ; with underscores
+    label = re.sub(r"[ ,;\t]", "_", label)
+
+    # Ensure the first character is valid (alphanumeric, dash, plus, or dot)
+    if not re.match(r"^[A-Za-z0-9\-\+\.]", label):
+        label = "_" + label  # or replace first char with underscore or other logic
+
+    # Remove invalid characters from the rest (starting at index 1)
+    label = label[0] + re.sub(r"[^A-Za-z0-9_\*\:\(\)\|\./\\\+\-]", "", label[1:])
+
+    return label
 
 
 class DistanceMatrix:
