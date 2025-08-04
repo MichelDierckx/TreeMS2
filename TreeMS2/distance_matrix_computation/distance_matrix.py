@@ -60,6 +60,8 @@ class DistanceMatrix:
                 s_b = similarity_sets.similarity_sets.item((j, i))
                 global_similarity = _global_similarity(a, b, s_a, s_b)
                 global_distance = _global_distance(a, b, global_similarity)
+                if global_distance < 0.0:
+                    logger.debug(f"COMPUTED_NEGATIVE_DISTANCE ({j}, {i}) = {global_distance}), global similarity = {global_similarity}, a = {a}, b = {b}, s_a = {s_a}, s_b = {s_b}")
                 distances.append(global_distance)
             line = "\t".join(f"{x:.4f}" for x in distances)
             lines.append(line)
