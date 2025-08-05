@@ -111,6 +111,6 @@ class SimilarityCountsUpdater:
         # Update the similarity matrix with counts
         similarity_counts.similarity_sets[
             unique_group_pairs[:, 0], unique_group_pairs[:, 1]
-        ] += counts
+        ] += counts.astype(np.uint64)
 
         return similarity_counts
