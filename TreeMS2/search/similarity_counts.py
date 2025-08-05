@@ -57,22 +57,60 @@ class SimilarityCounts:
 
 class SimilarityCountsUpdater:
     def __init__(self, group_ids: npt.NDArray[np.uint16]):
+        """
+        Parameters
+        ----------
+        group_ids : np.ndarray
+            An array mapping each spectrum/vector ID to a group ID.
+        """
         self.group_ids = group_ids
 
     def update(
-        self, query_ids, target_ids, similarity_counts: SimilarityCounts
+        self,
+        query_ids: npt.NDArray[np.int32],
+        target_ids: npt.NDArray[np.int32],
+        similarity_counts: SimilarityCounts,
     ) -> SimilarityCounts:
-        row_group_ids = self.group_ids[query_ids]
-        col_group_ids = self.group_ids[target_ids]
+        """
+        Update similarity_counts based on how many unique query group IDs
+        have at least one hit in a target group ID.
 
-        # Step 1: Form all (row, col) group ID pairs
-        pairs = np.vstack((row_group_ids, col_group_ids)).T
+        Each query group is only counted once per target group, even if
+        multiple query vectors in the same group hit the same target group.
 
-        # Step 2: Deduplicate the pairs — only keep unique ones
-        unique_pairs = np.unique(pairs, axis=0)
+        Parameters
+        ----------
+        query_ids : np.ndarray
+            Indices of the query vectors.
+        target_ids : np.ndarray
+            Indices of the matching target vectors.
+        similarity_counts : SimilarityCounts
+            Object containing the similarity_sets 2D matrix to update.
 
-        # Step 3: Increment similarity count ONCE for each unique pair
+        Returns
+        -------
+        similarity_counts : SimilarityCounts
+            Updated similarity counts.
+        """
+
+        # Map target vector IDs to their group IDs
+        target_group_ids = self.group_ids[target_ids]
+
+        # Form array of (query_vector_id, target_group_id) pairs
+        pairs = np.stack((query_ids, target_group_ids), axis=1)
+
+        # Keep only unique (query_id, target_group_id) pairs to prevent overcounting
+        pairs = np.unique(pairs, axis=0)
+
+        # Replace query vector IDs with their group IDs
+        pairs[:, 0] = self.group_ids[pairs[:, 0]]
+
+        # Collapse down to unique (query_group_id, target_group_id) pairs and count occurrences
+        unique_group_pairs, counts = np.unique(pairs, axis=0, return_counts=True)
+
+        # Update the similarity matrix with counts
         similarity_counts.similarity_sets[
-            unique_pairs[:, 0], unique_pairs[:, 1]
-        ] += 1  # Only one count per unique pair
+            unique_group_pairs[:, 0], unique_group_pairs[:, 1]
+        ] += counts
+
         return similarity_counts
