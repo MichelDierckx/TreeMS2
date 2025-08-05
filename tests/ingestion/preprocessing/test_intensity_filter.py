@@ -4,6 +4,7 @@ import numpy as np
 import spectrum_utils.spectrum as sus
 
 from TreeMS2.ingestion.preprocessing.filters import IntensityFilter
+from TreeMS2.ingestion.preprocessing.quality_stats import QualityStats
 from TreeMS2.ingestion.preprocessing.validators import SpectrumValidator
 
 
@@ -28,12 +29,11 @@ class TestIntensityFilterProcessor(unittest.TestCase):
         self.processor = IntensityFilter(
             min_intensity=self.min_intensity,
             max_peaks_used=self.max_peaks_used,
-            validator=self.validator,
         )
 
     def test_change(self):
         # Apply the change (filtering) method
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
 
         # Expected filtered results
         expected_mz = np.array(
@@ -59,7 +59,7 @@ class TestIntensityFilterProcessor(unittest.TestCase):
     def test_change_no_max_peaks(self):
         # Test when max_peaks_used is None (all peaks above intensity threshold retained)
         self.processor.max_peaks_used = None
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
 
         # Expected filtered results
         expected_mz = np.array([200.0, 300.0, 500.0], dtype=float)
@@ -85,7 +85,9 @@ class TestIntensityFilterProcessor(unittest.TestCase):
         self.processor.min_intensity = (
             1.1  # Set higher than any intensity in the ingestion
         )
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
+        quality_stats = QualityStats()
+        filtered_spectrum = self.validator.validate(filtered_spectrum, quality_stats)
 
         # Spectrum should be invalid
         self.assertEqual(filtered_spectrum, None)

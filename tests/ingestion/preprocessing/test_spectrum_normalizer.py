@@ -59,7 +59,7 @@ class TestSpectrumNormalizerProcessor(unittest.TestCase):
         self.spectrum._intensity = normalized_intensity
 
         # Apply the processor
-        normalized_spectrum = self.processor.change(self.spectrum)
+        normalized_spectrum = self.processor.transform(self.spectrum)
 
         # Expect no change since the ingestion was already normalized
         np.testing.assert_array_almost_equal(

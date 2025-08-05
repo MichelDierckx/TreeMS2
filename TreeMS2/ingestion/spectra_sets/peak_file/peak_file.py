@@ -36,15 +36,49 @@ class PeakFile:
             "spectra_set_id": self._spectra_set_id,
             "valid": {
                 "count": self.parsing_stats.valid if self.parsing_stats else 0,
-                "high_quality": (
-                    self.quality_stats.high_quality if self.quality_stats else 0
-                ),
-                "low_quality": (
-                    self.quality_stats.low_quality_count if self.quality_stats else 0
-                ),
-                "low_quality_ids": (
-                    self.quality_stats.low_quality_ids if self.quality_stats else []
-                ),
+                "high_quality": {
+                    "count": (
+                        self.quality_stats.high_quality if self.quality_stats else 0
+                    )
+                },
+                "low_quality": {
+                    "count": (
+                        self.quality_stats.low_quality_count
+                        if self.quality_stats
+                        else 0
+                    ),
+                    "too_few_peaks": (
+                        self.quality_stats.too_few_peaks if self.quality_stats else 0
+                    ),
+                    "too_small_mz_range": (
+                        self.quality_stats.too_small_mz_range
+                        if self.quality_stats
+                        else 0
+                    ),
+                    "low_quality_ids": (
+                        self.quality_stats.low_quality_ids if self.quality_stats else []
+                    ),
+                    "filtered_after_reading": (
+                        self.quality_stats.filtered_after_reading
+                        if self.quality_stats
+                        else 0
+                    ),
+                    "filtered_after_restricting_mz_range": (
+                        self.quality_stats.filtered_after_restricting_mz_range
+                        if self.quality_stats
+                        else 0
+                    ),
+                    "filtered_after_removing_precursor_peak_noise": (
+                        self.quality_stats.filtered_after_removing_precursor_peak_noise
+                        if self.quality_stats
+                        else 0
+                    ),
+                    "filtered_after_removing_low_intensity_peaks": (
+                        self.quality_stats.filtered_after_removing_low_intensity_peaks
+                        if self.quality_stats
+                        else 0
+                    ),
+                },
             },
             "invalid": {
                 "count": self.parsing_stats.invalid_count if self.parsing_stats else 0,
@@ -70,8 +104,25 @@ class PeakFile:
         # Restore QualityStats
         quality_stats = QualityStats()
         valid_data = data.get("valid", {})
-        quality_stats.high_quality = valid_data.get("high_quality", 0)
-        quality_stats.low_quality_ids = valid_data.get("low_quality_ids", [])
-        peak_file.quality_stats = quality_stats
+        high_quality_data = valid_data.get("high_quality", {})
+        low_quality_data = valid_data.get("low_quality", {})
 
+        quality_stats.high_quality = high_quality_data.get("count", 0)
+        quality_stats.low_quality_ids = low_quality_data.get("low_quality_ids", [])
+        quality_stats.filtered_after_reading = low_quality_data.get(
+            "filtered_after_reading", 0
+        )
+        quality_stats.filtered_after_restricting_mz_range = low_quality_data.get(
+            "filtered_after_restricting_mz_range", 0
+        )
+        quality_stats.filtered_after_removing_precursor_peak_noise = (
+            low_quality_data.get("filtered_after_removing_precursor_peak_noise", 0)
+        )
+        quality_stats.filtered_after_removing_low_intensity_peaks = (
+            low_quality_data.get("filtered_after_removing_low_intensity_peaks", 0)
+        )
+        quality_stats.too_few_peaks = low_quality_data.get("too_few_peaks", 0)
+        quality_stats.too_small_mz_range = low_quality_data.get("too_small_mz_range", 0)
+
+        peak_file.quality_stats = quality_stats
         return peak_file

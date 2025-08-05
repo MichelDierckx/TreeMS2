@@ -162,8 +162,18 @@ class SpectraSets:
             "spectra_sets_mapping_path": self.spectra_sets_mapping_path,
             "valid": {
                 "count": parsing_stats_counts.valid,
-                "high_quality": quality_stats_counts.high_quality,
-                "low_quality": quality_stats_counts.low_quality,
+                "high_quality": {
+                    "count": quality_stats_counts.high_quality,
+                },
+                "low_quality": {
+                    "count": quality_stats_counts.low_quality,
+                    "too_few_peaks": quality_stats_counts.too_few_peaks,
+                    "too_small_mz_range": quality_stats_counts.too_small_mz_range,
+                    "filtered_after_reading": quality_stats_counts.filtered_after_reading,
+                    "filtered_after_restricting_mz_range": quality_stats_counts.filtered_after_restricting_mz_range,
+                    "filtered_after_removing_precursor_peak_noise": quality_stats_counts.filtered_after_removing_precursor_peak_noise,
+                    "filtered_after_removing_low_intensity_peaks": quality_stats_counts.filtered_after_removing_low_intensity_peaks,
+                },
             },
             "invalid": {
                 "count": parsing_stats_counts.invalid,

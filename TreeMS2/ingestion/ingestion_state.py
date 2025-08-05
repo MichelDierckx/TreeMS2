@@ -267,8 +267,14 @@ class IngestionState(State):
         logger.info(
             f"Processed {parsing_stat_counts.valid + parsing_stat_counts.invalid} spectra from {len(all_files)} peak files:\n"
             f"\t- {parsing_stat_counts.invalid} spectra could not be parsed.\n"
-            f"\t- {quality_stat_counts.low_quality} spectra were filtered out as low quality.\n"
-            f"\t- {quality_stat_counts.high_quality} spectra were successfully processed, vectorized and written to the lance dataset(s)."
+            f"\t- {quality_stat_counts.low_quality} spectra were filtered out as low quality:\n"
+            f"\t\t• {quality_stat_counts.too_few_peaks} due to too few peaks\n"
+            f"\t\t• {quality_stat_counts.too_small_mz_range} due to insufficient m/z range\n"
+            f"\t\t• {quality_stat_counts.filtered_after_reading} filtered before applying transformations\n"
+            f"\t\t• {quality_stat_counts.filtered_after_restricting_mz_range} filtered after restricting m/z range\n"
+            f"\t\t• {quality_stat_counts.filtered_after_removing_precursor_peak_noise} filtered after removing precursor peak noise\n"
+            f"\t\t• {quality_stat_counts.filtered_after_removing_low_intensity_peaks} filtered after removing low intensity peaks\n"
+            f"\t- {quality_stat_counts.high_quality} spectra were successfully processed, vectorized, and written to the Lance dataset(s)."
         )
 
         PrecursorChargeHistogram.plot(

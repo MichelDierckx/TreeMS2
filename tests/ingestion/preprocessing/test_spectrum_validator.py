@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import spectrum_utils.spectrum as sus
 
+from TreeMS2.ingestion.preprocessing.quality_stats import QualityStats
 from TreeMS2.ingestion.preprocessing.validators import SpectrumValidator
 
 
@@ -21,7 +22,8 @@ class TestSpectrumValidator(unittest.TestCase):
 
     def test_validate_valid_spectrum(self):
         # The ingestion meets the minimum peaks and mz range criteria
-        is_valid = self.validator.validate(self.spectrum)
+        quality_stats = QualityStats()
+        is_valid = self.validator.validate(self.spectrum, quality_stats)
         self.assertTrue(is_valid, "Spectrum should be valid but was not.")
 
     def test_validate_too_few_peaks(self):
@@ -34,7 +36,8 @@ class TestSpectrumValidator(unittest.TestCase):
             intensity=np.array([10.0, 20.0], dtype=float),
             retention_time=10.0,
         )
-        is_valid = self.validator.validate(invalid_spectrum)
+        quality_stats = QualityStats()
+        is_valid = self.validator.validate(invalid_spectrum, quality_stats)
         self.assertFalse(is_valid, "Spectrum should be invalid due to too few peaks.")
 
     def test_validate_too_small_mz_range(self):
@@ -47,7 +50,8 @@ class TestSpectrumValidator(unittest.TestCase):
             intensity=np.array([10.0, 20.0, 30.0], dtype=float),
             retention_time=10.0,
         )
-        is_valid = self.validator.validate(invalid_spectrum)
+        quality_stats = QualityStats()
+        is_valid = self.validator.validate(invalid_spectrum, quality_stats)
         self.assertFalse(
             is_valid, "Spectrum should be invalid due to insufficient m/z range."
         )
@@ -63,7 +67,8 @@ class TestSpectrumValidator(unittest.TestCase):
             retention_time=10.0,
         )
         edge_validator = SpectrumValidator(min_peaks=3, min_mz_range=200.0)
-        is_valid = edge_validator.validate(edge_case_spectrum)
+        quality_stats = QualityStats()
+        is_valid = edge_validator.validate(edge_case_spectrum, quality_stats)
         self.assertTrue(
             is_valid,
             "Spectrum meeting exactly the minimum requirements should be valid.",

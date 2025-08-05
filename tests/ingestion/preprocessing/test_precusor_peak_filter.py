@@ -4,6 +4,7 @@ import numpy as np
 import spectrum_utils.spectrum as sus
 
 from TreeMS2.ingestion.preprocessing.filters import PrecursorPeakFilter
+from TreeMS2.ingestion.preprocessing.quality_stats import QualityStats
 from TreeMS2.ingestion.preprocessing.validators import SpectrumValidator
 
 
@@ -26,12 +27,11 @@ class TestPrecursorPeakRemoverProcessor(unittest.TestCase):
         self.validator = SpectrumValidator(min_peaks=1, min_mz_range=50)
         self.processor = PrecursorPeakFilter(
             remove_precursor_tolerance=self.remove_precursor_tolerance,
-            validator=self.validator,
         )
 
     def test_process(self):
         # Apply the precursor peak removal
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
 
         # Expected filtered results
         expected_mz = np.array(
@@ -52,7 +52,7 @@ class TestPrecursorPeakRemoverProcessor(unittest.TestCase):
     def test_no_precursor_peak_removed(self):
         # Test when no peaks fall within the precursor tolerance
         self.processor.remove_precursor_tolerance = 0.1  # Tighter tolerance
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
 
         # Expected results: No peaks removed
         np.testing.assert_array_equal(
@@ -69,7 +69,9 @@ class TestPrecursorPeakRemoverProcessor(unittest.TestCase):
     def test_all_peaks_removed(self):
         # Test behavior when tolerance is set to a very large value
         self.processor.remove_precursor_tolerance = 1000.0  # Very large tolerance
-        filtered_spectrum = self.processor.process(self.spectrum)
+        filtered_spectrum = self.processor.transform(self.spectrum)
+        quality_stats = QualityStats()
+        filtered_spectrum = self.validator.validate(filtered_spectrum, quality_stats)
 
         # Expected behavior: all peaks removed except those far from precursor
         self.assertEqual(None, filtered_spectrum, "Spectrum should be invalidated.")

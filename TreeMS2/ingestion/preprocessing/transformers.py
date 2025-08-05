@@ -25,12 +25,12 @@ class IntensityScaler(PreprocessingStep):
         self.scaling = scaling
         self.max_rank = max_rank
 
-    def change(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
+    def transform(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         return spectrum.scale_intensity(self.scaling.value, max_rank=self.max_rank)
 
 
 class Normalizer(PreprocessingStep):
-    def change(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
+    def transform(self, spectrum: sus.MsmsSpectrum) -> sus.MsmsSpectrum:
         spectrum._intensity = _norm_intensity(spectrum.intensity)
         new_spectrum = sus.MsmsSpectrum(
             # A unique identifier or title for the ingestion (often representing the filename or a descriptor of the experiment).

@@ -28,7 +28,7 @@ class TestIntensityScalingProcessor(unittest.TestCase):
         expected_intensity = np.sqrt(self.spectrum.intensity).astype(np.float32)
 
         # Apply the scaling method
-        scaled_spectrum = processor.process(self.spectrum)
+        scaled_spectrum = processor.transform(self.spectrum)
 
         # Validate the results
         np.testing.assert_array_almost_equal(
@@ -50,7 +50,7 @@ class TestIntensityScalingProcessor(unittest.TestCase):
         )
 
         # Apply the scaling method
-        scaled_spectrum = processor.process(self.spectrum)
+        scaled_spectrum = processor.transform(self.spectrum)
 
         # Validate the results
         np.testing.assert_array_almost_equal(
@@ -70,7 +70,7 @@ class TestIntensityScalingProcessor(unittest.TestCase):
         expected_intensity = expected_rank.astype(np.float32)
 
         # Apply the scaling method
-        scaled_spectrum = processor.process(self.spectrum)
+        scaled_spectrum = processor.transform(self.spectrum)
 
         # Validate the results
         np.testing.assert_array_equal(
@@ -86,7 +86,7 @@ class TestIntensityScalingProcessor(unittest.TestCase):
 
         # Expect a ValueError due to invalid max_rank
         with self.assertRaises(ValueError):
-            processor.process(self.spectrum)
+            processor.transform(self.spectrum)
 
 
 if __name__ == "__main__":
