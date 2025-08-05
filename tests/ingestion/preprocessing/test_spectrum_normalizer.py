@@ -23,7 +23,7 @@ class TestSpectrumNormalizerProcessor(unittest.TestCase):
 
     def test_process(self):
         # Apply the normalization
-        normalized_spectrum = self.processor.process(self.spectrum)
+        normalized_spectrum = self.processor.transform(self.spectrum)
 
         # Compute expected normalized intensities
         original_intensity = self.spectrum.intensity
@@ -82,7 +82,7 @@ class TestSpectrumNormalizerProcessor(unittest.TestCase):
         )
 
         # Apply the processor
-        normalized_spectrum = self.processor.process(self.spectrum)
+        normalized_spectrum = self.processor.transform(self.spectrum)
 
         # Expect zero intensities to remain unchanged
         np.testing.assert_array_equal(
@@ -103,7 +103,7 @@ class TestSpectrumNormalizerProcessor(unittest.TestCase):
         )
 
         # Apply the processor
-        normalized_spectrum = self.processor.process(self.spectrum)
+        normalized_spectrum = self.processor.transform(self.spectrum)
 
         # Expect single peak intensity to remain 1
         np.testing.assert_array_equal(

@@ -131,8 +131,8 @@ class TestMZRangeFilterProcessor(unittest.TestCase):
 
         # Validate that the ingestion is invalid
         quality_stats = QualityStats()
-        filtered_spectrum = self.validator.validate(filtered_spectrum, quality_stats)
-        self.assertEqual(None, filtered_spectrum, "Spectrum should be invalidated.")
+        valid = self.validator.validate(filtered_spectrum, quality_stats)
+        self.assertEqual(False, valid, "Spectrum should be invalidated.")
 
 
 if __name__ == "__main__":

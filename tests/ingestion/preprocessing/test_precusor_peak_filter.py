@@ -71,10 +71,10 @@ class TestPrecursorPeakRemoverProcessor(unittest.TestCase):
         self.processor.remove_precursor_tolerance = 1000.0  # Very large tolerance
         filtered_spectrum = self.processor.transform(self.spectrum)
         quality_stats = QualityStats()
-        filtered_spectrum = self.validator.validate(filtered_spectrum, quality_stats)
+        valid = self.validator.validate(filtered_spectrum, quality_stats)
 
         # Expected behavior: all peaks removed except those far from precursor
-        self.assertEqual(None, filtered_spectrum, "Spectrum should be invalidated.")
+        self.assertEqual(False, valid, "Spectrum should be invalidated.")
 
 
 if __name__ == "__main__":

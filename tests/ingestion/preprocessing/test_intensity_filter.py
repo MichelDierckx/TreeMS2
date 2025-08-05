@@ -87,10 +87,10 @@ class TestIntensityFilterProcessor(unittest.TestCase):
         )
         filtered_spectrum = self.processor.transform(self.spectrum)
         quality_stats = QualityStats()
-        filtered_spectrum = self.validator.validate(filtered_spectrum, quality_stats)
+        valid = self.validator.validate(filtered_spectrum, quality_stats)
 
         # Spectrum should be invalid
-        self.assertEqual(filtered_spectrum, None)
+        self.assertEqual(valid, False)
 
 
 if __name__ == "__main__":
