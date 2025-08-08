@@ -1,6 +1,7 @@
 from typing import List
 
 import numba as nb
+import numpy as np
 import re
 
 from TreeMS2.config.logger_config import get_logger
@@ -30,7 +31,7 @@ def sanitize_taxa_label(label: str) -> str:
 
 class DistanceMatrix:
     @staticmethod
-    def create_mega(
+    def export_mega(
         path: str,
         similarity_threshold: float,
         precursor_mz_window: float,
@@ -68,6 +69,48 @@ class DistanceMatrix:
         with open(path, "w") as f:
             f.write(text)
         return
+
+    @staticmethod
+    def export_npy(
+        output_npy_path: str,
+        output_labels_path: str,
+        similarity_sets: SimilarityCounts,
+    ):
+        """Compute and save distance matrix and labels from SimilarityCounts."""
+
+        spectra_sets = similarity_sets.groups.get_spectra_sets()
+        n = similarity_sets.groups.count_spectra_sets()
+
+        # Prepare label list
+        labels = [s.get_label() for s in spectra_sets]
+
+        # Initialize symmetric distance matrix
+        distance_matrix = np.zeros((n, n))
+
+        # Compute distances
+        for j in range(1, n):
+            b = similarity_sets.groups.get_spectra_set(j).get_stats()[1].high_quality
+            for i in range(j):
+                a = (
+                    similarity_sets.groups.get_spectra_set(i)
+                    .get_stats()[1]
+                    .high_quality
+                )
+                s_a = similarity_sets.similarity_sets.item((i, j))
+                s_b = similarity_sets.similarity_sets.item((j, i))
+                global_similarity = _global_similarity(a, b, s_a, s_b)
+                global_distance = _global_distance(a, b, global_similarity)
+
+                distance_matrix[i, j] = global_distance
+                distance_matrix[j, i] = global_distance  # symmetric
+
+        # Save distance matrix (.npy)
+        np.save(output_npy_path, distance_matrix)
+
+        # Save labels
+        with open(output_labels_path, "w") as f:
+            for label in labels:
+                f.write(label + "\n")
 
 
 @nb.njit("f4(u4, u4, u4, u4)", cache=True)
