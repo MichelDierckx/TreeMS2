@@ -20,6 +20,7 @@ class TreeMS2Spectrum:
 
     def to_dict(self) -> Dict:
         return {
+            "spectrum_title": self.spectrum.identifier,
             "spectrum_id": self.spectrum_id,
             "file_id": self.file_id,
             "group_id": self.group_id,
