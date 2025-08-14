@@ -22,10 +22,10 @@ class HitExporter:
         # Create dataframe directly with dict for speed
         df = pd.DataFrame(
             {
-                "query_group_id": self.group_ids[query_ids],
+                "query_spectra_set_id": self.group_ids[query_ids],
                 "query_file_id": self.file_ids[query_ids],
                 "query_scan_number": self.scan_numbers[query_ids],
-                "hit_group_id": self.group_ids[target_ids],
+                "hit_spectra_set_id": self.group_ids[target_ids],
                 "hit_file_id": self.file_ids[target_ids],
                 "hit_scan_number": self.scan_numbers[target_ids],
                 "similarity": distances,
