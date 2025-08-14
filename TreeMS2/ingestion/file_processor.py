@@ -31,7 +31,7 @@ def parse_scan_number(line: str) -> int:
     if match:
         return int(match.group(1))
     else:
-        raise ValueError("Could not parse scan number")
+        raise ValueError(f"Could not parse scan number from line {line}")
 
 
 class ProcessingResult:
