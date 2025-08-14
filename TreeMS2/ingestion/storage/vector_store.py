@@ -35,12 +35,12 @@ class VectorStore:
 
         self.schema: pa.Schema = pa.schema(
             [
-                pa.field("spectrum_title", pa.string()),
                 pa.field("spectrum_id", pa.uint32()),
                 pa.field("file_id", pa.uint16()),
                 pa.field("group_id", pa.uint16()),
                 pa.field("precursor_mz", pa.float32()),
                 pa.field("precursor_charge", pa.int8()),
+                pa.field("scan_number", pa.uint32()),
                 pa.field("vector", pa.list_(pa.float32(), vector_dim)),
             ]
         )

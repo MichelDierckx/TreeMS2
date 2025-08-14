@@ -10,6 +10,7 @@ class TreeMS2Spectrum:
         file_id: int,
         group_id: int,
         spectrum: sus.MsmsSpectrum,
+        scan_number: int,
         vector=None,
     ):
         self.spectrum_id = spectrum_id
@@ -17,6 +18,7 @@ class TreeMS2Spectrum:
         self.group_id = group_id
         self.spectrum = spectrum
         self.vector = vector
+        self.scan_number = scan_number
 
     def to_dict(self) -> Dict:
         return {
@@ -26,5 +28,6 @@ class TreeMS2Spectrum:
             "group_id": self.group_id,
             "precursor_mz": self.spectrum.precursor_mz,
             "precursor_charge": self.spectrum.precursor_charge,
+            "scan_number": self.scan_number,
             "vector": self.vector,
         }

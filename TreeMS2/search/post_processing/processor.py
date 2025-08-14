@@ -3,6 +3,7 @@ from typing import Tuple, List, Optional
 import numpy as np
 import numpy.typing as npt
 
+from TreeMS2.search.hit_exporter import HitExporter
 from TreeMS2.search.post_processing.filters import (
     SimilarityThresholdFilter,
     PrecursorMzFilter,
@@ -17,12 +18,14 @@ class SearchResultProcessor:
         similarity_threshold_filter: SimilarityThresholdFilter,
         precursor_mz_filter: Optional[PrecursorMzFilter],
         vector_store_similarity_counts_updater: SimilarityCountsUpdater,
+        hit_exporter: HitExporter,
     ):
         self.similarity_threshold_filter = similarity_threshold_filter
         self.precursor_mz_filter = precursor_mz_filter
         self.vector_store_similarity_counts_updater = (
             vector_store_similarity_counts_updater
         )
+        self.hit_exporter = hit_exporter
 
     def process(
         self,
@@ -58,9 +61,15 @@ class SearchResultProcessor:
         )
         candidate_queries = candidate_queries[mask]
         candidate_targets = candidate_targets[mask]
+        candidate_distances = candidate_distances[mask]
 
         valid_queries = candidate_queries
         valid_targets = candidate_targets
+        valid_distances = candidate_distances
+
+        self.hit_exporter.export_hits(
+            query_ids=valid_queries, target_ids=valid_targets, distances=valid_distances
+        )
 
         _, hit_counts = np.unique(valid_queries, return_counts=True)
         for search_stat in search_stats:

@@ -5,6 +5,7 @@ import numpy as np
 
 from TreeMS2.config.logger_config import log_section_title, get_logger
 from TreeMS2.indexing.vector_store_index import VectorStoreIndex
+from TreeMS2.search.hit_exporter import HitExporter
 from TreeMS2.search.post_processing.filters import (
     SimilarityThresholdFilter,
     PrecursorMzFilter,
@@ -120,10 +121,28 @@ class QueryIndexState(State):
             .ravel()
         )
         vector_store_similarity_counts_updater = SimilarityCountsUpdater(group_ids)
+
+        file_ids = (
+            self.index.vector_store.get_col("file_id").to_numpy(dtype=np.uint16).ravel()
+        )
+        scan_numbers = (
+            self.index.vector_store.get_col("scan_number")
+            .to_numpy(dtype=np.uint32)
+            .ravel()
+        )
+
+        hit_exporter = HitExporter(
+            output_file_path=os.path.join(self.context.results_dir, "hits.tsv"),
+            file_ids=file_ids,
+            group_ids=group_ids,
+            scan_numbers=scan_numbers,
+        )
+
         return SearchResultProcessor(
             similarity_threshold_filter=similarity_threshold_filter,
             precursor_mz_filter=precursor_mz_filter,
             vector_store_similarity_counts_updater=vector_store_similarity_counts_updater,
+            hit_exporter=hit_exporter,
         )
 
     def _setup_search_stats(self) -> Tuple[SearchStats, SearchStats]:

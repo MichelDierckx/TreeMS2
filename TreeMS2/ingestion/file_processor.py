@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 from TreeMS2.ingestion.batch_writer import BatchWriter
@@ -23,6 +24,14 @@ def map_charge_to_vector_store(charge: Optional[int]) -> str:
     elif charge is not None and charge >= 4:
         return "charge_4plus"
     return "charge_unknown"  # Covers cases where charge is None or not recognized
+
+
+def parse_scan_number(line: str) -> int:
+    match = re.search(r"\bscan=(\d+)\b", line)
+    if match:
+        return int(match.group(1))
+    else:
+        raise ValueError("Could not parse scan number")
 
 
 class ProcessingResult:
@@ -59,11 +68,14 @@ class FileProcessor:
         for spec_id, raw_spectrum in self.reader.read(peak_file=peak_file):
             processed_spectrum = self._process_spectrum(spec_id, raw_spectrum)
             if processed_spectrum is not None:
+                scan_number = parse_scan_number(processed_spectrum.identifier)
+
                 treems2_spectrum = TreeMS2Spectrum(
                     spectrum_id=spec_id,
                     file_id=peak_file.get_id(),
                     group_id=peak_file.get_spectra_set_id(),
                     spectrum=processed_spectrum,
+                    scan_number=scan_number,
                 )
                 target_store = map_charge_to_vector_store(
                     processed_spectrum.precursor_charge
